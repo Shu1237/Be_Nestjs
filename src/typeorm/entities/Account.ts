@@ -21,13 +21,13 @@ export class Account {
   @Column({ type: "varchar", length: 255 })
   FULL_NAME: string;
 
-  @Column({ type: "varchar", length: 255 })
-  GENDER: string;
+  @Column({ type: "int" })
+  GENDER: number;
 
   @Column({ type: "varchar", length: 255 })
   IDENTITY_CARD: string;
 
-  @Column({ type: "varchar", length: 255 })
+  @Column({ type: "varchar", length: 255, nullable: true })
   IMAGE: string;
 
   @Column({ type: "varchar", length: 255 })
@@ -39,7 +39,7 @@ export class Account {
   @Column({ type: "date" })
   REGISTER_DATE: Date;
 
-  @Column({ type: "varchar", length: 255, nullable: true })
+  @Column({ type: "varchar", length: 255, nullable: true, default: "ACTIVE" })
   STATUS: string;
 
   @Column({ type: "varchar", length: 255 })
