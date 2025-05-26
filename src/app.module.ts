@@ -13,6 +13,7 @@ import { Schedule } from './typeorm/entities/Schedule';
 import { ShowDate } from './typeorm/entities/Show_date';
 import { Type } from './typeorm/entities/Type';
 import { EmployeesModule } from './employees/employees.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [TypeOrmModule.forRoot({
@@ -24,7 +25,7 @@ import { EmployeesModule } from './employees/employees.module';
     database: 'be_movietheater',
     entities: [Account,Employee,Member,MovieDate,MovieSchedule,MovieType,Invoice,Movie,Role,Schedule,ShowDate,Type],
   synchronize: false,  //true first time to create tables
-}), EmployeesModule],
+}), EmployeesModule, AuthModule],
 controllers: [],
   providers: [],
 })
