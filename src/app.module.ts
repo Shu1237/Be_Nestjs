@@ -46,7 +46,8 @@ import { RefreshToken } from './typeorm/entities/RefreshToken';
         RefreshToken
         
       ],
-      synchronize: false, // hoặc true nếu lần đầu chạy
+      synchronize: true, 
+      autoLoadEntities: true, // Tự động tải các entity
     }),
     EmployeesModule,
     AuthModule,
