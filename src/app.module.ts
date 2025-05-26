@@ -1,4 +1,6 @@
+// src/app.module.ts
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Account } from './typeorm/entities/Account';
 import { Role } from './typeorm/entities/Roles';
@@ -14,19 +16,42 @@ import { ShowDate } from './typeorm/entities/Show_date';
 import { Type } from './typeorm/entities/Type';
 import { EmployeesModule } from './employees/employees.module';
 import { AuthModule } from './auth/auth.module';
+import { RefreshToken } from './typeorm/entities/RefreshToken';
 
 @Module({
-  imports: [TypeOrmModule.forRoot({
-    type: 'mysql',
-    host: 'localhost',
-    port: 3306,
-    username: 'root',
-    password: '123456',
-    database: 'be_movietheater',
-    entities: [Account,Employee,Member,MovieDate,MovieSchedule,MovieType,Invoice,Movie,Role,Schedule,ShowDate,Type],
-  synchronize: false,  //true first time to create tables
-}), EmployeesModule, AuthModule],
-controllers: [],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true, // Giúp sử dụng process.env ở mọi nơi
+    }),
+    TypeOrmModule.forRoot({
+      type: process.env.DB_TYPE as any, // 'mysql'
+      host: process.env.DB_HOST,
+      port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 3306,
+      username: process.env.DB_USERNAME,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
+      entities: [
+        Account,
+        Employee,
+        Member,
+        MovieDate,
+        MovieSchedule,
+        MovieType,
+        Invoice,
+        Movie,
+        Role,
+        Schedule,
+        ShowDate,
+        Type,
+        RefreshToken
+        
+      ],
+      synchronize: false, // hoặc true nếu lần đầu chạy
+    }),
+    EmployeesModule,
+    AuthModule,
+  ],
+  controllers: [],
   providers: [],
 })
-export class AppModule {}
+export class AppModule { }
