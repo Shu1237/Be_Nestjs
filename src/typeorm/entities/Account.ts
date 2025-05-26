@@ -3,6 +3,7 @@ import { Role } from "./Roles";
 import { Member } from "./Member";
 import { Employee } from "./Employtee";
 import { Invoice } from "./Movie_Invoice";
+import { RefreshToken } from "./RefreshToken";
 
 @Entity("MOVIETHEATER_ACCOUNT")
 export class Account {
@@ -57,4 +58,9 @@ export class Account {
 
   @OneToMany(() => Invoice, (invoice) => invoice.account)
   invoices: Invoice[];
+
+
+
+  @OneToMany(() => RefreshToken, (refreshToken) => refreshToken.account)
+  refreshTokens: RefreshToken[];
 }
