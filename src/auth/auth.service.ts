@@ -137,34 +137,48 @@ export class AuthService {
 
     }
 
-    getAllRefreshTokens() {
-        return this.refreshTokenRepository.find()
+async getAllRefreshTokens(user: any) {
+    if (user.ROLE_ID !== 3) { // Chỉ admin (ROLE_ID = 3) mới được truy cập
+        throw new UnauthorizedException('Only admin can view refresh tokens');
     }
-    async deleteRefreshToken(refreshTokenId: number) {
-        return this.refreshTokenRepository.delete({ REFRESH_TOKEN_ID: refreshTokenId })
-            .then(result => {
-                if (result.affected === 0) {
-                    throw new NotFoundException('Refresh token not found');
-                }
-                return { msg: 'Refresh token deleted successfully' };
-            });
+    return this.refreshTokenRepository.find();
+}
+    async deleteRefreshToken(refreshTokenId: number, user: any) {
+        const token = await this.refreshTokenRepository.findOne({
+            where: { REFRESH_TOKEN_ID: refreshTokenId },
+        });
+
+        if (!token) {
+            throw new NotFoundException('Refresh token not found');
+        }
+
+        // Admin hoặc chủ sở hữu token mới được xóa
+        if (user.ROLE_ID !== 3 && token.ACCOUNT_ID !== user.ACCOUNT_ID) {
+            throw new UnauthorizedException('Not authorized to delete this refresh token');
+        }
+
+        await this.refreshTokenRepository.delete({ REFRESH_TOKEN_ID: refreshTokenId });
+        return { msg: 'Refresh token deleted successfully' };
     }
-    // async logout(refreshToken: string) {
-    //     const token = await this.refreshTokenRepository.findOne({
-    //         where: { refresh_token: refreshToken },
-    //     });
 
-    //     if (!token) {
-    //         throw new NotFoundException('Refresh token not found');
-    //     }
+    async logout(refreshToken: string, user: any) {
+        const checkRefreshToken = await this.refreshTokenRepository.findOne({
+            where: { REFRESH_TOKEN: refreshToken },
+        });
 
-    //     // Cách 1: Xoá hẳn token
-    //     await this.refreshTokenRepository.delete({ refresh_token: refreshToken });
+        if (!checkRefreshToken) {
+            throw new NotFoundException('Refresh token not found');
+        }
 
-    //     // Hoặc cách 2: Đánh dấu token là revoked
-    //     // token.isRevoked = true;
-    //     // await this.refreshTokenRepository.save(token);
+        // Chỉ cho phép logout nếu token thuộc về user hiện tại
+        if (checkRefreshToken.ACCOUNT_ID !== user.ACCOUNT_ID) {
+            throw new UnauthorizedException('You are not the owner of this token');
+        }
 
-    //     return { msg: 'Logout successful' };
-    // }
+        checkRefreshToken.IS_USED = true;
+        await this.refreshTokenRepository.save(checkRefreshToken);
+
+        return { msg: 'Logout successful' };
+    }
+
 }
