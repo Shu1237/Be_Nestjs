@@ -11,6 +11,7 @@ import { RefreshToken } from 'src/typeorm/entities/RefreshToken';
 import { MailerService } from '@nestjs-modules/mailer';
 import { randomInt, verify } from 'crypto';
 import { OtpCode } from 'src/typeorm/entities/OtpCode';
+import { Member } from 'src/typeorm/entities/Member';
 
 
 @Injectable()
@@ -30,6 +31,9 @@ export class AuthService {
         @InjectRepository(OtpCode)
         private otpRepository: Repository<OtpCode>,
 
+        @InjectRepository(Member)
+        private memberRepository: Repository<Member>, 
+
         private mailerService: MailerService,
         private jwtService: JwtService,
     ) { }
@@ -40,15 +44,12 @@ export class AuthService {
             throw new Error('ROLE_ID must be between 1 and 3');
         }
 
-
         const role = await this.roleRepository.findOneBy({ ROLE_ID: roleId });
         if (!role) {
             throw new Error(`Role with ID ${roleId} not found`);
         }
 
-
         const hashedPassword = await hashPassword(data.PASSWORD);
-
         const { ROLE_ID, ...accountData } = data;
 
         const newAccount = this.authRepository.create({
@@ -59,10 +60,22 @@ export class AuthService {
             role: role,
         });
 
-        await this.authRepository.save(newAccount);
+        // Save account first
+        const savedAccount = await this.authRepository.save(newAccount);
+
+        // Nếu là user thông thường thì thêm member
+        if (roleId === 1) {
+            const newMember = this.memberRepository.create({
+                SCORE: 0,
+                account: savedAccount,
+            });
+
+            await this.memberRepository.save(newMember);
+        }
 
         return { msg: 'Account created successfully' };
     }
+
 
     async login(data: LoginType) {
         const { USERNAME, PASSWORD } = data;

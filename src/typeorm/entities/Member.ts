@@ -1,4 +1,4 @@
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, OneToOne, PrimaryGeneratedColumn } from "typeorm";
 import { Account } from "./Account";
 
 @Entity("MOVIETHEATER_MEMBER")
@@ -12,6 +12,8 @@ export class Member {
   @Column({ type: "varchar", length: 255 })
   ACCOUNT_ID: string;
 
-  @ManyToOne(() => Account, (account) => account.members)
+  
+  @OneToOne(() => Account, (account) => account.member)
+  @JoinColumn({ name: "ACCOUNT_ID" }) // dùng để mapping cột khóa ngoại
   account: Account;
 }
