@@ -24,6 +24,7 @@ import { AuthModule } from './auth/auth.module';
 import { TesterModule } from './tester/tester.module';
 import { OtpCode } from './typeorm/entities/OtpCode';
 import * as path from 'path';
+import { MemberModule } from './member/member.module';
 
 @Module({
   imports: [
@@ -51,7 +52,7 @@ import * as path from 'path';
         ShowDate,
         Type,
         RefreshToken,
-        OtpCode
+        OtpCode,
       ],
       synchronize: false,
       autoLoadEntities: true,
@@ -80,6 +81,7 @@ import * as path from 'path';
     EmployeesModule,
     AuthModule,
     TesterModule,
+    MemberModule,
   ],
 })
-export class AppModule { }
+export class AppModule {}
