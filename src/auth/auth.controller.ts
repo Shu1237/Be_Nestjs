@@ -1,6 +1,7 @@
 import {
   Body, Controller, Delete, Get, Param, Post,
-  UseGuards, Request, ParseIntPipe
+  UseGuards, Request, ParseIntPipe,
+  Req
 } from '@nestjs/common';
 import {
   ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags
@@ -14,12 +15,14 @@ import { ForgotPasswordDto } from './dtos/ForgotPassword.dto';
 import { VerifyOtpDto } from './dtos/VerifyOTP.dto';
 import { ChangePasswordOtpDto } from './dtos/ChangePasswordOPT.dto';
 import { ChangePasswordDto } from './dtos/ChangePassword';
+import { AuthGuard } from '@nestjs/passport';
+import { LoginGoogleDto } from './dtos/LoginGoogle.dto';
 
 
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService) { }
 
   @Post('register')
   @ApiOperation({ summary: 'Register new account' })
@@ -28,6 +31,26 @@ export class AuthController {
   createAccount(@Body() data: CreateAccountDto) {
     return this.authService.createAccount(data);
   }
+
+
+
+  // //Login google
+  // @UseGuards(AuthGuard('google'))
+  // @Get('goolge')
+  // async googleAuth(@Request() req) { }
+
+  // @Get('google/callback')
+  // @UseGuards(AuthGuard('google'))
+  // googleAuthRedirect(@Req() req) {
+  //   return this.authService.googleLogin(req)
+  // }
+
+  @Post('google')
+  getLoginGoogle(@Body() bodyData: LoginGoogleDto) {
+    return this.authService.getLoginGoogle(bodyData);
+  }
+
+
 
   @Post('login')
   @ApiOperation({ summary: 'Login with credentials' })

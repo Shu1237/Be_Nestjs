@@ -25,7 +25,31 @@ export type changePasswordType = {
 }
 
 export type JWTUSerType = {
-    ACCOUNT_ID: string;     
+    ACCOUNT_ID: string;
     USERNAME: string;
     ROLE_ID: number; // 1: User, 2: Moderator, 3: Admin
 }
+
+export type LoginGoogleType = {
+    googleToken: string;
+    clientID: string;
+     ADDRESS?: string;
+  DATE_OF_BIRTH?: string;
+  GENDER?: string;
+  IDENTITY_CARD?: string;
+  PHONE_NUMBER?: string;
+}
+
+export type GoogleIdTokenPayload = {
+    sub: string; // Google user ID
+    email: string;
+    email_verified: boolean;
+    name: string;
+    picture: string;
+    given_name: string;
+    family_name: string;
+    aud: string; // audience = clientID
+    exp: number;
+    iss: string;
+}
+
