@@ -53,7 +53,7 @@ import * as path from 'path';
         RefreshToken,
         OtpCode
       ],
-      synchronize: false,
+      synchronize: false, // Chỉ dùng trong môi trường phát triển
       autoLoadEntities: true,
     }),
     MailerModule.forRoot({

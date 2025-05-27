@@ -13,7 +13,7 @@ export class Account {
   @Column({ type: "varchar", length: 255 })
   ADDRESS: string;
 
-  @Column({ type: "date" })
+  @Column({ type: "date" ,nullable: true})
   DATE_OF_BIRTH: Date;
 
   @Column({ type: "varchar", length: 255 })
@@ -22,10 +22,10 @@ export class Account {
   @Column({ type: "varchar", length: 255 })
   FULL_NAME: string;
 
-  @Column({ type: "int" })
+  @Column({ type: "int",nullable: false, default: 0 })
   GENDER: number;
 
-  @Column({ type: "varchar", length: 255 })
+  @Column({ type: "varchar", length: 255 ,nullable: true})
   IDENTITY_CARD: string;
 
   @Column({ type: "varchar", length: 255, nullable: true })
@@ -34,7 +34,7 @@ export class Account {
   @Column({ type: "varchar", length: 255 })
   PASSWORD: string;
 
-  @Column({ type: "varchar", length: 255 })
+  @Column({ type: "varchar", length: 255,nullable: true })
   PHONE_NUMBER: string;
 
   @Column({ type: "date" })

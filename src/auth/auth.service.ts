@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Account } from 'src/typeorm/entities/Account';
-import type { AccountType, LoginType } from 'src/utils/type';
+import type { AccountType, GoogleIdTokenPayload, LoginGoogleType, LoginType } from 'src/utils/type';
 import { Repository } from 'typeorm';
 import { Role } from 'src/typeorm/entities/Roles';
 import { comparePassword, hashPassword } from 'src/utils/helper';
@@ -37,6 +37,91 @@ export class AuthService {
         private mailerService: MailerService,
         private jwtService: JwtService,
     ) { }
+    //google login
+    async getLoginGoogle(bodyData: LoginGoogleType) {
+        const { googleToken, clientID, ADDRESS, DATE_OF_BIRTH, GENDER, IDENTITY_CARD, PHONE_NUMBER } = bodyData;
+
+        if (!googleToken || !clientID) {
+            throw new UnauthorizedException('Google token and client ID are required');
+        }
+
+        let decoded: GoogleIdTokenPayload;
+        try {
+            decoded = this.jwtService.verify<GoogleIdTokenPayload>(googleToken, {
+                secret: process.env.GOOGLE_CLIENT_SECRET,
+            });
+        } catch (err) {
+            throw new UnauthorizedException('Invalid Google token');
+        }
+
+        if (decoded.aud !== clientID) {
+            throw new UnauthorizedException('Token audience mismatch');
+        }
+
+        if (decoded.exp < Math.floor(Date.now() / 1000)) {
+            throw new UnauthorizedException('Google token expired');
+        }
+
+        // Check if user exists
+        const existingUser = await this.authRepository.findOne({
+            where: [{ EMAIL: decoded.email }],
+            relations: ['role'],
+        });
+
+        if (existingUser) {
+            if (existingUser.STATUS !== 'ACTIVE') {
+                throw new UnauthorizedException('Account is disabled');
+            }
+
+            const payload = {
+                ACCOUNT_ID: existingUser.ACCOUNT_ID,
+                USERNAME: existingUser.USERNAME,
+                ROLE_ID: existingUser.role.ROLE_ID,
+            };
+
+            return {
+                msg: 'Login successful',
+                token: await this.generateToken(payload),
+            };
+        }
+
+        // Tạo mới tài khoản (mặc định ROLE_ID = 1)
+        const role = await this.roleRepository.findOneBy({ ROLE_ID: 1 });
+        if (!role) {
+            throw new Error('Default role not found');
+        }
+
+        const newAccount = this.authRepository.create({
+            USERNAME: decoded.email.split('@')[0],
+            EMAIL: decoded.email,
+            FULL_NAME: decoded.name,
+            IMAGE: decoded.picture,
+            STATUS: 'ACTIVE',
+            REGISTER_DATE: new Date(),
+            role: role,
+        });
+
+        const savedAccount = await this.authRepository.save(newAccount);
+
+        // Thêm thông tin member
+        const newMember = this.memberRepository.create({
+            SCORE: 0,
+            account: savedAccount,
+        });
+
+        await this.memberRepository.save(newMember);
+
+        const payload = {
+            ACCOUNT_ID: savedAccount.ACCOUNT_ID,
+            USERNAME: savedAccount.USERNAME,
+            ROLE_ID: role.ROLE_ID,
+        };
+
+        return {
+            msg: 'Login successful (via Google)',
+            token: await this.generateToken(payload),
+        };
+    }
 
     async createAccount(data: AccountType) {
         const roleId = data.ROLE_ID ?? 1;
@@ -46,9 +131,12 @@ export class AuthService {
 
         const role = await this.roleRepository.findOneBy({ ROLE_ID: roleId });
         if (!role) {
-            throw new Error(`Role with ID ${roleId} not found`);
+            throw new NotFoundException(`Role with ID ${roleId} not found`);
         }
-
+        const existingAccount = await this.authRepository.findOneBy({ EMAIL: data.EMAIL });
+        if (existingAccount) {
+            throw new UnauthorizedException('Email already exists');
+        }
         const hashedPassword = await hashPassword(data.PASSWORD);
         const { ROLE_ID, ...accountData } = data;
 
