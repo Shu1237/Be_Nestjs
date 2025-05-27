@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Account } from 'src/typeorm/entities/Account';
-import type { AccountType, GoogleIdTokenPayload, LoginGoogleType, LoginType } from 'src/utils/type';
+import type { AccountType, GoogleIdTokenPayload, LoginGoogleType, LoginType, LogoutType } from 'src/utils/type';
 import { Repository } from 'typeorm';
 import { Role } from 'src/typeorm/entities/Roles';
 import { comparePassword, hashPassword } from 'src/utils/helper';
@@ -279,16 +279,17 @@ export class AuthService {
         return { msg: 'Refresh token deleted successfully' };
     }
 
-    async logout(refreshToken: string, user: any) {
+    async logout(body: LogoutType, user: any) {
         const checkRefreshToken = await this.refreshTokenRepository.findOne({
-            where: { REFRESH_TOKEN: refreshToken },
+            where: { REFRESH_TOKEN: body.refreshToken},
         });
+
 
         if (!checkRefreshToken) {
             throw new NotFoundException('Refresh token not found');
         }
 
-        // Chỉ cho phép logout nếu token thuộc về user hiện tại
+
         if (checkRefreshToken.ACCOUNT_ID !== user.ACCOUNT_ID) {
             throw new UnauthorizedException('You are not the owner of this token');
         }

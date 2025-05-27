@@ -14,10 +14,10 @@ import { Member } from 'src/typeorm/entities/Member';
 
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Account, Role, RefreshToken, OtpCode,Member]),
+  imports: [TypeOrmModule.forFeature([Account, Role, RefreshToken, OtpCode, Member]),
   JwtModule.register({
-    secret: 'be_movie',
-    signOptions: { expiresIn: '3h' },
+    secret: process.env.JWT_SECRET_KEY || 'defaultSecretKey',
+    signOptions: { expiresIn: process.env.JWT_EXPIRES_IN || '1h' },
   })],
   controllers: [AuthController],
   providers: [AuthService]

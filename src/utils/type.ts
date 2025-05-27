@@ -13,7 +13,9 @@ export type AccountType = {
 
     ROLE_ID?: number
 }
-
+export type LogoutType={
+    refreshToken: string;
+}
 
 export type LoginType = {
     USERNAME: string;
