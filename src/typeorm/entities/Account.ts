@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn } from "typeorm";
 import { Role } from "./Roles";
 import { Member } from "./Member";
 import { Employee } from "./Employtee";
@@ -50,9 +50,8 @@ export class Account {
   @JoinColumn({ name: "ROLE_ID" })
   role: Role;
 
-  @OneToMany(() => Member, (member) => member.account)
-  members: Member[];
-
+  @OneToOne(() => Member, (member) => member.account)
+  member: Member;
   @OneToMany(() => Employee, (employee) => employee.account)
   employees: Employee[];
 
