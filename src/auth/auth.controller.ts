@@ -17,6 +17,7 @@ import { ChangePasswordOtpDto } from './dtos/ChangePasswordOPT.dto';
 import { ChangePasswordDto } from './dtos/ChangePassword';
 import { AuthGuard } from '@nestjs/passport';
 import { LoginGoogleDto } from './dtos/LoginGoogle.dto';
+import { LogoutDto } from './dtos/Logout.dto';
 
 
 @ApiTags('Auth')
@@ -97,9 +98,10 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Post('logout')
   @ApiBearerAuth()
+  @ApiBody({ type: LogoutDto })
   @ApiOperation({ summary: 'Logout current session' })
-  logout(@Body() body: { refreshToken: string }, @Request() req) {
-    return this.authService.logout(body.refreshToken, req.user);
+  logout(@Body() body: LogoutDto, @Request() req) {
+    return this.authService.logout(body, req.user);
   }
 
   @Post('forgotPassword')
