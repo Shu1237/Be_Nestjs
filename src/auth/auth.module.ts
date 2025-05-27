@@ -4,15 +4,15 @@ import { AuthService } from './auth.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Account } from 'src/typeorm/entities/Account';
 import { Role } from 'src/typeorm/entities/Roles';
-import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { RefreshToken } from 'src/typeorm/entities/RefreshToken';
-import { AuthService } from './service/auth/auth.service';
+import { OtpCode } from 'src/typeorm/entities/OtpCode';
+
 
 
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Account, Role, RefreshToken]),
+  imports: [TypeOrmModule.forFeature([Account, Role, RefreshToken, OtpCode]),
   JwtModule.register({
     secret: 'be_movie',
     signOptions: { expiresIn: '3h' },

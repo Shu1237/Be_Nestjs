@@ -2,6 +2,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { MailerModule } from '@nestjs-modules/mailer';
+import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
+
 import { Account } from './typeorm/entities/Account';
 import { Role } from './typeorm/entities/Roles';
 import { Employee } from './typeorm/entities/Employtee';
@@ -14,22 +17,23 @@ import { Movie } from './typeorm/entities/Movie';
 import { Schedule } from './typeorm/entities/Schedule';
 import { ShowDate } from './typeorm/entities/Show_date';
 import { Type } from './typeorm/entities/Type';
+import { RefreshToken } from './typeorm/entities/RefreshToken';
+
 import { EmployeesModule } from './employees/employees.module';
 import { AuthModule } from './auth/auth.module';
-import { RefreshToken } from './typeorm/entities/RefreshToken';
-import { AuthTesterController } from './tester/controllers/auth-tester/auth-tester.controller';
 import { TesterModule } from './tester/tester.module';
-
+import { OtpCode } from './typeorm/entities/OtpCode';
+import * as path from 'path';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
-      isGlobal: true, // Giúp sử dụng process.env ở mọi nơi
+      isGlobal: true,
     }),
     TypeOrmModule.forRoot({
-      type: process.env.DB_TYPE as any, // 'mysql'
+      type: process.env.DB_TYPE as any,
       host: process.env.DB_HOST,
-      port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 3306,
+      port: parseInt(process.env.DB_PORT || '3306', 10),
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
@@ -46,17 +50,36 @@ import { TesterModule } from './tester/tester.module';
         Schedule,
         ShowDate,
         Type,
-        RefreshToken
-        
+        RefreshToken,
+        OtpCode
       ],
-      synchronize: false,  // true cho lần dầu tiên, false cho các lần sau
-      autoLoadEntities: true, // Tự động tải các entity
+      synchronize: false,
+      autoLoadEntities: true,
+    }),
+    MailerModule.forRoot({
+      transport: {
+        host: process.env.MAIL_HOST,
+        port: parseInt(process.env.MAIL_PORT || '587', 10),
+        secure: false, // true nếu dùng port 465
+        auth: {
+          user: process.env.GMAIL_USER,
+          pass: process.env.GMAIL_PASS,
+        },
+      },
+      defaults: {
+        from: `"BeMovie Team" <${process.env.MAIL_USER}>`,
+      },
+      template: {
+        dir: path.join(__dirname, '..', 'template'),
+        adapter: new HandlebarsAdapter(),
+        options: {
+          strict: true,
+        },
+      },
     }),
     EmployeesModule,
     AuthModule,
-    TesterModule
+    TesterModule,
   ],
-  controllers: [],
-  providers: [],
 })
 export class AppModule { }
