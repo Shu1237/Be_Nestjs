@@ -19,3 +19,13 @@ export type LoginType = {
     USERNAME: string;
     PASSWORD: string;
 }
+export type changePasswordType = {
+    newPassword: string;
+    token: string;
+}
+
+export type JWTUSerType = {
+    ACCOUNT_ID: string;     
+    USERNAME: string;
+    ROLE_ID: number; // 1: User, 2: Moderator, 3: Admin
+}

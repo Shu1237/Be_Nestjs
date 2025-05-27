@@ -6,12 +6,13 @@ import { Account } from 'src/typeorm/entities/Account';
 import { Role } from 'src/typeorm/entities/Roles';
 import { JwtModule } from '@nestjs/jwt';
 import { RefreshToken } from 'src/typeorm/entities/RefreshToken';
+import { OtpCode } from 'src/typeorm/entities/OtpCode';
 
 
 
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Account, Role, RefreshToken]),
+  imports: [TypeOrmModule.forFeature([Account, Role, RefreshToken, OtpCode]),
   JwtModule.register({
     secret: 'be_movie',
     signOptions: { expiresIn: '3h' },

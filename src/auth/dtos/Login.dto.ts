@@ -1,16 +1,15 @@
-import { IsNotEmpty, IsString } from "class-validator";
-
+// login.dto.ts
+import { IsNotEmpty, IsString } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class LoginDto {
+  @ApiProperty({ example: 'user123', description: 'Username of the account' })
+  @IsString()
+  @IsNotEmpty()
+  USERNAME: string;
 
-    @IsString()
-    @IsNotEmpty()
-    USERNAME: string;
-    
-    @IsString()
-    @IsNotEmpty()
-    PASSWORD: string;
-    
-  
-
+  @ApiProperty({ example: 'secretPassword', description: 'Password of the account' })
+  @IsString()
+  @IsNotEmpty()
+  PASSWORD: string;
 }

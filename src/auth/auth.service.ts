@@ -8,6 +8,9 @@ import { comparePassword, hashPassword } from 'src/utils/helper';
 import { JwtService } from '@nestjs/jwt';
 import { v4 as uuidv4 } from 'uuid';
 import { RefreshToken } from 'src/typeorm/entities/RefreshToken';
+import { MailerService } from '@nestjs-modules/mailer';
+import { randomInt, verify } from 'crypto';
+import { OtpCode } from 'src/typeorm/entities/OtpCode';
 
 
 @Injectable()
@@ -23,6 +26,11 @@ export class AuthService {
         @InjectRepository(RefreshToken)
         private refreshTokenRepository: Repository<RefreshToken>,
 
+
+        @InjectRepository(OtpCode)
+        private otpRepository: Repository<OtpCode>,
+
+        private mailerService: MailerService,
         private jwtService: JwtService,
     ) { }
 
@@ -137,12 +145,12 @@ export class AuthService {
 
     }
 
-async getAllRefreshTokens(user: any) {
-    if (user.ROLE_ID !== 3) { // Chỉ admin (ROLE_ID = 3) mới được truy cập
-        throw new UnauthorizedException('Only admin can view refresh tokens');
+    async getAllRefreshTokens(user: any) {
+        if (user.ROLE_ID !== 3) { // Chỉ admin (ROLE_ID = 3) mới được truy cập
+            throw new UnauthorizedException('Only admin can view refresh tokens');
+        }
+        return this.refreshTokenRepository.find();
     }
-    return this.refreshTokenRepository.find();
-}
     async deleteRefreshToken(refreshTokenId: number, user: any) {
         const token = await this.refreshTokenRepository.findOne({
             where: { REFRESH_TOKEN_ID: refreshTokenId },
@@ -181,4 +189,103 @@ async getAllRefreshTokens(user: any) {
         return { msg: 'Logout successful' };
     }
 
+
+
+
+
+    async getUserById(accountId: string) {
+        const user = await this.authRepository.findOne({
+            where: { ACCOUNT_ID: accountId },
+        });
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+        return user;
+    }
+
+    async checkEmail(email: string) {
+        const user = await this.authRepository.findOne({
+            where: { EMAIL: email },
+        });
+
+        if (!user) {
+            throw new NotFoundException('Email not found');
+        }
+
+        const otpCode = randomInt(100000, 999999).toString();
+
+        // Gửi mail
+        await this.mailerService.sendMail({
+            to: email,
+            subject: 'Your OTP Code',
+            template: 'otp',
+            context: {
+                code: otpCode,
+                year: new Date().getFullYear(),
+            },
+        });
+        // Lưu OTP vào DB
+        await this.otpRepository.save({
+            email,
+            code: Number(otpCode),
+            expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 phút
+        });
+
+        return { msg: 'OTP sent successfully', email: email };
+    }
+
+
+    async verifyOtp(otp: number, email: string) {
+        const otpRecord = await this.otpRepository.findOne({
+            where: { code: otp, email: email },
+        });
+
+        if (!otpRecord) {
+            throw new UnauthorizedException('Invalid OTP');
+        }
+        const tempToken = this.jwtService.sign(
+            { email },
+            { secret: process.env.TMP_TOKEN_SECRET, expiresIn: '10m' }
+        );
+        const currentTime = new Date();
+        if (otpRecord.expiresAt < currentTime) {
+            throw new UnauthorizedException('OTP has expired');
+        }
+
+        await this.otpRepository.delete(otpRecord.id);
+        return { msg: 'OTP verified successfully', token: tempToken };
+    }
+
+    async changePassword(newPassword: string, tmptoken: string) {
+        const decoded = this.jwtService.verify(tmptoken, {
+            secret: process.env.TMP_TOKEN_SECRET,
+        });
+        if (!decoded || !decoded.email) {
+            throw new UnauthorizedException('Invalid token');
+        }
+        const email = decoded.email;
+        const user = await this.authRepository.findOne({ where: { EMAIL: email } });
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+        user.PASSWORD = await hashPassword(newPassword);
+        await this.authRepository.save(user);
+        return { msg: 'Password changed successfully' };
+    }
+
+    async changePasswordWasLogin(newPassword: string, userData: any) {
+        const user = await this.authRepository.findOne({
+            where: { ACCOUNT_ID: userData.ACCOUNT_ID },
+        });
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+        user.PASSWORD = await hashPassword(newPassword);
+        await this.authRepository.save(user);
+        return { msg: 'Password changed successfully' };
+    }
+
+
 }
+
+
