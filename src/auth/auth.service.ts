@@ -32,7 +32,7 @@ export class AuthService {
         private otpRepository: Repository<OtpCode>,
 
         @InjectRepository(Member)
-        private memberRepository: Repository<Member>, 
+        private memberRepository: Repository<Member>,
 
         private mailerService: MailerService,
         private jwtService: JwtService,
@@ -85,10 +85,13 @@ export class AuthService {
             relations: ['role'],
         });
 
+
         if (!account) {
             throw new NotFoundException('Account not found');
         }
-
+        if (account.STATUS !== 'ACTIVE') {
+            throw new UnauthorizedException('Account is disabled');
+        }
         const isPasswordValid = await comparePassword(PASSWORD, account.PASSWORD);
         if (!isPasswordValid) {
             throw new UnauthorizedException('Invalid password');
@@ -133,6 +136,12 @@ export class AuthService {
 
         if (!token) {
             throw new UnauthorizedException('Refresh token not found');
+        }
+        if (token.IS_USED) {
+            throw new UnauthorizedException('Refresh token already used');
+        }
+        if (new Date() > token.EXPIRES_AT) {
+            throw new UnauthorizedException('Refresh token expired');
         }
         token.IS_USED = true; // Đánh dấu refresh token đã được sử dụng
         await this.refreshTokenRepository.save(token);
@@ -203,7 +212,21 @@ export class AuthService {
     }
 
 
+    async OtpCode(email: string) {
+        const otpCode = randomInt(100000, 999999).toString();
 
+        // Gửi mail
+        await this.mailerService.sendMail({
+            to: email,
+            subject: 'Your OTP Code',
+            template: 'otp',
+            context: {
+                code: otpCode,
+                year: new Date().getFullYear(),
+            },
+        });
+        return otpCode;
+    }
 
 
     async getUserById(accountId: string) {
@@ -225,18 +248,8 @@ export class AuthService {
             throw new NotFoundException('Email not found');
         }
 
-        const otpCode = randomInt(100000, 999999).toString();
+        const otpCode = await this.OtpCode(email);
 
-        // Gửi mail
-        await this.mailerService.sendMail({
-            to: email,
-            subject: 'Your OTP Code',
-            template: 'otp',
-            context: {
-                code: otpCode,
-                year: new Date().getFullYear(),
-            },
-        });
         // Lưu OTP vào DB
         await this.otpRepository.save({
             email,
