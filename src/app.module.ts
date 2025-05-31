@@ -7,7 +7,6 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
 import { AuthModule } from './auth/auth.module';
 import { TesterModule } from './tester/tester.module';
 import { EmployeesModule } from './employees/employees.module';
-
 import * as path from 'path';
 import { allEntities } from './typeorm';
 
@@ -51,6 +50,8 @@ import { allEntities } from './typeorm';
     EmployeesModule,
     AuthModule,
     TesterModule,
+   
+
   ],
 })
 export class AppModule { }
