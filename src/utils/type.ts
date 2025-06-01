@@ -1,45 +1,46 @@
-export type AccountType = {
-    ADDRESS: string;
-    DATE_OF_BIRTH: Date;
-    EMAIL: string;
-    FULL_NAME: string;
-    GENDER: number;
-    IDENTITY_CARD: string;
-    IMAGE?: string;
-    PASSWORD: string;
-    PHONE_NUMBER: string;
-    USERNAME: string;
+export type CreateAccountType = {
+    address: string;
+    date_of_birth: Date;
+    email: string;
+    full_name: string;
+    gender: boolean;
+    identity_card: string;
+    image?: string;
+    password: string;
+    phone_number: string;
+    username: string;
+    role_id?: number;
+};
 
-
-    ROLE_ID?: number
-}
-export type LogoutType={
-    refreshToken: string;
+export type LogoutType = {
+    refresh_token: string;
 }
 
 export type LoginType = {
-    USERNAME: string;
-    PASSWORD: string;
+    username: string;
+    password: string;
 }
 export type changePasswordType = {
     newPassword: string;
     token: string;
 }
-
-export type JWTUSerType = {
-    ACCOUNT_ID: string;
-    USERNAME: string;
-    ROLE_ID: number; // 1: User, 2: Moderator, 3: Admin
+export type  RefreshTokenType = {
+    refresh_token: string;
+}
+export type JWTUserType = {
+    account_id: string;
+    username: string;
+    role_id: number; // 1: User, 2: Moderator, 3: Admin
 }
 
 export type LoginGoogleType = {
     googleToken: string;
     clientID: string;
-     ADDRESS?: string;
-  DATE_OF_BIRTH?: string;
-  GENDER?: string;
-  IDENTITY_CARD?: string;
-  PHONE_NUMBER?: string;
+    ADDRESS?: string;
+    DATE_OF_BIRTH?: string;
+    GENDER?: string;
+    IDENTITY_CARD?: string;
+    PHONE_NUMBER?: string;
 }
 
 export type GoogleIdTokenPayload = {

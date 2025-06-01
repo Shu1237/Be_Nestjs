@@ -1,10 +1,10 @@
-import { Entity, Column, PrimaryColumn, ManyToOne, JoinColumn, OneToOne } from 'typeorm';
+import { Entity, Column, PrimaryColumn, ManyToOne, JoinColumn, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { User } from './user';
 
 @Entity('member')
 export class Member {
-  @PrimaryColumn({ type: 'varchar', nullable: false, unique: true })
-  member_id: string;
+ @PrimaryGeneratedColumn()
+ id:number
 
   @Column({ type: 'int', nullable: false })
   score: number;
@@ -12,8 +12,7 @@ export class Member {
   @Column({ type: 'varchar', nullable: false })
   account_id: string;
 
-  @Column({ type: 'int', nullable: true })
-  member_type?: number;
+
 
  @OneToOne(() => User, (user) => user.member)
   @JoinColumn({ name: 'account_id' })

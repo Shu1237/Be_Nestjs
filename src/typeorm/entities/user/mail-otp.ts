@@ -7,8 +7,6 @@ export class MailOTP {
   @PrimaryGeneratedColumn({ type: 'integer' })
   id: number;
 
-  @Column({ type: 'varchar', nullable: false })
-  user_id: string;
 
   @Column({ type: 'varchar', nullable: false })
   otp: string;
