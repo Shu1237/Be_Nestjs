@@ -1,7 +1,7 @@
 import { BadRequestException, Inject, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import type { CreateAccountType, GoogleIdTokenPayload, JWTUserType, LoginGoogleType, LoginType, LogoutType, RefreshTokenType } from 'src/utils/type';
+import type { CreateAccountType, GoogleUserType, JWTUserType, LogoutType, } from 'src/utils/type';
 import { MoreThan, Repository } from 'typeorm';
 
 import { comparePassword, hashPassword } from 'src/utils/helper';
@@ -9,9 +9,9 @@ import { JwtService } from '@nestjs/jwt';
 import { v4 as uuidv4 } from 'uuid';
 
 import { MailerService } from '@nestjs-modules/mailer';
-import { randomInt, verify } from 'crypto';
+import { randomInt } from 'crypto';
 
-import * as jwt from 'jsonwebtoken';
+
 import { User } from 'src/typeorm/entities/user/user';
 import { Role } from 'src/typeorm/entities/user/roles';
 import { Member } from 'src/typeorm/entities/user/member';
@@ -23,7 +23,6 @@ import { MailOTP } from 'src/typeorm/entities/user/mail-otp';
 
 @Injectable()
 export class AuthService {
-
     constructor(
         @InjectRepository(User) private userRepository: Repository<User>,
         @InjectRepository(Role) private roleRepository: Repository<Role>,
@@ -71,10 +70,58 @@ export class AuthService {
         const payload: JWTUserType = {
             account_id: record.user.id,
             username: record.user.username,
-            role_id: record.user.role.role_id, 
+            role_id: record.user.role.role_id,
         };
 
         return payload;
+    }
+    async validateGoogleUser(data: GoogleUserType) {
+        const existingAccount = await this.userRepository.findOne({
+            where: { email: data.email },
+            relations: ['role'],
+        });
+        
+        if (existingAccount) {
+            if (!existingAccount.role) {
+                throw new Error('User does not have a role assigned');
+            }
+
+            const payload: JWTUserType = {
+                account_id: existingAccount.id,
+                username: existingAccount.username,
+                role_id: existingAccount.role.role_id,
+            };
+            return payload;
+        } else {
+            const role = await this.roleRepository.findOneBy({ role_id: 1 });
+            console.log('Role:', role);
+            if (!role) {
+                throw new NotFoundException('Default role not found');
+            }
+
+            const newAccount = this.userRepository.create({
+                username: data.email,
+                email: data.email,
+                password: '',
+                image: data.avatarUrl,
+                role: role,
+            });
+            const savedAccount = await this.userRepository.save(newAccount);
+
+            const payload: JWTUserType = {
+                account_id: savedAccount.id,
+                username: savedAccount.username,
+                role_id: savedAccount.role.role_id,
+            };
+
+            const newMember = this.memberRepository.create({
+                score: 0,
+                account: savedAccount,
+            });
+            await this.memberRepository.save(newMember);
+
+            return payload;
+        }
     }
 
     async createAccount(data: CreateAccountType) {
@@ -121,11 +168,13 @@ export class AuthService {
     }
 
 
-    async login(user: any) {
+
+    async login(user: JWTUserType) {
+        // console.log('User:', user);
         const payload = {
-            account_id: user.id,
+            account_id: user.account_id,
             username: user.username,
-            role_id: user.role.role_id,
+            role_id: user.role_id,
         };
         return {
             msg: 'Login successful',

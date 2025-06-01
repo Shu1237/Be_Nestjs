@@ -21,6 +21,7 @@ import { LogoutDto } from './dtos/Logout.dto';
 import { RefreshTokenDto } from './dtos/RefreshToken.dto';
 import { LocalGuard } from 'src/guards/local.guard';
 import { RefreshGuard } from 'src/guards/refresh-token.guard';
+import { GoogleAuthGuard } from 'src/guards/google.guard';
 
 
 @ApiTags('Auth')
@@ -38,22 +39,16 @@ export class AuthController {
 
 
 
-  // // //Login google
-  // // @UseGuards(AuthGuard('google'))
-  // // @Get('goolge')
-  // // async googleAuth(@Request() req) { }
+  //Login google
+  @UseGuards(GoogleAuthGuard)
+  @Get('google/login')
+  googleLogin() { }
 
-  // // @Get('google/callback')
-  // // @UseGuards(AuthGuard('google'))
-  // // googleAuthRedirect(@Req() req) {
-  // //   return this.authService.googleLogin(req)
-  // // }
-
-  // @Post('google')
-  // getLoginGoogle(@Body() bodyData: LoginGoogleDto) {
-  //   return this.authService.getLoginGoogle(bodyData);
-  // }
-
+  @UseGuards(GoogleAuthGuard)
+  @Get('google/callback')
+  async googleCallback(@Req() req) {
+   return this.authService.login(req.user);
+  }
 
   @UseGuards(LocalGuard)
   @Post('login')
@@ -82,7 +77,7 @@ export class AuthController {
     return this.authService.refreshToken(req.user);
   }
 
-
+  
 
   @Delete('refreshToken/:id')
   @ApiBearerAuth()
