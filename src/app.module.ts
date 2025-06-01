@@ -9,9 +9,11 @@ import { TesterModule } from './tester/tester.module';
 import { EmployeesModule } from './employees/employees.module';
 import * as path from 'path';
 import { allEntities } from './typeorm';
+import { PassportModule } from '@nestjs/passport';
 
 @Module({
   imports: [
+    PassportModule,
     ConfigModule.forRoot({
       isGlobal: true,
     }),
@@ -23,14 +25,14 @@ import { allEntities } from './typeorm';
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
       entities: allEntities,
-      synchronize: false, // Chỉ dùng trong môi trường phát triển
+      synchronize: false,
       autoLoadEntities: true,
     }),
     MailerModule.forRoot({
       transport: {
         host: process.env.MAIL_HOST,
         port: parseInt(process.env.MAIL_PORT || '465', 10),
-        secure: false, // true nếu dùng port 465
+        secure: false, 
         auth: {
           user: process.env.GMAIL_USER,
           pass: process.env.GMAIL_PASS,

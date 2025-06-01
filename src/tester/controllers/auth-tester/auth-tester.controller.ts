@@ -34,7 +34,7 @@ export class AuthTesterController {
             role: user?.ROLE_ID,
         };
     }
-    @UseGuards(JwtAuthGuard)
+    // @UseGuards(JwtAuthGuard)
     @Get('check')
     @ApiOperation({ summary: 'Check current time in seconds' })
     @ApiResponse({
