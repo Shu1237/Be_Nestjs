@@ -4,7 +4,7 @@ import { Order } from '../order/order';
 @Entity('promotion')
 export class Promotion {
   @PrimaryGeneratedColumn({ type: 'int' })
-  promotion_id: number;
+  id: number;
 
   @Column({ type: 'varchar', nullable: false })
   title: string;

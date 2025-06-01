@@ -16,12 +16,6 @@ export class Schedule {
   @PrimaryGeneratedColumn({ type: 'int' }) 
   id: number;
 
-  @Column({ type: 'int', nullable: false })
-  cinema_room_id: number;
-
-  @Column({ type: 'int', nullable: false })
-  movie_id: number;
-
   @Column({ type: 'datetime', nullable: false })
   show_date: Date;
 

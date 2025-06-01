@@ -25,7 +25,7 @@ import { PassportModule } from '@nestjs/passport';
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
       entities: allEntities,
-      synchronize: false,
+      synchronize: false, // Set to false in production
       autoLoadEntities: true,
     }),
     MailerModule.forRoot({

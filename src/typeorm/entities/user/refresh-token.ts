@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, Index, CreateDateColumn } from 'typeorm';
 import { User } from './user';
 
 
@@ -6,9 +6,6 @@ import { User } from './user';
 export class RefreshToken {
   @PrimaryGeneratedColumn()
   id: number;
-
-  @Column({ type: 'varchar' , length: 36 })
-  user_id: string;
 
   @Column({ type: 'text' })
   access_token: string;
@@ -22,11 +19,11 @@ export class RefreshToken {
   @Column({ type: 'datetime' })
   expires_at: Date;
 
-  @Column({ type: 'datetime' })
+  @CreateDateColumn({ type: 'datetime' })
   created_at: Date;
 
 
-  @ManyToOne(() => User, (user) => user.refreshTokens, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, (user) => user.refreshTokens)
   @JoinColumn({ name: 'user_id' })
   user: User;
 }

@@ -10,21 +10,8 @@ export class Ticket {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
-  schedule_id: number;
-
-  @Column()
-  seat_id: number;
-
-  @Column({ type: 'int', nullable: true })
-  movie_id?: number;
-
   @Column({ default: false })
   status: boolean;
-
-  @Column()
-  ticket_type_id: number;
-
 
 
   @ManyToOne(() => Schedule, (schedule) => schedule.tickets)
@@ -40,7 +27,7 @@ export class Ticket {
   ticketType: TicketType;
 
   @OneToOne(() => OrderDetail, (orderDetail) => orderDetail.ticket)
-  orderDetails: OrderDetail;
+  orderDetail: OrderDetail;
 
   @ManyToOne(() => Movie, (movie) => movie.schedules)
   @JoinColumn({ name: 'movie_id' })

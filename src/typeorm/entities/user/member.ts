@@ -9,10 +9,6 @@ export class Member {
   @Column({ type: 'int', nullable: false })
   score: number;
 
-  @Column({ type: 'varchar', nullable: false })
-  account_id: string;
-
-
 
  @OneToOne(() => User, (user) => user.member)
   @JoinColumn({ name: 'account_id' })

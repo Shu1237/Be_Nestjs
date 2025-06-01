@@ -8,12 +8,6 @@ export class Seat {
   @PrimaryColumn({ type: 'varchar', length: 10 }) 
   id: string;
 
-  @Column({ type: 'int' })
-  seat_type_id: number;
-
-  @Column({ type: 'int' })
-  cinema_room_id: number;
-
   @Column({ type: 'varchar', length: 5 })
   seat_row: string;
 

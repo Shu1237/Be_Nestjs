@@ -11,8 +11,6 @@ export class Order {
   @PrimaryGeneratedColumn({ type: 'int' })
   id: number;
 
-  @Column({ type: 'varchar', nullable: false })
-  user_id: string;
 
   @Column({ type: 'date', nullable: false })
   booking_date: Date;
@@ -20,14 +18,12 @@ export class Order {
   @Column({ type: 'decimal', nullable: false, precision: 10, scale: 2 })
   total_prices: number;
 
-  @Column({ type: 'int', nullable: true })
-  promotion_id?: number;
 
   @ManyToOne(() => User, (user) => user.orders)
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @ManyToOne(() => Promotion, (promotion) => promotion.orders)
+  @ManyToOne(() => Promotion, (promotion) => promotion.orders, { nullable: true })
   @JoinColumn({ name: 'promotion_id' })
   promotion?: Promotion;
 

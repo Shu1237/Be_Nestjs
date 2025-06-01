@@ -2,7 +2,6 @@ import { Entity, Column, PrimaryColumn, OneToMany, PrimaryGeneratedColumn } from
 
 import { Schedule } from './schedule';
 import { ActorMovie } from './actor-movie';
-import { Ticket } from '../order/ticket';
 import { MovieGenre } from './gerne-movie';
 
 

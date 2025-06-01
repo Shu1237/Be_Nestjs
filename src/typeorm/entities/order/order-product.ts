@@ -10,17 +10,6 @@ export class OrderProduct {
   @PrimaryGeneratedColumn({ type: 'int' })
   id: number;
 
-  @Column({ type: 'int', nullable: false })
-  order_id: number;
-
-  @Column({ type: 'int', nullable: true })
-  drink_id?: number;
-
-  @Column({ type: 'int', nullable: true })
-  food_id?: number;
-
-  @Column({ type: 'int', nullable: true })
-  combo_id?: number;
 
   @Column({ type: 'int', nullable: false })
   quantity: number;
@@ -33,15 +22,15 @@ export class OrderProduct {
   @JoinColumn({ name: 'order_id' })
   order: Order;
 
-  @ManyToOne(() => Drink, (drink) => drink.orderProducts)
+  @ManyToOne(() => Drink, (drink) => drink.orderProducts, { nullable: true })
   @JoinColumn({ name: 'drink_id' })
   drink: Drink;
 
-  @ManyToOne(() => Food, (food) => food.orderProducts)
+  @ManyToOne(() => Food, (food) => food.orderProducts, { nullable: true })
   @JoinColumn({ name: 'food_id' })
   food: Food;
 
-  @ManyToOne(() => Combo, (combo) => combo.orderProducts)
+  @ManyToOne(() => Combo, (combo) => combo.orderProducts, { nullable: true }  )
   @JoinColumn({ name: 'combo_id' })
   combo: Combo;
   
