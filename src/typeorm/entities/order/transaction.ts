@@ -14,14 +14,8 @@ export class Transaction {
   @PrimaryGeneratedColumn({ type: 'int' })
   id: number;
 
-  @Column({ type: 'int', nullable: false })
-  order_id: number;
-
   @Column({ type: 'varchar', nullable: false })
   transaction_code: string;
-
-  @Column({ type: 'int', nullable: false })
-  payment_method_id: number;
 
   @Column({ type: 'date', nullable: false })
   transaction_date: Date;

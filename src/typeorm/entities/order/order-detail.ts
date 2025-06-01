@@ -8,14 +8,6 @@ export class OrderDetail {
   @PrimaryGeneratedColumn({ type: 'int' })
   id: number;
 
-  @Column({ type: 'int' })
-  order_id: number;
-
-  @Column({ type: 'varchar', length: 36 })
-  ticket_id: string;
-
-  @Column({ type: 'int' })
-  schedule_id: number;
 
   @Column({ type: 'decimal', nullable: false, precision: 10, scale: 2 })
   total_prices: number;
@@ -27,7 +19,7 @@ export class OrderDetail {
   @JoinColumn({ name: 'order_id' })
   order: Order;
 
-  @OneToOne(() => Ticket, (ticket) => ticket.orderDetails)
+  @OneToOne(() => Ticket, (ticket) => ticket.orderDetail)
   @JoinColumn({ name: 'ticket_id' })
   ticket: Ticket;
 

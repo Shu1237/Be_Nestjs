@@ -36,8 +36,10 @@ export class AuthService {
     ) { }
 
     async validateUser(username: string, password: string) {
-        const user = await this.userRepository.findOne({ where: { username: username }
-            , relations: ['role'] });
+        const user = await this.userRepository.findOne({
+            where: { username: username }
+            , relations: ['role']
+        });
         if (!user) {
             throw new NotFoundException('User not found');
         }
@@ -48,7 +50,7 @@ export class AuthService {
         if (!user.status) {
             throw new UnauthorizedException('Account is disabled');
         }
-    //   console.log('User found:', user);
+        //   console.log('User found:', user);
 
         const { password: _, ...result } = user;
         return result;
@@ -56,19 +58,22 @@ export class AuthService {
     async validateRefreshToken(token: string) {
         const record = await this.refreshTokenRepository.findOne({
             where: { refresh_token: token, revoked: false },
-            relations: ['user'],
+            relations: ['user', 'user.role'], // ✅ Cần load quan hệ role
         });
-        // console.log('Refresh Token Record:', record);
+
         if (!record || record.expires_at < new Date()) {
             return null;
         }
-        record.revoked = true; // Mark as used
+
+        record.revoked = true;
         await this.refreshTokenRepository.save(record);
+
         const payload: JWTUserType = {
             account_id: record.user.id,
             username: record.user.username,
-            role_id: record.user.role_id,
-        }
+            role_id: record.user.role.role_id, 
+        };
+
         return payload;
     }
 
@@ -141,9 +146,8 @@ export class AuthService {
             refresh_token: refresh_token,
             access_token: access_token,
             user_id: payload.account_id,
-            revoked: false, 
+            revoked: false,
             expires_at: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
-            created_at: new Date()
         })
         return {
             access_token,
@@ -167,7 +171,7 @@ export class AuthService {
 
 
     async getAllRefreshTokens() {
-       return this.refreshTokenRepository.find();
+        return this.refreshTokenRepository.find();
     }
     async deleteRefreshToken(refreshTokenId: number) {
         const token = await this.refreshTokenRepository.findOne({
@@ -191,7 +195,7 @@ export class AuthService {
         }
 
 
-        if (checkRefreshToken.user_id !== user.account_id) {
+        if (checkRefreshToken.user?.id !== user.account_id) {
             throw new UnauthorizedException('You are not the owner of this token');
         }
 
@@ -244,7 +248,6 @@ export class AuthService {
             otp: otpCode,
             is_used: false,
             expires_at: new Date(Date.now() + 10 * 60 * 1000),
-            created_at: new Date(),
             user: user
         });
 
@@ -257,7 +260,7 @@ export class AuthService {
             where: { otp: otp.toString(), is_used: false },
             relations: ['user'],
         })
-        console.log('OTP Record:', otpRecord);
+        // console.log('OTP Record:', otpRecord);
 
         if (!otpRecord) {
             throw new UnauthorizedException('Invalid OTP');

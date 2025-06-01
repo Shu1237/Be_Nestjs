@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
 import { User } from './user';
 
 
@@ -6,7 +6,6 @@ import { User } from './user';
 export class MailOTP {
   @PrimaryGeneratedColumn({ type: 'integer' })
   id: number;
-
 
   @Column({ type: 'varchar', nullable: false })
   otp: string;
@@ -17,7 +16,7 @@ export class MailOTP {
   @Column({ type: 'datetime', nullable: false })
   expires_at: Date;
 
-  @Column({ type: 'timestamp', nullable: false })
+  @CreateDateColumn({ type: 'timestamp', nullable: false })
   created_at: Date;
 
   @ManyToOne(() => User, (user) => user.mailOTPs)
