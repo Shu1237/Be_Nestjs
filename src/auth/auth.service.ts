@@ -155,6 +155,12 @@ export class AuthService {
     if (existingAccount) {
       throw new UnauthorizedException('Email already exists');
     }
+    const existingUsername = await this.userRepository.findOneBy({
+      username: data.username,
+    });
+    if (existingUsername) {
+      throw new UnauthorizedException('Username already exists');
+    }
     const hashedPassword = await hashPassword(data.password);
     const { role_id, ...accountData } = data;
     // console.log('Account Data:', accountData);

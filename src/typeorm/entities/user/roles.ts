@@ -9,9 +9,6 @@ export class Role {
   @Column({ type: 'varchar', nullable: false })
   role_name: string;
 
-  @Column({ type: 'varchar', nullable: true })
-  description: string;
-
   @OneToMany(() => User, (user) => user.role)
   users: User[];
 }

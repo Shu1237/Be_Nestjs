@@ -1,4 +1,4 @@
-import { Controller, Get, Req, UseGuards } from '@nestjs/common';
+import { Controller, ForbiddenException, Get, Req, UseGuards } from '@nestjs/common';
 import { RolesService } from './roles.service';
 import {
   ApiTags,
@@ -38,7 +38,7 @@ export class RolesController {
   findAll(@Req() req) {
     const user = req.user;
     if (user.role_id !== Role.ADMIN) {
-      throw new Error('Forbidden - Only admin can access roles');
+      throw new ForbiddenException("Only admin users can access this resource");
     }
     return this.rolesService.findAll();
   }
