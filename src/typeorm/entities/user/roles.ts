@@ -2,7 +2,7 @@ import { Entity, Column, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
 import { User } from './user';
 
 export enum RoleType {
-  MEMBER = 1,
+  USER = 1,
   EMPLOYEE = 2,
   ADMIN = 3,
 }

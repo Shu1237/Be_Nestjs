@@ -26,7 +26,7 @@ export class UserService {
       const role = role_id
         ? await this.roleRepository.findOne({ where: { role_id } })
         : await this.roleRepository.findOne({
-            where: { role_id: RoleType.MEMBER },
+            where: { role_id: RoleType.USER },
           });
       if (!role) throw new BadRequestException('Role not found');
       const user = this.userRepository.create({ ...userData, role });
