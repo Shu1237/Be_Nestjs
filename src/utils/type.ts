@@ -30,7 +30,7 @@ export type  RefreshTokenType = {
 export type JWTUserType = {
     account_id: string;
     username: string;
-    role_id: number; // 1: User, 2: Moderator, 3: Admin
+    role_id: number; 
 }
 
 export type GoogleUserType = {
