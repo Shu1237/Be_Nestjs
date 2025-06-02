@@ -2,7 +2,6 @@ export type CreateAccountType = {
     address: string;
     date_of_birth: Date;
     email: string;
-    full_name: string;
     gender: boolean;
     identity_card: string;
     image?: string;

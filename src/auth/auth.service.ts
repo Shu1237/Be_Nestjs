@@ -17,6 +17,7 @@ import { Role } from 'src/typeorm/entities/user/roles';
 import { Member } from 'src/typeorm/entities/user/member';
 import { RefreshToken } from 'src/typeorm/entities/user/refresh-token';
 import { MailOTP } from 'src/typeorm/entities/user/mail-otp';
+import e from 'express';
 
 
 
@@ -301,7 +302,7 @@ export class AuthService {
         await this.otpRepository.save({
             otp: otpCode,
             is_used: false,
-            expires_at: new Date(Date.now() + 10 * 60 * 1000),
+            expires_at: new Date(Date.now() + 5 * 60 * 1000),
             user: user
         });
 
@@ -309,13 +310,10 @@ export class AuthService {
     }
 
 
-    async verifyOtp(otp: number) {
+    async verifyOtp(otp: string,email: string) {
         const otpRecord = await this.otpRepository.findOne({
             where: { otp: otp.toString(), is_used: false },
-            relations: ['user'],
         })
-        // console.log('OTP Record:', otpRecord);
-
         if (!otpRecord) {
             throw new UnauthorizedException('Invalid OTP');
         }
@@ -329,7 +327,7 @@ export class AuthService {
         otpRecord.is_used = true;
         await this.otpRepository.save(otpRecord);
         const payload = {
-            sub: otpRecord.user.id,
+            sub: email,
             purpose: 'verify_otp',
         };
         const tempToken = this.jwtService.sign(payload, {
@@ -347,8 +345,8 @@ export class AuthService {
         if (!decoded || !decoded.sub) {
             throw new UnauthorizedException('Invalid token');
         }
-        const accountId = decoded.sub;
-        const user = await this.userRepository.findOne({ where: { id: accountId } });
+        const email = decoded.sub;
+        const user = await this.userRepository.findOne({ where: { email: email } });
         if (!user) {
             throw new NotFoundException('User not found');
         }

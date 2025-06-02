@@ -47,8 +47,7 @@ export class User {
   @OneToMany(() => RefreshToken, (refreshToken) => refreshToken.user)
   refreshTokens: RefreshToken[];
 
-  @OneToMany(() => MailOTP, (mailOTP) => mailOTP.user)
-  mailOTPs: MailOTP[];
+
 
   @OneToMany(() => Order, (order) => order.user)
   orders: Order[];

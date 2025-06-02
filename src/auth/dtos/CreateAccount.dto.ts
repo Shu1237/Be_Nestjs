@@ -31,11 +31,6 @@ export class CreateAccountDto {
   email: string;
 
   @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  full_name: string;
-
-  @ApiProperty()
   @IsBoolean()
   @IsNotEmpty()
   gender: boolean;

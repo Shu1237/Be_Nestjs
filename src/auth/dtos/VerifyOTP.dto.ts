@@ -10,4 +10,12 @@ export class VerifyOtpDto {
   @Length(6, 6)
   otp: string;
 
+  @ApiProperty({
+    example: 'user@example.com',
+    description: 'The email address of the user',
+  })
+  @IsNotEmpty()
+  @IsEmail()
+  email: string;
+
 }

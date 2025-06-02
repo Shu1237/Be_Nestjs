@@ -19,7 +19,5 @@ export class MailOTP {
   @CreateDateColumn({ type: 'timestamp', nullable: false })
   created_at: Date;
 
-  @ManyToOne(() => User, (user) => user.mailOTPs)
-  @JoinColumn({ name: 'user_id' })
-  user: User;
+
 }
