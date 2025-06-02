@@ -1,19 +1,19 @@
-import { NestFactory, Reflector } from '@nestjs/core';
+import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
     forbidNonWhitelisted: true,
     transform: true,
   }));
-  // Sử dụng RolesGuard toàn cục
-    const reflector = app.get(Reflector); // Lấy Reflector từ NestJS
-
+  app.enableCors({
+    origin: true,
+    credentials: true,
+  });
   // Swagger config
   const config = new DocumentBuilder()
     .setTitle('Movie Theater API')
