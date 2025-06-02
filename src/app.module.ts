@@ -6,7 +6,6 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
 import { AuthModule } from './auth/auth.module';
 import { TesterModule } from './tester/tester.module';
-import { EmployeesModule } from './employees/employees.module';
 import * as path from 'path';
 import { allEntities } from './typeorm';
 import { PassportModule } from '@nestjs/passport';
@@ -19,16 +18,14 @@ import { MovieModule } from './movie/modules/MovieModule';
       isGlobal: true,
     }),
     TypeOrmModule.forRoot({
-   
-      type: 'mysql', // 'mysql'
-      host: 'localhost', // Hoặc sử dụng process.env.DB_HOST nếu cần
-      port: 3306,
-      username: 'root',
-      password: '12345678',
-      database: 'be_movietheater',
-
+    type: process.env.DB_TYPE as any,
+      host: process.env.DB_HOST,
+      port: parseInt(process.env.DB_PORT || '3306', 10),
+      username: process.env.DB_USERNAME,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
       entities: allEntities,
-      synchronize: true, // Set to false in production
+      synchronize: false, // Set to false in production
       autoLoadEntities: true,
     }),
     MailerModule.forRoot({
@@ -52,11 +49,11 @@ import { MovieModule } from './movie/modules/MovieModule';
         },
       },
     }),
-    EmployeesModule,
     AuthModule,
     TesterModule,
     MovieModule,
    
+
 
   ],
 })
