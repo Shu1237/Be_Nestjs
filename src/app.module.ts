@@ -9,7 +9,7 @@ import { TesterModule } from './tester/tester.module';
 import * as path from 'path';
 import { allEntities } from './typeorm';
 import { PassportModule } from '@nestjs/passport';
-import { MovieModule } from './movie/movie.module';
+import { UserModule } from './member/user.module';
 
 @Module({
   imports: [
@@ -18,21 +18,21 @@ import { MovieModule } from './movie/movie.module';
       isGlobal: true,
     }),
     TypeOrmModule.forRoot({
-    type: process.env.DB_TYPE as any,
+      type: process.env.DB_TYPE as any,
       host: process.env.DB_HOST,
       port: parseInt(process.env.DB_PORT || '3306', 10),
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
       entities: allEntities,
-      synchronize: true, // Set to false in production
+      synchronize: false,
       autoLoadEntities: true,
     }),
     MailerModule.forRoot({
       transport: {
         host: process.env.MAIL_HOST,
         port: parseInt(process.env.MAIL_PORT || '465', 10),
-        secure: false, 
+        secure: false,
         auth: {
           user: process.env.GMAIL_USER,
           pass: process.env.GMAIL_PASS,
@@ -51,10 +51,7 @@ import { MovieModule } from './movie/movie.module';
     }),
     AuthModule,
     TesterModule,
-    MovieModule,
-   
-
-
+    UserModule,
   ],
 })
-export class AppModule { }
+export class AppModule {}
