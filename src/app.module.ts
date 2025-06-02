@@ -9,6 +9,7 @@ import { TesterModule } from './tester/tester.module';
 import * as path from 'path';
 import { allEntities } from './typeorm';
 import { PassportModule } from '@nestjs/passport';
+import { MovieModule } from './movie/modules/MovieModule';
 
 @Module({
   imports: [
@@ -17,7 +18,7 @@ import { PassportModule } from '@nestjs/passport';
       isGlobal: true,
     }),
     TypeOrmModule.forRoot({
-      type: process.env.DB_TYPE as any,
+    type: process.env.DB_TYPE as any,
       host: process.env.DB_HOST,
       port: parseInt(process.env.DB_PORT || '3306', 10),
       username: process.env.DB_USERNAME,
@@ -50,6 +51,10 @@ import { PassportModule } from '@nestjs/passport';
     }),
     AuthModule,
     TesterModule,
+    MovieModule,
+   
+
+
   ],
 })
 export class AppModule { }

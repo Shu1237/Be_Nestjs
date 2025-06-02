@@ -1,4 +1,10 @@
-import { BadRequestException, Inject, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import type { CreateAccountType, GoogleUserType, JWTUserType, LogoutType, } from 'src/utils/type';
@@ -18,9 +24,6 @@ import { Member } from 'src/typeorm/entities/user/member';
 import { RefreshToken } from 'src/typeorm/entities/user/refresh-token';
 import { MailOTP } from 'src/typeorm/entities/user/mail-otp';
 
-
-
-
 @Injectable()
 export class AuthService {
     constructor(
@@ -34,38 +37,38 @@ export class AuthService {
 
     ) { }
 
-    async validateUser(username: string, password: string) {
-        const user = await this.userRepository.findOne({
-            where: { username: username }
-            , relations: ['role']
-        });
-        if (!user) {
-            throw new NotFoundException('User not found');
-        }
-        const isPasswordValid = await comparePassword(password, user.password);
-        if (!isPasswordValid) {
-            throw new UnauthorizedException('Wrong password');
-        }
-        if (!user.status) {
-            throw new UnauthorizedException('Account is disabled');
-        }
-        //   console.log('User found:', user);
-
-        const { password: _, ...result } = user;
-        return result;
+  async validateUser(username: string, password: string) {
+    const user = await this.userRepository.findOne({
+      where: { username: username },
+      relations: ['role'],
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
     }
-    async validateRefreshToken(token: string) {
-        const record = await this.refreshTokenRepository.findOne({
-            where: { refresh_token: token, revoked: false },
-            relations: ['user', 'user.role'], // ✅ Cần load quan hệ role
-        });
+    const isPasswordValid = await comparePassword(password, user.password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Wrong password');
+    }
+    if (!user.status) {
+      throw new UnauthorizedException('Account is disabled');
+    }
+    //   console.log('User found:', user);
 
-        if (!record || record.expires_at < new Date()) {
-            return null;
-        }
+    const { password: _, ...result } = user;
+    return result;
+  }
+  async validateRefreshToken(token: string) {
+    const record = await this.refreshTokenRepository.findOne({
+      where: { refresh_token: token, revoked: false },
+      relations: ['user', 'user.role'], // ✅ Cần load quan hệ role
+    });
 
-        record.revoked = true;
-        await this.refreshTokenRepository.save(record);
+    if (!record || record.expires_at < new Date()) {
+      return null;
+    }
+
+    record.revoked = true;
+    await this.refreshTokenRepository.save(record);
 
         const payload: JWTUserType = {
             account_id: record.user.id,
@@ -124,49 +127,49 @@ export class AuthService {
         }
     }
 
-    async createAccount(data: CreateAccountType) {
-        const roleId = data.role_id ?? 1;
-        if (roleId > 3 || roleId < 1) {
-            throw new Error('ROLE_ID must be between 1 and 3');
-        }
-
-        const role = await this.roleRepository.findOneBy({ role_id: roleId });
-        if (!role) {
-            throw new NotFoundException(`Role with ID ${roleId} not found`);
-        }
-        const existingAccount = await this.userRepository.findOneBy({ email: data.email });
-        if (existingAccount) {
-            throw new UnauthorizedException('Email already exists');
-        }
-        const hashedPassword = await hashPassword(data.password);
-        const { role_id, ...accountData } = data;
-        // console.log('Account Data:', accountData);
-
-        const newAccount = this.userRepository.create({
-            ...accountData,
-            password: hashedPassword,
-            status: true,
-            role: role,
-
-        })
-        // console.log('New Account:', newAccount);
-
-        // // Save account first
-        const savedAccount = await this.userRepository.save(newAccount);
-
-        // role = 1  , create new member
-        if (roleId === 1) {
-            const newMember = this.memberRepository.create({
-                score: 0,
-                account: savedAccount,
-            });
-
-            await this.memberRepository.save(newMember);
-        }
-
-        return { msg: 'Account created successfully' };
+  async createAccount(data: CreateAccountType) {
+    const roleId = data.role_id ?? 1;
+    if (roleId > 3 || roleId < 1) {
+      throw new Error('ROLE_ID must be between 1 and 3');
     }
 
+    const role = await this.roleRepository.findOneBy({ role_id: roleId });
+    if (!role) {
+      throw new NotFoundException(`Role with ID ${roleId} not found`);
+    }
+    const existingAccount = await this.userRepository.findOneBy({
+      email: data.email,
+    });
+    if (existingAccount) {
+      throw new UnauthorizedException('Email already exists');
+    }
+    const hashedPassword = await hashPassword(data.password);
+    const { role_id, ...accountData } = data;
+    // console.log('Account Data:', accountData);
+
+    const newAccount = this.userRepository.create({
+      ...accountData,
+      password: hashedPassword,
+      status: true,
+      role: role,
+    });
+    // console.log('New Account:', newAccount);
+
+    // // Save account first
+    const savedAccount = await this.userRepository.save(newAccount);
+
+    // role = 1  , create new member
+    if (roleId === 1) {
+      const newMember = this.memberRepository.create({
+        score: 0,
+        account: savedAccount,
+      });
+
+      await this.memberRepository.save(newMember);
+    }
+
+    return { msg: 'Account created successfully' };
+  }
 
 
     async login(user: JWTUserType) {
@@ -182,197 +185,192 @@ export class AuthService {
         };
     }
 
-    async generateToken(payload: JWTUserType) {
-        const access_token = this.jwtService.sign(payload, {
-            secret: process.env.JWT_SECRET_KEY,
-            expiresIn: process.env.JWT_EXPIRES_IN,
-        });
-        // console.log('Access Token:', access_token);
-        const refresh_token = uuidv4(); // Sử dụng UUID cho refresh token
-        // console.log('Refresh Token:', refresh_token);
+  async generateToken(payload: JWTUserType) {
+    const access_token = this.jwtService.sign(payload, {
+      secret: process.env.JWT_SECRET_KEY,
+      expiresIn: process.env.JWT_EXPIRES_IN,
+    });
+    // console.log('Access Token:', access_token);
+    const refresh_token = uuidv4(); // Sử dụng UUID cho refresh token
+    // console.log('Refresh Token:', refresh_token);
 
-        await this.refreshTokenRepository.save({
-            refresh_token: refresh_token,
-            access_token: access_token,
-            user_id: payload.account_id,
-            revoked: false,
-            expires_at: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
-        })
-        return {
-            access_token,
-            refresh_token,
-        };
+    await this.refreshTokenRepository.save({
+      refresh_token: refresh_token,
+      access_token: access_token,
+      user_id: payload.account_id,
+      revoked: false,
+      expires_at: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+    });
+    return {
+      access_token,
+      refresh_token,
+    };
+  }
+
+  async refreshToken(user: JWTUserType) {
+    const payload: JWTUserType = {
+      account_id: user.account_id,
+      username: user.username,
+      role_id: user.role_id,
+    };
+    return {
+      msg: 'Refresh token successful',
+      token: await this.generateToken(payload),
+    };
+  }
+
+  async getAllRefreshTokens() {
+    return this.refreshTokenRepository.find();
+  }
+  async deleteRefreshToken(refreshTokenId: number) {
+    const token = await this.refreshTokenRepository.findOne({
+      where: { id: refreshTokenId },
+    });
+    if (!token) {
+      throw new NotFoundException('Refresh token not found');
+    }
+    await this.refreshTokenRepository.delete({ id: refreshTokenId });
+    return { msg: 'Refresh token deleted successfully' };
+  }
+
+  async logout(data: LogoutType, user: JWTUserType) {
+    const checkRefreshToken = await this.refreshTokenRepository.findOne({
+      where: { refresh_token: data.refresh_token },
+    });
+    //   console.log('Check Refresh Token:', checkRefreshToken);
+
+    if (!checkRefreshToken) {
+      throw new NotFoundException('Refresh token not found');
     }
 
-
-
-    async refreshToken(user: JWTUserType) {
-        const payload: JWTUserType = {
-            account_id: user.account_id,
-            username: user.username,
-            role_id: user.role_id,
-        }
-        return {
-            msg: 'Refresh token successful',
-            token: await this.generateToken(payload),
-        }
+    if (checkRefreshToken.user?.id !== user.account_id) {
+      throw new UnauthorizedException('You are not the owner of this token');
     }
 
+    checkRefreshToken.revoked = true;
+    await this.refreshTokenRepository.save(checkRefreshToken);
 
-    async getAllRefreshTokens() {
-        return this.refreshTokenRepository.find();
+    return { msg: 'Logout successful' };
+  }
+
+  async getUserById(userId: string) {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
     }
-    async deleteRefreshToken(refreshTokenId: number) {
-        const token = await this.refreshTokenRepository.findOne({
-            where: { id: refreshTokenId },
-        });
-        if (!token) {
-            throw new NotFoundException('Refresh token not found');
-        }
-        await this.refreshTokenRepository.delete({ id: refreshTokenId });
-        return { msg: 'Refresh token deleted successfully' };
-    }
+    return user;
+  }
 
-    async logout(data: LogoutType, user: JWTUserType) {
-        const checkRefreshToken = await this.refreshTokenRepository.findOne({
-            where: { refresh_token: data.refresh_token },
-        });
-        //   console.log('Check Refresh Token:', checkRefreshToken);
+  async OtpCode(email: string) {
+    const otpCode = randomInt(100000, 999999).toString();
 
-        if (!checkRefreshToken) {
-            throw new NotFoundException('Refresh token not found');
-        }
+    // Gửi mail
+    await this.mailerService.sendMail({
+      to: email,
+      subject: 'Your OTP Code',
+      template: 'otp',
+      context: {
+        code: otpCode,
+        year: new Date().getFullYear(),
+      },
+    });
+    return otpCode;
+  }
 
+  async checkEmail(email: string) {
+    const user = await this.userRepository.findOne({
+      where: { email: email },
+    });
 
-        if (checkRefreshToken.user?.id !== user.account_id) {
-            throw new UnauthorizedException('You are not the owner of this token');
-        }
-
-        checkRefreshToken.revoked = true;
-        await this.refreshTokenRepository.save(checkRefreshToken);
-
-        return { msg: 'Logout successful' };
-    }
-
-    async getUserById(userId: string) {
-        const user = await this.userRepository.findOne({
-            where: { id: userId },
-        });
-        if (!user) {
-            throw new NotFoundException('User not found');
-        }
-        return user;
+    if (!user) {
+      throw new NotFoundException('Email not found');
     }
 
-    async OtpCode(email: string) {
-        const otpCode = randomInt(100000, 999999).toString();
+    const otpCode = await this.OtpCode(email);
 
-        // Gửi mail
-        await this.mailerService.sendMail({
-            to: email,
-            subject: 'Your OTP Code',
-            template: 'otp',
-            context: {
-                code: otpCode,
-                year: new Date().getFullYear(),
-            },
-        });
-        return otpCode;
+    await this.otpRepository.save({
+      otp: otpCode,
+      is_used: false,
+      expires_at: new Date(Date.now() + 10 * 60 * 1000),
+      user: user,
+    });
+
+    return { msg: 'OTP sent successfully' };
+  }
+
+  async verifyOtp(otp: number) {
+    const otpRecord = await this.otpRepository.findOne({
+      where: { otp: otp.toString(), is_used: false },
+      relations: ['user'],
+    });
+    // console.log('OTP Record:', otpRecord);
+
+    if (!otpRecord) {
+      throw new UnauthorizedException('Invalid OTP');
     }
-
-
-
-    async checkEmail(email: string) {
-        const user = await this.userRepository.findOne({
-            where: { email: email },
-        });
-
-        if (!user) {
-            throw new NotFoundException('Email not found');
-        }
-
-        const otpCode = await this.OtpCode(email);
-
-        await this.otpRepository.save({
-            otp: otpCode,
-            is_used: false,
-            expires_at: new Date(Date.now() + 10 * 60 * 1000),
-            user: user
-        });
-
-        return { msg: 'OTP sent successfully' };
+    const currentTime = new Date();
+    if (otpRecord.expires_at < currentTime) {
+      throw new UnauthorizedException('OTP has expired');
     }
-
-
-    async verifyOtp(otp: number) {
-        const otpRecord = await this.otpRepository.findOne({
-            where: { otp: otp.toString(), is_used: false },
-            relations: ['user'],
-        })
-        // console.log('OTP Record:', otpRecord);
-
-        if (!otpRecord) {
-            throw new UnauthorizedException('Invalid OTP');
-        }
-        const currentTime = new Date();
-        if (otpRecord.expires_at < currentTime) {
-            throw new UnauthorizedException('OTP has expired');
-        }
-        if (otpRecord.is_used) {
-            throw new UnauthorizedException('OTP has already been used');
-        }
-        otpRecord.is_used = true;
-        await this.otpRepository.save(otpRecord);
-        const payload = {
-            sub: otpRecord.user.id,
-            purpose: 'verify_otp',
-        };
-        const tempToken = this.jwtService.sign(payload, {
-            secret: process.env.TMP_TOKEN_SECRET,
-            expiresIn: process.env.TMP_EXPIRES_IN,
-        });
-        // await this.otpRepository.delete(otpRecord.id);
-        return { msg: 'OTP verified successfully', token: tempToken };
+    if (otpRecord.is_used) {
+      throw new UnauthorizedException('OTP has already been used');
     }
+    otpRecord.is_used = true;
+    await this.otpRepository.save(otpRecord);
+    const payload = {
+      sub: otpRecord.user.id,
+      purpose: 'verify_otp',
+    };
+    const tempToken = this.jwtService.sign(payload, {
+      secret: process.env.TMP_TOKEN_SECRET,
+      expiresIn: process.env.TMP_EXPIRES_IN,
+    });
+    // await this.otpRepository.delete(otpRecord.id);
+    return { msg: 'OTP verified successfully', token: tempToken };
+  }
 
-    async changePassword(newPassword: string, tmptoken: string) {
-        const decoded = this.jwtService.verify(tmptoken, {
-            secret: process.env.TMP_TOKEN_SECRET,
-        });
-        if (!decoded || !decoded.sub) {
-            throw new UnauthorizedException('Invalid token');
-        }
-        const accountId = decoded.sub;
-        const user = await this.userRepository.findOne({ where: { id: accountId } });
-        if (!user) {
-            throw new NotFoundException('User not found');
-        }
-        const checkNewPassword = await comparePassword(newPassword, user.password);
-        if (checkNewPassword) {
-            throw new BadRequestException('New password cannot be the same as the old password');
-        }
-        user.password = await hashPassword(newPassword);
-        await this.userRepository.save(user);
-        return { msg: 'Password changed successfully' };
+  async changePassword(newPassword: string, tmptoken: string) {
+    const decoded = this.jwtService.verify(tmptoken, {
+      secret: process.env.TMP_TOKEN_SECRET,
+    });
+    if (!decoded || !decoded.sub) {
+      throw new UnauthorizedException('Invalid token');
     }
-
-    async changePasswordWasLogin(newPassword: string, userData: JWTUserType) {
-        const user = await this.userRepository.findOne({
-            where: { id: userData.account_id },
-        });
-        if (!user) {
-            throw new NotFoundException('User not found');
-        }
-        const checkNewPassword = await comparePassword(newPassword, user.password);
-        if (checkNewPassword) {
-            throw new BadRequestException('New password cannot be the same as the old password');
-        }
-        user.password = await hashPassword(newPassword);
-        await this.userRepository.save(user);
-        return { msg: 'Password changed successfully' };
+    const accountId = decoded.sub;
+    const user = await this.userRepository.findOne({
+      where: { id: accountId },
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
     }
+    const checkNewPassword = await comparePassword(newPassword, user.password);
+    if (checkNewPassword) {
+      throw new BadRequestException(
+        'New password cannot be the same as the old password',
+      );
+    }
+    user.password = await hashPassword(newPassword);
+    await this.userRepository.save(user);
+    return { msg: 'Password changed successfully' };
+  }
 
-
+  async changePasswordWasLogin(newPassword: string, userData: JWTUserType) {
+    const user = await this.userRepository.findOne({
+      where: { id: userData.account_id },
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    const checkNewPassword = await comparePassword(newPassword, user.password);
+    if (checkNewPassword) {
+      throw new BadRequestException(
+        'New password cannot be the same as the old password',
+      );
+    }
+    user.password = await hashPassword(newPassword);
+    await this.userRepository.save(user);
+    return { msg: 'Password changed successfully' };
+  }
 }
-
-
