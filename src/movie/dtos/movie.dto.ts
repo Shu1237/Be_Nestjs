@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsNotEmpty,
   IsString,
@@ -41,18 +41,24 @@ export class MovieDTO {
   @ApiProperty({
     description: 'The start date of the movie showing',
     example: '2025-06-01',
+    type: String,
+    format: 'date',
   })
   @IsNotEmpty()
-  @Transform(({ value }) => new Date(value)) // Chuyển đổi giá trị sang kiểu Date
+  @Transform(({ value }) => new Date(value))
+  @Type(() => Date)
   @IsDate()
   from_date: Date;
 
   @ApiProperty({
     description: 'The end date of the movie showing',
     example: '2025-06-30',
+    type: String,
+    format: 'date',
   })
   @IsNotEmpty()
-  @Transform(({ value }) => new Date(value)) // Chuyển đổi giá trị sang kiểu Date
+  @Transform(({ value }) => new Date(value))
+  @Type(() => Date)
   @IsDate()
   to_date: Date;
 

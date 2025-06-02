@@ -9,7 +9,7 @@ import { TesterModule } from './tester/tester.module';
 import * as path from 'path';
 import { allEntities } from './typeorm';
 import { PassportModule } from '@nestjs/passport';
-import { MovieModule } from './movie/modules/MovieModule';
+import { MovieModule } from './movie/movie.module';
 
 @Module({
   imports: [
@@ -25,7 +25,7 @@ import { MovieModule } from './movie/modules/MovieModule';
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
       entities: allEntities,
-      synchronize: false, // Set to false in production
+      synchronize: true, // Set to false in production
       autoLoadEntities: true,
     }),
     MailerModule.forRoot({

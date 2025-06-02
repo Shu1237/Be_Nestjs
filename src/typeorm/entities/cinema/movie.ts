@@ -40,7 +40,7 @@ export class Movie {
   @Column({ type: 'varchar', length: 100, nullable: true })
   version?: string;
   
-  @Column({ type: 'boolean', default: false }) // Cột để đánh dấu xóa mềm
+  @Column({ type: 'boolean', default: false }) 
   is_deleted: boolean;
 
   @OneToMany(() => MovieGenre, (movieGenre) => movieGenre.movie)

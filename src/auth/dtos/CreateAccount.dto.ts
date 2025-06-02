@@ -72,7 +72,6 @@ export class CreateAccountDto {
   @ApiPropertyOptional({ default: 1, description: '1: User, 2: Employee, 3: Admin' })
   @IsOptional()
   @IsNumber()
-
   role_id?: number;
 }
 //     @ApiPropertyOptional({ default: 1, description: '1: User, 2: Employee, 3: Admin' })
