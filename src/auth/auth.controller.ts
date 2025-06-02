@@ -56,6 +56,7 @@ export class AuthController {
   @ApiBody({ type: LoginDto })
   @ApiResponse({ status: 200, description: 'Login successful' })
   login(@Request() req) {
+    // console.log(req.user);
     return this.authService.login(req.user);
   }
 

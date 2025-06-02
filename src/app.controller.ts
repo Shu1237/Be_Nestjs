@@ -1,6 +1,6 @@
 // app.controller.ts
 import { Controller, Get, Req, UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from './guards/auth.guard';
+import { JwtAuthGuard } from './guards/jwt.guard';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 
