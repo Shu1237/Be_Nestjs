@@ -10,6 +10,7 @@ import * as path from 'path';
 import { allEntities } from './typeorm';
 import { PassportModule } from '@nestjs/passport';
 import { UserModule } from './member/user.module';
+import { MovieModule } from './movie/movie.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { UserModule } from './member/user.module';
     AuthModule,
     TesterModule,
     UserModule,
+    MovieModule
   ],
 })
 export class AppModule {}
