@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryColumn, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Entity, Column, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 
 import { Schedule } from './schedule';
 import { ActorMovie } from './actor-movie';
@@ -7,38 +7,41 @@ import { MovieGenre } from './gerne-movie';
 
 @Entity('movie')
 export class Movie {
-  @PrimaryGeneratedColumn({ type: 'int' })
+  @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'varchar', nullable: false, length: 100 })
+  @Column({ type: 'varchar', length: 100 })
   name: string;
 
-  @Column({ type: 'text', nullable: false })
+  @Column({ type: 'text' })
   content: string;
 
-  @Column({ type: 'varchar', nullable: false, length: 100 })
+  @Column({ type: 'varchar', length: 100 })
   director: string;
 
-  @Column({ type: 'int', nullable: false })
+  @Column({ type: 'int' })
   duration: number;
 
-  @Column({ type: 'date', nullable: false })
+  @Column({ type: 'date' })
   from_date: Date;
 
-  @Column({ type: 'date', nullable: false })
+  @Column({ type: 'date' })
   to_date: Date;
 
-  @Column({ type: 'varchar', nullable: false, length: 100 })
+  @Column({ type: 'varchar', length: 100 })
   production_company: string;
 
-  @Column({ type: 'varchar', nullable: false, length: 255 })
+  @Column({ type: 'varchar', length: 255 })
   thumbnail: string;
 
-  @Column({ type: 'varchar', nullable: false, length: 255 })
+  @Column({ type: 'varchar', length: 255 })
   banner: string;
 
-  @Column({ type: 'varchar', nullable: true, length: 100 })
+  @Column({ type: 'varchar', length: 100, nullable: true })
   version?: string;
+  
+  @Column({ type: 'boolean', default: false }) // Cột để đánh dấu xóa mềm
+  is_deleted: boolean;
 
   @OneToMany(() => MovieGenre, (movieGenre) => movieGenre.movie)
   movieGenres: MovieGenre[];
