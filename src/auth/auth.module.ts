@@ -11,6 +11,7 @@ import { MailOTP } from 'src/typeorm/entities/user/mail-otp';
 import { LocalStrategy } from './strategies/local.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RefreshTokenStrategy } from './strategies/refresh_token.strategy';
+import { GoogleStrategy } from './strategies/google.strategy';
 
 
 
@@ -23,6 +24,6 @@ import { RefreshTokenStrategy } from './strategies/refresh_token.strategy';
     signOptions: { expiresIn: process.env.JWT_EXPIRES_IN || '1h' },
   })],
   controllers: [AuthController],
-  providers: [AuthService,LocalStrategy,JwtStrategy,RefreshTokenStrategy]
+  providers: [AuthService,LocalStrategy,JwtStrategy,RefreshTokenStrategy,GoogleStrategy]
 })
 export class AuthModule { }
