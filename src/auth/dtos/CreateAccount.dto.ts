@@ -10,6 +10,7 @@ import {
   IsBoolean,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform, Type } from 'class-transformer';
 
 export class CreateAccountDto {
   @ApiProperty()
@@ -19,6 +20,8 @@ export class CreateAccountDto {
 
   @ApiProperty()
   @IsDateString()
+  @Transform(({ value }) => new Date(value).toISOString().split('T')[0]) // Chuyển đổi sang định dạng YYYY-MM-DD
+
   @IsNotEmpty()
   date_of_birth: Date;
 
@@ -72,3 +75,9 @@ export class CreateAccountDto {
 
   role_id?: number;
 }
+//     @ApiPropertyOptional({ default: 1, description: '1: User, 2: Employee, 3: Admin' })
+//   @IsOptional()
+//   @Type(() => Number)
+//   @IsNumber()
+//   role_id?: number;
+// }
