@@ -9,7 +9,7 @@ import { User } from '../../typeorm/entities/user/user';
 import { Role } from '../../typeorm/entities/user/roles';
 import { CreateUserDto } from '../dtos/create-user.dto';
 import { UpdateUserDto } from '../dtos/update-user.dto';
-import { RoleType } from 'src/typeorm/entities/user/roles';
+import { Role as RoleEnum } from 'src/enum/roles.enum';
 
 @Injectable()
 export class UserService {
@@ -26,7 +26,7 @@ export class UserService {
       const role = role_id
         ? await this.roleRepository.findOne({ where: { role_id } })
         : await this.roleRepository.findOne({
-            where: { role_id: RoleType.USER },
+            where: { role_id: RoleEnum.USER },
           });
       if (!role) throw new BadRequestException('Role not found');
       const user = this.userRepository.create({ ...userData, role });
@@ -74,7 +74,7 @@ export class UserService {
     return await this.userRepository.save(user);
   }
 
-  async changeRole(id: string, role_id: RoleType): Promise<User> {
+  async changeRole(id: string, role_id: RoleEnum): Promise<User> {
     const user = await this.findOne(id);
     const role = await this.roleRepository.findOne({ where: { role_id } });
     if (!role) throw new BadRequestException('Role not found');

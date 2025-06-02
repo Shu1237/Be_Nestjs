@@ -1,12 +1,6 @@
 import { Entity, Column, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
 import { User } from './user';
 
-export enum RoleType {
-  USER = 1,
-  EMPLOYEE = 2,
-  ADMIN = 3,
-}
-
 @Entity('roles')
 export class Role {
   @PrimaryGeneratedColumn({ type: 'int' })

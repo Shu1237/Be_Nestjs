@@ -19,7 +19,7 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { JwtAuthGuard } from 'src/guards/jwt.guard';
 import { UserService } from '../services/user.service';
 import { Roles } from 'src/auth/decorators/roles.decorator';
-import { RoleType } from 'src/typeorm/entities/user/roles';
+import { Role } from 'src/enum/roles.enum';
 import { User } from 'src/typeorm/entities/user/user';
 import { CreateUserDto } from '../dtos/create-user.dto';
 import { UpdateUserDto } from '../dtos/update-user.dto';
@@ -36,7 +36,7 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Post('create')
-  @Roles(RoleType.ADMIN)
+  @Roles(Role.ADMIN)
   @ApiOperation({
     summary: 'Create a new user (Admin only)',
     description: 'Create a new user account. Only admin can create new users.',
@@ -58,7 +58,7 @@ export class UserController {
   }
 
   @Post('search')
-  @Roles(RoleType.ADMIN, RoleType.EMPLOYEE)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @ApiOperation({
     summary: 'Search users',
     description:
@@ -79,7 +79,7 @@ export class UserController {
   }
 
   @Get(':id')
-  @Roles(RoleType.ADMIN, RoleType.EMPLOYEE)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @ApiOperation({
     summary: 'Get user by ID',
     description:
@@ -98,7 +98,7 @@ export class UserController {
   }
 
   @Put(':id')
-  @Roles(RoleType.ADMIN)
+  @Roles(Role.ADMIN)
   @ApiOperation({
     summary: 'Update user (Admin only)',
     description: 'Update user information. Only admin can update user details.',
@@ -120,7 +120,7 @@ export class UserController {
   }
 
   @Delete(':id')
-  @Roles(RoleType.ADMIN)
+  @Roles(Role.ADMIN)
   @ApiOperation({
     summary: 'Delete user (Admin only)',
     description: 'Delete a user account. Only admin can delete users.',
@@ -155,7 +155,7 @@ export class UserController {
   }
 
   @Put(':id/status')
-  @Roles(RoleType.ADMIN)
+  @Roles(Role.ADMIN)
   @ApiOperation({
     summary: 'Change user status (Admin only)',
     description:
@@ -179,7 +179,7 @@ export class UserController {
   }
 
   @Put(':id/role')
-  @Roles(RoleType.ADMIN)
+  @Roles(Role.ADMIN)
   @ApiOperation({
     summary: 'Change user role (Admin only)',
     description: 'Change the role of a user. Only admin can change user roles.',

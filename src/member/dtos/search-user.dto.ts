@@ -6,7 +6,7 @@ import {
   IsNumber,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { RoleType } from 'src/typeorm/entities/user/roles';
+import { Role } from 'src/enum/roles.enum';
 
 export class SearchUserDto {
   @ApiProperty({
@@ -20,11 +20,11 @@ export class SearchUserDto {
   @ApiProperty({
     description: 'Filter by Role ID',
     required: false,
-    enum: RoleType,
+    enum: Role,
   })
   @IsOptional()
-  @IsEnum(RoleType)
-  role_id?: RoleType;
+  @IsEnum(Role)
+  role_id?: Role;
 
   @ApiProperty({
     description: 'Filter by status (true for active, false for inactive)',

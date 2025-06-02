@@ -1,12 +1,12 @@
 import { IsEnum } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { RoleType } from 'src/typeorm/entities/user/roles';
+import { Role } from 'src/enum/roles.enum';
 
 export class ChangeRoleDto {
   @ApiProperty({
-    description: 'New role ID for the user (1: Member, 2: Employee, 3: Admin)',
-    enum: RoleType,
+    description: 'New role ID for the user (1: User, 2: Employee, 3: Admin)',
+    enum: Role,
   })
-  @IsEnum(RoleType)
-  role_id: RoleType;
+  @IsEnum(Role)
+  role_id: Role;
 }
