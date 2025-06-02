@@ -10,13 +10,10 @@ import { AuthService } from './auth.service';
 import { CreateAccountDto } from './dtos/CreateAccount.dto';
 import { LoginDto } from './dtos/Login.dto';
 import { JwtAuthGuard } from 'src/guards/jwt.guard';
-
 import { ForgotPasswordDto } from './dtos/ForgotPassword.dto';
 import { VerifyOtpDto } from './dtos/VerifyOTP.dto';
 import { ChangePasswordOtpDto } from './dtos/ChangePasswordOPT.dto';
 import { ChangePasswordDto } from './dtos/ChangePassword';
-import { AuthGuard } from '@nestjs/passport';
-import { LoginGoogleDto } from './dtos/LoginGoogle.dto';
 import { LogoutDto } from './dtos/Logout.dto';
 import { RefreshTokenDto } from './dtos/RefreshToken.dto';
 import { LocalGuard } from 'src/guards/local.guard';
@@ -108,10 +105,8 @@ export class AuthController {
   @Post('verifyOtp')
   @ApiOperation({ summary: 'Verify OTP and get temp token' })
   @ApiBody({ type: VerifyOtpDto })
-  verifyOtp(
-    @Body('otp', ParseIntPipe) otp: number,
-  ) {
-    return this.authService.verifyOtp(otp);
+  verifyOtp(@Body() body: VerifyOtpDto) {
+    return this.authService.verifyOtp(body.otp, body.email);
   }
 
   @Post('changePassword')
