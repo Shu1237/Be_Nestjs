@@ -24,9 +24,10 @@ import { User } from 'src/typeorm/entities/user/user';
 import { CreateUserDto } from '../dtos/create-user.dto';
 import { UpdateUserDto } from '../dtos/update-user.dto';
 import { SearchUserDto } from '../dtos/search-user.dto';
-import { ChangePasswordDto } from '../dtos/change-password.dto';
+
 import { ChangeStatusDto } from '../dtos/change-status.dto';
 import { ChangeRoleDto } from '../dtos/change-role.dto';
+import { ChangePasswordDto } from 'src/auth/dtos/ChangePassword';
 
 @ApiTags('Users')
 @ApiBearerAuth()

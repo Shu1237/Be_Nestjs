@@ -1,10 +1,21 @@
 import {
-  Body, Controller, Delete, Get, Param, Post,
-  UseGuards, Request, ParseIntPipe,
-  Req
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  UseGuards,
+  Request,
+  ParseIntPipe,
+  Req,
 } from '@nestjs/common';
 import {
-  ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags
+  ApiBearerAuth,
+  ApiBody,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { CreateAccountDto } from './dtos/CreateAccount.dto';
@@ -23,11 +34,10 @@ import { LocalGuard } from 'src/guards/local.guard';
 import { RefreshGuard } from 'src/guards/refresh-token.guard';
 import { GoogleAuthGuard } from 'src/guards/google.guard';
 
-
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) { }
+  constructor(private authService: AuthService) {}
 
   @Post('register')
   @ApiOperation({ summary: 'Register new account' })
@@ -37,17 +47,15 @@ export class AuthController {
     return this.authService.createAccount(data);
   }
 
-
-
   //Login google
   @UseGuards(GoogleAuthGuard)
   @Get('google/login')
-  googleLogin() { }
+  googleLogin() {}
 
   @UseGuards(GoogleAuthGuard)
   @Get('google/callback')
   async googleCallback(@Req() req) {
-   return this.authService.login(req.user);
+    return this.authService.login(req.user);
   }
 
   @UseGuards(LocalGuard)
@@ -68,7 +76,6 @@ export class AuthController {
     return this.authService.getAllRefreshTokens();
   }
 
-
   @UseGuards(RefreshGuard)
   @Post('refreshToken')
   @ApiBearerAuth()
@@ -78,13 +85,10 @@ export class AuthController {
     return this.authService.refreshToken(req.user);
   }
 
-  
-
   @Delete('refreshToken/:id')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete a refresh token by ID' })
-  deleteRefreshToken(
-    @Param('id', ParseIntPipe) refreshTokenId: number) {
+  deleteRefreshToken(@Param('id', ParseIntPipe) refreshTokenId: number) {
     return this.authService.deleteRefreshToken(refreshTokenId);
   }
 
@@ -97,7 +101,6 @@ export class AuthController {
     return this.authService.logout(data, req.user);
   }
 
-
   @Post('forgotPassword')
   @ApiOperation({ summary: 'Send OTP to email for password reset' })
   @ApiBody({ type: ForgotPasswordDto })
@@ -108,9 +111,7 @@ export class AuthController {
   @Post('verifyOtp')
   @ApiOperation({ summary: 'Verify OTP and get temp token' })
   @ApiBody({ type: VerifyOtpDto })
-  verifyOtp(
-    @Body('otp', ParseIntPipe) otp: number,
-  ) {
+  verifyOtp(@Body('otp', ParseIntPipe) otp: number) {
     return this.authService.verifyOtp(otp);
   }
 
