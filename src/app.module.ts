@@ -6,11 +6,10 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
 import { AuthModule } from './auth/auth.module';
 import { TesterModule } from './tester/tester.module';
-import { EmployeesModule } from './employees/employees.module';
 import * as path from 'path';
 import { allEntities } from './typeorm';
 import { PassportModule } from '@nestjs/passport';
-import { MemberController } from './member/controllers/member.controller';
+import { UserModule } from './member/user.module';
 
 @Module({
   imports: [
@@ -52,8 +51,7 @@ import { MemberController } from './member/controllers/member.controller';
     }),
     AuthModule,
     TesterModule,
-    EmployeesModule,
-    MemberController,
+    UserModule,
   ],
 })
 export class AppModule {}
