@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Req, UseGuards } from '@nestjs/common';
 import { RolesService } from './roles.service';
 import {
   ApiTags,
@@ -8,18 +8,17 @@ import {
 } from '@nestjs/swagger';
 import { Role } from '../enum/roles.enum';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+
+
 
 @ApiTags('roles')
 @ApiBearerAuth()
 @Controller('roles')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard)
 export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
 
   @Get()
-  @Roles(Role.ADMIN)
   @ApiOperation({
     summary: 'Get all roles',
     description: 'Only accessible by admin users',
@@ -36,7 +35,11 @@ export class RolesController {
     status: 403,
     description: 'Forbidden - User does not have admin role',
   })
-  findAll() {
+  findAll(@Req() req) {
+    const user = req.user;
+    if (user.role_id !== Role.ADMIN) {
+      throw new Error('Forbidden - Only admin can access roles');
+    }
     return this.rolesService.findAll();
   }
 }
