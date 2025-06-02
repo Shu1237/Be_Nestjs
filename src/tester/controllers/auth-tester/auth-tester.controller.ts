@@ -1,5 +1,5 @@
 import { Controller, Get, Req, UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from 'src/guards/auth.guard';
+import { JwtAuthGuard } from 'src/guards/jwt.guard';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 
@@ -34,7 +34,7 @@ export class AuthTesterController {
             role: user?.ROLE_ID,
         };
     }
-
+    // @UseGuards(JwtAuthGuard)
     @Get('check')
     @ApiOperation({ summary: 'Check current time in seconds' })
     @ApiResponse({

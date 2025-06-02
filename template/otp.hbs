@@ -2,47 +2,299 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Your OTP Code</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your TixCiné OTP Code</title>
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f9f9f9;
-      padding: 20px;
+    /* Gmail-safe reset */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
     }
-    .container {
-      background-color: #ffffff;
-      border-radius: 8px;
-      padding: 30px;
-      max-width: 500px;
-      margin: 0 auto;
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    
+    body, table, td, p, a, li, blockquote {
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
     }
-    .code {
-      font-size: 24px;
-      font-weight: bold;
-      color: #2c3e50;
-      text-align: center;
-      margin: 20px 0;
+    
+    table, td {
+      mso-table-lspace: 0pt;
+      mso-table-rspace: 0pt;
+      border-collapse: collapse;
     }
-    .footer {
-      font-size: 12px;
-      color: #999999;
-      text-align: center;
-      margin-top: 20px;
+    
+    img {
+      -ms-interpolation-mode: bicubic;
+      border: 0;
+      height: auto;
+      line-height: 100%;
+      outline: none;
+      text-decoration: none;
+    }
+
+    /* Fallback fonts for email clients */
+    .font-inter {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+    }
+
+    /* Hide elements that don't work in email */
+    .hide-in-email {
+      display: none !important;
+    }
+
+    /* Base responsive styles */
+    .container-table {
+      width: 100%;
+      max-width: 520px;
+      min-width: 280px; /* Ensure minimum width */
+    }
+
+    /* Mobile-first responsive design */
+    @media only screen and (max-width: 640px) {
+      .container-table {
+        width: calc(100% - 20px) !important; /* Account for outer padding */
+        max-width: calc(100% - 20px) !important;
+        margin: 0 !important;
+        min-width: 280px !important;
+      }
+      
+      .outer-padding {
+        padding: 10px !important;
+      }
+      
+      .content-table {
+        padding: 24px 16px !important; /* Reduced horizontal padding */
+      }
+      
+      .brand-name {
+        font-size: 24px !important;
+      }
+      
+      .otp-code {
+        font-size: 28px !important;
+        letter-spacing: 0.08em !important;
+        word-break: break-all !important; /* Ensure OTP wraps */
+      }
+      
+      .main-title {
+        font-size: 18px !important;
+      }
+      
+      .main-text {
+        font-size: 14px !important;
+        line-height: 1.5 !important;
+      }
+      
+      .footer-text {
+        font-size: 11px !important;
+        line-height: 1.4 !important;
+      }
+      
+      .logo-container {
+        width: 60px !important;
+        height: 60px !important;
+      }
+      
+      .logo-inner {
+        width: 32px !important;
+        height: 32px !important;
+      }
+      
+      .otp-container {
+        padding: 16px 12px !important; /* Reduced padding */
+      }
+      
+      .info-container {
+        padding: 12px 8px !important; /* Reduced padding */
+      }
+      
+      .border-radius {
+        border-radius: 8px !important;
+      }
+      
+      /* Ensure all tables stay within bounds */
+      table {
+        max-width: 100% !important;
+        width: 100% !important;
+      }
+    }
+
+    @media only screen and (max-width: 480px) {
+      .container-table {
+        width: calc(100% - 10px) !important; /* Even less padding on very small screens */
+        max-width: calc(100% - 10px) !important;
+      }
+      
+      .outer-padding {
+        padding: 5px !important;
+      }
+      
+      .content-table {
+        padding: 20px 12px !important; /* Further reduced padding */
+      }
+      
+      .otp-code {
+        font-size: 24px !important;
+        letter-spacing: 0.05em !important; /* Reduced letter spacing */
+      }
+      
+      .brand-name {
+        font-size: 22px !important;
+      }
+      
+      .otp-container {
+        padding: 14px 10px !important;
+      }
+      
+      .info-container {
+        padding: 10px 6px !important;
+      }
+    }
+
+    /* Extreme mobile optimization */
+    @media only screen and (max-width: 320px) {
+      .container-table {
+        width: calc(100% - 6px) !important;
+        max-width: calc(100% - 6px) !important;
+      }
+      
+      .outer-padding {
+        padding: 3px !important;
+      }
+      
+      .content-table {
+        padding: 16px 8px !important;
+      }
+      
+      .otp-code {
+        font-size: 20px !important;
+        letter-spacing: 0.03em !important;
+      }
+    }
+
+    /* Dark mode support */
+    @media (prefers-color-scheme: dark) {
+      .light-text {
+        color: #f5f5f5 !important;
+      }
     }
   </style>
 </head>
-<body>
-  <div class="container">
-    <h2>Hello,</h2>
-    <p>You recently requested to reset your password.</p>
-    <p>Use the following One-Time Password (OTP) to proceed:</p>
-    <div class="code">{{code}}</div>
-    <p>This code is valid for 5 minutes.</p>
-    <p>If you did not request this, please ignore this email.</p>
-    <div class="footer">
-      &copy; {{year}} Your App Name. All rights reserved.
-    </div>
-  </div>
+<body style="margin: 0; padding: 0; background-color: #161618; color: #f5f5f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; width: 100%;">
+  <!-- Outer container -->
+  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #161618; margin: 0; padding: 0; min-height: 100vh;">
+    <tr>
+      <td align="center" valign="top" class="outer-padding" style="padding: 20px;">
+        
+        <!-- Main container -->
+        <table cellpadding="0" cellspacing="0" border="0" class="container-table" style="background-color: #1a1a1c; border: 1px solid #d64545; border-radius: 16px; margin: 0 auto; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5); width: 100%; max-width: 520px;">
+          <tr>
+            <td class="content-table" style="padding: 40px 32px;">
+              
+              <!-- Logo Section -->
+              <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 32px;">
+                <tr>
+                  <td align="center" style="padding: 0;">
+                    <!-- Logo container -->
+                    <table cellpadding="0" cellspacing="0" border="0" style="margin: 0 auto 16px auto;">
+                      <tr>
+                        <td align="center" valign="middle" class="logo-container" style="width: 72px; height: 72px; background-color: #1a1a1c; border: 1px solid #d64545; border-radius: 50%; text-align: center;">
+                          <div class="logo-inner" style="width: 40px; height: 40px; background: linear-gradient(45deg, #d64545, #ff6b6b); border-radius: 8px; margin: 0 auto; display: inline-block;"></div>
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <!-- Brand name -->
+                    <h1 class="brand-name light-text" style="font-size: 28px; font-weight: bold; color: #f5f5f5; margin: 0 0 8px 0; text-align: center; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">TixCiné</h1>
+                    
+                    <!-- Subtitle -->
+                    <p style="color: #888; font-size: 16px; margin: 0; text-align: center; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">Premium Movie Experience</p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Main Content -->
+              <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 32px;">
+                <tr>
+                  <td align="center" style="padding: 0;">
+                    
+                    <!-- Greeting -->
+                    <h2 class="main-title light-text" style="font-size: 20px; font-weight: 600; color: #f5f5f5; margin: 0 0 16px 0; text-align: center; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">Verification Required</h2>
+                    
+                    <!-- Message -->
+                    <p class="main-text" style="color: #888; font-size: 16px; margin: 0 0 24px 0; text-align: center; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.5;">
+                      We've received a request to verify your account. Please use the One-Time Password below to complete the verification process.
+                    </p>
+
+                    <!-- OTP Container -->
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 24px 0; background-color: #262628; border: 1px solid #404040; border-radius: 12px;">
+                      <tr>
+                        <td class="otp-container" style="padding: 24px; text-align: center;">
+                          <!-- OTP Label -->
+                          <p style="font-size: 14px; font-weight: 500; color: #888; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.05em; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">Your OTP Code</p>
+                          
+                          <!-- OTP Code -->
+                          <p class="otp-code" style="font-size: 36px; font-weight: bold; color: #d64545; margin: 0; letter-spacing: 0.1em; font-family: 'Courier New', monospace; word-break: break-all;">{{code}}</p>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Validity Information -->
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 24px 0; background-color: rgba(214, 69, 69, 0.1); border: 1px solid #d64545; border-radius: 8px;">
+                      <tr>
+                        <td class="info-container" style="padding: 16px; text-align: center;">
+                          <p style="color: #d64545; font-size: 14px; font-weight: 500; margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">⏰ This code expires in 5 minutes</p>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Security Notice -->
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 24px 0; background-color: rgba(136, 136, 136, 0.1); border: 1px solid #404040; border-radius: 8px;">
+                      <tr>
+                        <td class="info-container" style="padding: 16px; text-align: center;">
+                          <p class="main-text" style="color: #888; font-size: 14px; margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.4;">
+                            🔒 If you didn't request this verification, please ignore this email and ensure your account is secure.
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Additional Message -->
+                    <p class="main-text" style="color: #888; font-size: 16px; margin: 0; text-align: center; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.5;">
+                      For your security, never share this code with anyone. Our team will never ask for your OTP via phone or email.
+                    </p>
+
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Footer -->
+              <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-top: 1px solid #404040; padding-top: 24px; margin-top: 32px;">
+                <tr>
+                  <td align="center" style="padding: 0;">
+                    <p class="footer-text" style="font-size: 12px; color: #888; margin: 0; text-align: center; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.4;">
+                      &copy; {{year}} <span style="color: #d64545; font-weight: 600;">TixCiné</span>. All rights reserved.<br>
+                      Your trusted partner for premium cinema experiences.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+            </td>
+          </tr>
+        </table>
+        
+      </td>
+    </tr>
+  </table>
 </body>
 </html>

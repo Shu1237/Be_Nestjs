@@ -4,30 +4,17 @@ import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
-
-import { Account } from './typeorm/entities/Account';
-import { Role } from './typeorm/entities/Roles';
-import { Employee } from './typeorm/entities/Employtee';
-import { Member } from './typeorm/entities/Member';
-import { MovieDate } from './typeorm/entities/Movie_date';
-import { MovieSchedule } from './typeorm/entities/Movie_schedule';
-import { MovieType } from './typeorm/entities/Movie_type';
-import { Invoice } from './typeorm/entities/Movie_Invoice';
-import { Movie } from './typeorm/entities/Movie';
-import { Schedule } from './typeorm/entities/Schedule';
-import { ShowDate } from './typeorm/entities/Show_date';
-import { Type } from './typeorm/entities/Type';
-import { RefreshToken } from './typeorm/entities/RefreshToken';
-
-import { EmployeesModule } from './employees/employees.module';
 import { AuthModule } from './auth/auth.module';
 import { TesterModule } from './tester/tester.module';
-import { OtpCode } from './typeorm/entities/OtpCode';
+import { EmployeesModule } from './employees/employees.module';
 import * as path from 'path';
-import { MemberModule } from './member/member.module';
+import { allEntities } from './typeorm';
+import { PassportModule } from '@nestjs/passport';
+import { MemberController } from './member/controllers/member.controller';
 
 @Module({
   imports: [
+    PassportModule,
     ConfigModule.forRoot({
       isGlobal: true,
     }),
@@ -38,37 +25,22 @@ import { MemberModule } from './member/member.module';
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
-      entities: [
-        Account,
-        Employee,
-        Member,
-        MovieDate,
-        MovieSchedule,
-        MovieType,
-        Invoice,
-        Movie,
-        Role,
-        Schedule,
-        ShowDate,
-        Type,
-        RefreshToken,
-        OtpCode,
-      ],
+      entities: allEntities,
       synchronize: false,
       autoLoadEntities: true,
     }),
     MailerModule.forRoot({
       transport: {
         host: process.env.MAIL_HOST,
-        port: parseInt(process.env.MAIL_PORT || '587', 10),
-        secure: false, // true nếu dùng port 465
+        port: parseInt(process.env.MAIL_PORT || '465', 10),
+        secure: false,
         auth: {
           user: process.env.GMAIL_USER,
           pass: process.env.GMAIL_PASS,
         },
       },
       defaults: {
-        from: `"BeMovie Team" <${process.env.MAIL_USER}>`,
+        from: `BeMovie Team 1-3`,
       },
       template: {
         dir: path.join(__dirname, '..', 'template'),
@@ -78,10 +50,10 @@ import { MemberModule } from './member/member.module';
         },
       },
     }),
-    EmployeesModule,
     AuthModule,
     TesterModule,
-    MemberModule,
+    EmployeesModule,
+    MemberController,
   ],
 })
 export class AppModule {}

@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthTesterController } from './controllers/auth-tester/auth-tester.controller';
-import { JwtAuthGuard } from 'src/guards/auth.guard';
+import { JwtAuthGuard } from 'src/guards/jwt.guard';
 import { JwtModule } from '@nestjs/jwt';
 
 @Module({

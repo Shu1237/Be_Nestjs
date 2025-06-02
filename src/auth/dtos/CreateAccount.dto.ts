@@ -7,62 +7,76 @@ import {
   Matches,
   IsOptional,
   IsNumber,
+  IsBoolean,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform, Type } from 'class-transformer';
 
 export class CreateAccountDto {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
-  ADDRESS: string;
+  address: string;
 
   @ApiProperty()
   @IsDateString()
+  @Transform(({ value }) => new Date(value).toISOString().split('T')[0]) // Chuyển đổi sang định dạng YYYY-MM-DD
+
   @IsNotEmpty()
-  DATE_OF_BIRTH: Date;
+  date_of_birth: Date;
 
   @ApiProperty()
   @IsEmail()
   @IsNotEmpty()
-  EMAIL: string;
+  email: string;
 
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
-  FULL_NAME: string;
+  full_name: string;
 
   @ApiProperty()
-  @IsNumber()
+  @IsBoolean()
   @IsNotEmpty()
-  GENDER: number;
+  gender: boolean;
 
   @ApiProperty()
   @IsString()
+  @IsNotEmpty()
   @Length(9, 12)
-  IDENTITY_CARD: string;
+  identity_card: string;
 
   @ApiPropertyOptional()
   @IsString()
   @IsOptional()
-  IMAGE?: string;
-
-  @ApiProperty()
-  @IsString()
-  @Length(6, 32)
-  PASSWORD: string;
-
-  @ApiProperty()
-  @IsString()
-  @Matches(/^\d{10,11}$/, { message: 'PHONE_NUMBER must be 10-11 digits' })
-  PHONE_NUMBER: string;
+  @IsNotEmpty()
+  image?: string;
 
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
-  USERNAME: string;
+  @Length(6, 32)
+  password: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  @Matches(/^\d{10,11}$/, { message: 'phone_number must be 10-11 digits' })
+  phone_number: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  username: string;
 
   @ApiPropertyOptional({ default: 1, description: '1: User, 2: Employee, 3: Admin' })
   @IsOptional()
   @IsNumber()
-  ROLE_ID?: number;
+  role_id?: number;
 }
+//     @ApiPropertyOptional({ default: 1, description: '1: User, 2: Employee, 3: Admin' })
+//   @IsOptional()
+//   @Type(() => Number)
+//   @IsNumber()
+//   role_id?: number;
+// }

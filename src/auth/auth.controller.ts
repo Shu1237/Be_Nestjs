@@ -1,6 +1,7 @@
 import {
   Body, Controller, Delete, Get, Param, Post,
-  UseGuards, Request, ParseIntPipe
+  UseGuards, Request, ParseIntPipe,
+  Req
 } from '@nestjs/common';
 import {
   ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags
@@ -8,18 +9,25 @@ import {
 import { AuthService } from './auth.service';
 import { CreateAccountDto } from './dtos/CreateAccount.dto';
 import { LoginDto } from './dtos/Login.dto';
-import { JwtAuthGuard } from 'src/guards/auth.guard';
+import { JwtAuthGuard } from 'src/guards/jwt.guard';
 
 import { ForgotPasswordDto } from './dtos/ForgotPassword.dto';
 import { VerifyOtpDto } from './dtos/VerifyOTP.dto';
 import { ChangePasswordOtpDto } from './dtos/ChangePasswordOPT.dto';
 import { ChangePasswordDto } from './dtos/ChangePassword';
+import { AuthGuard } from '@nestjs/passport';
+import { LoginGoogleDto } from './dtos/LoginGoogle.dto';
+import { LogoutDto } from './dtos/Logout.dto';
+import { RefreshTokenDto } from './dtos/RefreshToken.dto';
+import { LocalGuard } from 'src/guards/local.guard';
+import { RefreshGuard } from 'src/guards/refresh-token.guard';
+import { GoogleAuthGuard } from 'src/guards/google.guard';
 
 
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService) { }
 
   @Post('register')
   @ApiOperation({ summary: 'Register new account' })
@@ -29,55 +37,66 @@ export class AuthController {
     return this.authService.createAccount(data);
   }
 
+
+
+  //Login google
+  @UseGuards(GoogleAuthGuard)
+  @Get('google/login')
+  googleLogin() { }
+
+  @UseGuards(GoogleAuthGuard)
+  @Get('google/callback')
+  async googleCallback(@Req() req) {
+   return this.authService.login(req.user);
+  }
+
+  @UseGuards(LocalGuard)
   @Post('login')
   @ApiOperation({ summary: 'Login with credentials' })
   @ApiBody({ type: LoginDto })
   @ApiResponse({ status: 200, description: 'Login successful' })
-  login(@Body() data: LoginDto) {
-    return this.authService.login(data);
-  }
-
-  @Post('refreshToken')
-  @ApiOperation({ summary: 'Refresh JWT using refresh token' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        refreshToken: { type: 'string' },
-      },
-      required: ['refreshToken'],
-    },
-  })
-  refreshToken(@Body() data: { refreshToken: string }) {
-    return this.authService.refreshToken(data.refreshToken);
+  login(@Request() req) {
+    // console.log(req.user);
+    return this.authService.login(req.user);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('refreshToken')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get all refresh tokens (admin only)' })
-  getAllRefreshTokens(@Request() req) {
-    return this.authService.getAllRefreshTokens(req.user);
+  getAllRefreshTokens() {
+    return this.authService.getAllRefreshTokens();
   }
 
-  @UseGuards(JwtAuthGuard)
+
+  @UseGuards(RefreshGuard)
+  @Post('refreshToken')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Refresh JWT using refresh token' })
+  @ApiBody({ type: RefreshTokenDto })
+  refreshToken(@Request() req) {
+    return this.authService.refreshToken(req.user);
+  }
+
+  
+
   @Delete('refreshToken/:id')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete a refresh token by ID' })
   deleteRefreshToken(
-    @Param('id', ParseIntPipe) refreshTokenId: number,
-    @Request() req,
-  ) {
-    return this.authService.deleteRefreshToken(refreshTokenId, req.user);
+    @Param('id', ParseIntPipe) refreshTokenId: number) {
+    return this.authService.deleteRefreshToken(refreshTokenId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('logout')
   @ApiBearerAuth()
+  @ApiBody({ type: LogoutDto })
   @ApiOperation({ summary: 'Logout current session' })
-  logout(@Body() body: { refreshToken: string }, @Request() req) {
-    return this.authService.logout(body.refreshToken, req.user);
+  logout(@Body() data: LogoutDto, @Request() req) {
+    return this.authService.logout(data, req.user);
   }
+
 
   @Post('forgotPassword')
   @ApiOperation({ summary: 'Send OTP to email for password reset' })
@@ -91,9 +110,8 @@ export class AuthController {
   @ApiBody({ type: VerifyOtpDto })
   verifyOtp(
     @Body('otp', ParseIntPipe) otp: number,
-    @Body('email') email: string
   ) {
-    return this.authService.verifyOtp(otp, email);
+    return this.authService.verifyOtp(otp);
   }
 
   @Post('changePassword')
