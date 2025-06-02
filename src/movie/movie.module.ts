@@ -5,8 +5,8 @@ import { JwtModule } from '@nestjs/jwt'; // Import JwtModule
 import { Movie } from 'src/typeorm/entities/cinema/movie';
 import { MovieController } from './movie.controller';
 import { MovieService } from './movie.service';
-import { JwtAuthGuard } from 'src/guards/jwt.guard';
-import { RolesGuard } from 'src/guards/roles.guard';
+
+
 
 @Module({
   imports: [
@@ -14,6 +14,6 @@ import { RolesGuard } from 'src/guards/roles.guard';
     JwtModule.register({}), // Import JwtModule
   ],
   controllers: [MovieController],
-  providers: [MovieService, JwtAuthGuard, RolesGuard], 
+  providers: [MovieService], 
 })
 export class MovieModule {}

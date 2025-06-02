@@ -9,6 +9,7 @@ import {
   ParseIntPipe,
   UseGuards,
   Patch,
+  Req,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -22,25 +23,32 @@ import { MovieService } from './movie.service';
 import { MovieDTO } from './dtos/movie.dto';
 import { Movie } from 'src/typeorm/entities/cinema/movie';
 
-
-import { RolesGuard } from 'src/guards/roles.guard';
 import { JwtAuthGuard } from 'src/guards/jwt.guard';
+import { Role } from 'src/enum/roles.enum';
+import { JWTUserType } from 'src/utils/type';
 
 @ApiTags('Movies')
+@ApiBearerAuth() 
 @Controller('movies')
 export class MovieController {
-  constructor(private readonly movieService: MovieService) { }
+  constructor(private readonly movieService: MovieService) {}
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard)
   @Post()
   @ApiOperation({ summary: 'Create a new movie' })
   @ApiResponse({ status: 201, description: 'Movie created successfully.', type: Movie })
   @ApiResponse({ status: 400, description: 'Invalid input.' })
   @ApiBody({ type: MovieDTO })
-  createMovie(@Body() movieDto: MovieDTO) {
+  createMovie(@Body() movieDto: MovieDTO,@Req() req) {
+    const user = req.user as JWTUserType;
+    if(user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) { 
+      return {
+        statusCode: 403,
+        message: 'Unauthorized: Only admin or employee can create a movie.',
+      }
+    }
     return this.movieService.createMovie(movieDto);
   }
-
 
   @Get()
   @ApiOperation({ summary: 'Get all movies' })
@@ -57,34 +65,52 @@ export class MovieController {
     return this.movieService.getMovieById(id);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard)
   @Put(':id')
   @ApiOperation({ summary: 'Update movie by ID (admin, employee only)' })
   @ApiResponse({ status: 200, description: 'Movie updated successfully.', type: Movie })
   @ApiResponse({ status: 404, description: 'Movie not found.' })
   @ApiBody({ type: MovieDTO })
-  updateMovie(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() movieDto: MovieDTO,
-  ){
+  updateMovie( @Param('id', ParseIntPipe) id: number, @Body() movieDto: MovieDTO,@Req() req) {
+   const user = req.user as JWTUserType;
+    if(user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) { 
+        return {
+        statusCode: 403,
+        message: 'Unauthorized: Only admin or employee can update a movie.',
+      }
+    }
     return this.movieService.updateMovie(id, movieDto);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard)
   @Delete(':id')
   @ApiOperation({ summary: 'Hard delete a movie by ID (admin, employee only)' })
   @ApiResponse({ status: 200, description: 'Movie deleted successfully.' })
   @ApiResponse({ status: 404, description: 'Movie not found.' })
-  deleteMovie(@Param('id', ParseIntPipe) id: number){
+  deleteMovie(@Param('id', ParseIntPipe) id: number, @Req() req) {
+     const user = req.user as JWTUserType;
+    if(user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) { 
+       return {
+        statusCode: 403,
+        message: 'Unauthorized: Only admin or employee can delete a movie.',
+      }
+    }
     return this.movieService.deleteMovie(id);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard)
   @Patch(':id')
   @ApiOperation({ summary: 'Soft delete a movie by ID (admin, employee only)' })
   @ApiResponse({ status: 200, description: 'Movie soft-deleted successfully.' })
   @ApiResponse({ status: 404, description: 'Movie not found.' })
-  softDeleteMovie(@Param('id', ParseIntPipe) id: number) {
+  softDeleteMovie(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    const user = req.user as JWTUserType;
+    if(user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) { 
+        return {
+        statusCode: 403,
+        message: 'Unauthorized: Only admin or employee can soft delete a movie.',
+      }
+    }
     return this.movieService.softDeleteMovie(id);
   }
 }
