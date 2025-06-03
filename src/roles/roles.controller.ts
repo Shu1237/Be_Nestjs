@@ -7,7 +7,8 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { Role } from '../enum/roles.enum';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from 'src/guards/jwt.guard';
+
 
 
 

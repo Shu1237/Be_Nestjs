@@ -12,6 +12,7 @@ export class RefreshToken {
 
   @Column({ type: 'text' })
   refresh_token: string;
+
   
   @Column({ type: 'boolean', default: false })
   revoked: boolean;
