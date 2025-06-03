@@ -14,20 +14,22 @@ import { MovieModule } from './movie/movie.module';
 
 @Module({
   imports: [
-    PassportModule,
     ConfigModule.forRoot({
       isGlobal: true,
     }),
     TypeOrmModule.forRoot({
-      type: process.env.DB_TYPE as any,
+      type: 'mysql',
       host: process.env.DB_HOST,
       port: parseInt(process.env.DB_PORT || '3306', 10),
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
       entities: allEntities,
-      synchronize: false,
+      synchronize: true,
       autoLoadEntities: true,
+    }),
+    PassportModule.register({
+      defaultStrategy: 'jwt',
     }),
     MailerModule.forRoot({
       transport: {
@@ -53,7 +55,7 @@ import { MovieModule } from './movie/movie.module';
     AuthModule,
     TesterModule,
     UserModule,
-    MovieModule
+    MovieModule,
   ],
 })
 export class AppModule {}
