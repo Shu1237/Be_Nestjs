@@ -1,12 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, DataSource } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Order } from 'src/typeorm/entities/order/order';
 import { OrderDetail } from 'src/typeorm/entities/order/order-detail';
 import { PaymentMethod } from 'src/typeorm/entities/order/payment-method';
 import { Transaction } from 'src/typeorm/entities/order/transaction';
-import { v4 as uuidv4 } from 'uuid';
-import { JWTUserType, OrderBill } from 'src/utils/type';
+import { JWTUserType, OrderBillType, SeatInfo } from 'src/utils/type';
 import { User } from 'src/typeorm/entities/user/user';
 import { Seat } from 'src/typeorm/entities/cinema/seat';
 import { SeatType } from 'src/typeorm/entities/cinema/seat-type';
@@ -15,6 +14,7 @@ import { Schedule } from 'src/typeorm/entities/cinema/schedule';
 import { Ticket } from 'src/typeorm/entities/order/ticket';
 import { TicketType } from 'src/typeorm/entities/order/ticket-type';
 import { MomoService } from './payment-menthod/momo/momo.service';
+import { Member } from 'src/typeorm/entities/user/member';
 
 
 @Injectable()
@@ -42,20 +42,26 @@ export class OrderService {
     private ticketRepository: Repository<Ticket>,
     @InjectRepository(TicketType)
     private ticketTypeRepository: Repository<TicketType>,
+    @InjectRepository(Member)
+    private memberRepository: Repository<Member>,
     private readonly momoService: MomoService,
   ) { }
 
-  async getUserById(userId: string): Promise<User> {
-    const user = await this.userRepository.findOne({ where: { id: userId } });
+  async getUserById(userId: string) {
+    const user = await this.userRepository.findOne({
+      where: { id: userId }
+      , relations: ['member']
+    }
+    );
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
     return user;
   }
 
-  async getSeatById(seatId: string): Promise<Seat> {
+  async getSeatById(seatId: string, seatRow: string, seatColumn: string) {
     const seat = await this.seatRepository.findOne({
-      where: { id: seatId },
+      where: { id: seatId, seat_row: seatRow, seat_column: seatColumn },
       relations: ['seatType', 'cinemaRoom'],
     });
     if (!seat) {
@@ -64,7 +70,7 @@ export class OrderService {
     return seat;
   }
 
-  async getPromotionById(promotionId: number): Promise<Promotion> {
+  async getPromotionById(promotionId: number) {
     const promotion = await this.promotionRepository.findOne({
       where: { id: promotionId },
     });
@@ -74,7 +80,7 @@ export class OrderService {
     return promotion;
   }
 
-  async getScheduleById(scheduleId: number): Promise<Schedule> {
+  async getScheduleById(scheduleId: number) {
     const schedule = await this.scheduleRepository.findOne({
       where: { id: scheduleId },
     });
@@ -83,17 +89,17 @@ export class OrderService {
     }
     return schedule;
   }
-async getOrderById(orderId: number) {
+  async getOrderById(orderId: number) {
     const order = await this.orderRepository.findOne({
       where: { id: orderId },
-      relations:['transaction']
+      relations: ['transaction']
     });
     if (!order) {
       throw new NotFoundException(`Order with ID ${orderId} not found`);
     }
     return order;
   }
-  async getTransactionById(transactionId: number): Promise<Transaction> {
+  async getTransactionById(transactionId: number) {
     const transaction = await this.transactionRepository.findOne({
       where: { id: transactionId },
       relations: ['order', 'paymentMethod'],
@@ -104,7 +110,7 @@ async getOrderById(orderId: number) {
     return transaction;
   }
 
-  async getTicketTypeByAudienceType(audienceType: string): Promise<TicketType> {
+  async getTicketTypeByAudienceType(audienceType: string) {
     const ticketType = await this.ticketTypeRepository.findOne({
       where: { audience_type: audienceType },
     });
@@ -114,37 +120,19 @@ async getOrderById(orderId: number) {
     return ticketType;
   }
 
-  async createOrder(userData: JWTUserType) {
+  async createOrder(userData: JWTUserType, orderBill: OrderBillType) {
+
     try {
-      // Get user
-      const user = await this.getUserById('e18f46c3-77ba-4eec-9b89-e0237710f2b1')
-
-      // Mock order data (consider moving to DTO)
-      const orderBill: OrderBill = {
-        payment_method: 'momo',
-        status: 'pending',
-        booking_date: new Date(),
-        add_score: 100,
-        use_score: 0,
-        total_prices: "20000",
-        user,
-        promotion: 1,
-        schedule_id: 1,
-        seats: [
-          { id: 'A1', seat_row: 'A', seat_column: '1', audience_type: 'adult' },
-          { id: 'A2', seat_row: 'A', seat_column: '2', audience_type: 'student' },
-          { id: 'A3', seat_row: 'A', seat_column: '3', audience_type: 'student' },
-        ],
-      };
-
-      // Validate promotion and schedule
+      const user = await this.getUserById(userData.account_id)
       const [promotion, schedule] = await Promise.all([
-        this.getPromotionById(orderBill.promotion),
+        this.getPromotionById(orderBill.promotion_id),
         this.getScheduleById(orderBill.schedule_id),
       ]);
 
+
       // Fetch and validate seats
-      const seatIds = orderBill.seats.map(seat => seat.id);
+      const seatIds = orderBill.seats.map((seat: SeatInfo) => seat.id);
+
       const seats = await this.seatRepository.find({
         where: { id: In(seatIds) },
         relations: ['seatType'],
@@ -170,24 +158,35 @@ async getOrderById(orderId: number) {
           return seatPrice * (1 - discount / 100);
         })
       );
-      // totalPrice = ticketPrices.reduce((sum, price) => sum + price, 0);
 
-      // Create order
-      const newOrder = await this.orderRepository.save({
-        booking_date: orderBill.booking_date,
-        add_score: orderBill.add_score,
-        use_score: orderBill.use_score,
-        total_prices: orderBill.total_prices,
-        status: orderBill.status,
-        user,
-        promotion,
-      });
+
+      totalPrice = ticketPrices.reduce((sum, price) => sum + price, 0);
+      const inputTotal = parseFloat(orderBill.total_prices);
+      if (Math.abs(totalPrice - inputTotal) > 0.01) {
+        throw new BadRequestException('Total price mismatch. Please refresh and try again.');
+      }
+      // 1d = 1000 vnd
+      const totalScore = Math.floor(Number(orderBill.total_prices) / 1000);
+
 
       // Create Momo payment
       const paymentCode = await this.momoService.createPayment(orderBill.total_prices);
       if (!paymentCode || !paymentCode.payUrl) {
         throw new BadRequestException('Failed to create Momo payment');
       }
+      // Create order
+      const newOrder = await this.orderRepository.save({
+        booking_date: orderBill.booking_date,
+        add_score: totalScore,
+        total_prices: orderBill.total_prices,
+        status: 'pending',
+        user,
+        promotion,
+      });
+      // add score to member
+      await this.memberRepository.update(user.member.id, {
+        score: totalScore
+      });
 
       // Create transaction
       const paymentMethod = await this.paymentMethodRepository.findOne({
@@ -196,6 +195,7 @@ async getOrderById(orderId: number) {
       if (!paymentMethod) {
         throw new NotFoundException(`Payment method ${orderBill.payment_method} not found`);
       }
+
 
       const transaction = await this.transactionRepository.save({
         transaction_code: paymentCode.orderId,
