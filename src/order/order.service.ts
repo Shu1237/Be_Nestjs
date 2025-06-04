@@ -117,7 +117,7 @@ async getOrderById(orderId: number) {
   async createOrder(userData: JWTUserType) {
     try {
       // Get user
-      const user = await this.getUserById('ff519085-34d3-4a7b-94e6-7162f1202cf0')
+      const user = await this.getUserById('e18f46c3-77ba-4eec-9b89-e0237710f2b1')
 
       // Mock order data (consider moving to DTO)
       const orderBill: OrderBill = {
@@ -131,9 +131,9 @@ async getOrderById(orderId: number) {
         promotion: 1,
         schedule_id: 1,
         seats: [
-          { id: 'A4', seat_row: 'A', seat_column: '1', audience_type: 'adult' },
-          { id: 'A5', seat_row: 'A', seat_column: '2', audience_type: 'student' },
-          { id: 'A6', seat_row: 'A', seat_column: '3', audience_type: 'student' },
+          { id: 'A1', seat_row: 'A', seat_column: '1', audience_type: 'adult' },
+          { id: 'A2', seat_row: 'A', seat_column: '2', audience_type: 'student' },
+          { id: 'A3', seat_row: 'A', seat_column: '3', audience_type: 'student' },
         ],
       };
 

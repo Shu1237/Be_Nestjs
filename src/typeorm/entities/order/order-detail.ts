@@ -5,8 +5,8 @@ import { Ticket } from "./ticket";
 
 @Entity('order_detail')
 export class OrderDetail {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
 
   @Column({ type: 'decimal', nullable: false, precision: 10, scale: 2 })
