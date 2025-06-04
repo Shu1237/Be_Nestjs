@@ -21,10 +21,10 @@ export class Transaction {
   transaction_date: Date;
 
   @Column({ type: 'decimal', nullable: false, precision: 10, scale: 2 })
-  prices: number;
+  prices: string;
 
-  @Column({ type: 'boolean', nullable: false })
-  status: boolean;
+  @Column({ type: 'varchar', nullable: false })
+  status: string;
 
   @OneToOne(() => Order, (order) => order.transaction)
   @JoinColumn({ name: 'order_id' })

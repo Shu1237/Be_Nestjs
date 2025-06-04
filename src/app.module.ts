@@ -11,6 +11,7 @@ import { allEntities } from './typeorm';
 import { PassportModule } from '@nestjs/passport';
 import { UserModule } from './member/user.module';
 import { MovieModule } from './movie/movie.module';
+import { OrderModule } from './order/order.module';
 
 @Module({
   imports: [
@@ -26,7 +27,7 @@ import { MovieModule } from './movie/movie.module';
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
       entities: allEntities,
-      synchronize: false,
+      synchronize: true,
       autoLoadEntities: true,
     }),
     MailerModule.forRoot({
@@ -53,7 +54,8 @@ import { MovieModule } from './movie/movie.module';
     AuthModule,
     TesterModule,
     UserModule,
-    MovieModule
+    MovieModule,
+    OrderModule
   ],
 })
 export class AppModule {}

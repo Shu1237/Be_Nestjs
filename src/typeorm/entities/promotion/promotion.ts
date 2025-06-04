@@ -3,7 +3,7 @@ import { Order } from '../order/order';
 
 @Entity('promotion')
 export class Promotion {
-  @PrimaryGeneratedColumn({ type: 'int' })
+  @PrimaryGeneratedColumn()
   id: number;
 
   @Column({ type: 'varchar', nullable: false })
@@ -12,8 +12,8 @@ export class Promotion {
   @Column({ type: 'varchar', nullable: true })
   detail?: string;
 
-  @Column({ type: 'int', nullable: false })
-  discount_level: number;
+  @Column({ type: 'varchar', nullable: false })
+  discount_level: string;
 
   @Column({ type: 'datetime', nullable: true })
   start_time?: Date;
@@ -22,7 +22,7 @@ export class Promotion {
   end_time?: Date;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
-  exchange?: number;
+  exchange?: string;
 
 
   @OneToMany(() => Order, (order) => order.promotion)

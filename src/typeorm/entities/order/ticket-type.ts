@@ -11,7 +11,10 @@ export class TicketType {
   ticket_name: string;
 
   @Column({ type: 'decimal', nullable: false, precision: 10, scale: 2 })
-  discount: number;
+  discount: string;
+
+  @Column({ type: 'varchar', nullable: false })
+  audience_type: string; 
 
   @Column({ type: 'varchar', nullable: true })
   ticket_description?: string;
