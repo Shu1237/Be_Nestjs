@@ -1,3 +1,5 @@
+import { User } from "src/typeorm/entities/user/user";
+
 export type CreateAccountType = {
     address: string;
     date_of_birth: Date;
@@ -49,4 +51,42 @@ export type IMovie = {
   thumbnail: string;
   banner: string;
   version?: string;
+}
+
+
+export type OrderType ={
+      booking_date: Date;
+  add_score: number;
+  use_score: number;
+  total_prices: number;
+  status: string;
+  user: any;
+  promotion?: any;
+}
+export type PromotionType ={
+    title: string;
+    detail?: string;
+    discount_level: string;
+    start_time?: Date;
+    end_time?: Date;
+    exchange?: string;
+}
+export type SeatData = {
+  id: string;
+  seat_row: string;
+  seat_column: string;
+  audience_type: string;
+}
+
+export type OrderBill = {
+  payment_method: string;
+  status: string;
+  booking_date: Date;
+  add_score: number;
+  use_score: number;
+  total_prices: string;
+  user: User;
+  promotion: number;
+  schedule_id: number;
+  seats: SeatData[];
 }
