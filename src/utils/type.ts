@@ -25,68 +25,79 @@ export type changePasswordType = {
     newPassword: string;
     token: string;
 }
-export type  RefreshTokenType = {
+export type RefreshTokenType = {
     refresh_token: string;
 }
 export type JWTUserType = {
     account_id: string;
     username: string;
-    role_id: number; 
+    role_id: number;
 }
 
 export type GoogleUserType = {
     email: string;
     avatarUrl: string;
-    password?: string; 
+    password?: string;
 }
 
 export type IMovie = {
-  name: string;
-  content: string;
-  director: string;
-  duration: number;
-  from_date: Date;
-  to_date: Date;
-  production_company: string;
-  thumbnail: string;
-  banner: string;
-  version?: string;
+    name: string;
+    content: string;
+    director: string;
+    duration: number;
+    from_date: Date;
+    to_date: Date;
+    production_company: string;
+    thumbnail: string;
+    banner: string;
+    version?: string;
 }
 
 
-export type OrderType ={
-      booking_date: Date;
-  add_score: number;
-  use_score: number;
-  total_prices: number;
-  status: string;
-  user: any;
-  promotion?: any;
+
+
+export type SeatInfo = {
+    id: string;
+    seat_row: string;
+    seat_column: string;
+    audience_type: 'adult' | 'student' | 'child';
 }
-export type PromotionType ={
+
+export type OrderBillType = {
+    payment_method: string;
+    booking_date: Date;
+    total_prices: string;
+    promotion_id: number;
+    schedule_id: number;
+    seats: SeatInfo[];
+}
+
+
+
+export type CreatePromotionType = {
     title: string;
     detail?: string;
     discount_level: string;
-    start_time?: Date;
-    end_time?: Date;
+    start_time?: string;  
+    end_time?: string;
     exchange?: string;
-}
-export type SeatData = {
-  id: string;
-  seat_row: string;
-  seat_column: string;
-  audience_type: string;
-}
+    code: string;
+    is_active?: boolean;
+};
 
-export type OrderBill = {
-  payment_method: string;
-  status: string;
-  booking_date: Date;
-  add_score: number;
-  use_score: number;
-  total_prices: string;
-  user: User;
-  promotion: number;
-  schedule_id: number;
-  seats: SeatData[];
-}
+export type UpdatePromotionType = {
+  title?: string;
+  detail?: string;
+  discount?: string;
+  start_time?: string;
+  end_time?: string;
+  exchange?: string;
+  code?: string;
+  is_active?: boolean;
+};
+
+
+export type ChangePromotionType = {
+  id: number;
+  exchange: number;
+};

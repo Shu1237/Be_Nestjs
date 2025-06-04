@@ -2,37 +2,36 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req, Quer
 import { OrderService } from './order.service';
 import { MomoService } from './payment-menthod/momo/momo.service';
 import { JwtAuthGuard } from 'src/guards/jwt.guard';
-import { JWTUserType } from 'src/utils/type';
 import { Response } from 'express';
+import { CreateOrderBillDto } from './dto/order-bill.dto';
+import { ApiOperation, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 
 
 
 @Controller('order')
+
 export class OrderController {
   constructor(private readonly orderService: OrderService,
     private readonly momoService: MomoService
   ) { }
 
-  // @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard)
   @Post()
-  createOrder(@Req() req) {
-    return this.orderService.createOrder(req.user);
+  @ApiOperation({ summary: 'Create a new order' })
+  @ApiBearerAuth()
+  @ApiBody({ type: CreateOrderBillDto })
+  @ApiResponse({ status: 201, description: 'Order created successfully' })
+  createOrder(@Body() body: CreateOrderBillDto, @Req() req) {
+    return this.orderService.createOrder(req.user, body);
   }
 
-  // @Post('momo')
-  // testMomoPayment() {
-  //   const total = "1000000"; // Example total amount
-  //   return this.momoService.createPayment(total);
-  // }
 
   @Get('payment/return')
+  @ApiOperation({ summary: 'Handle MoMo payment return' })
+  @ApiResponse({ status: 200, description: 'Return from MoMo handled' })
   async handleMomoReturn(@Query() query: any, @Res() res: Response) {
-    try {
-      const result = await this.momoService.handleReturn(query, res);
-      return res.json(result);
-    } catch (error) {
-      return res.status(400).json({ message: 'Payment processing failed', error: error.message });
-    }
+    const result = await this.momoService.handleReturn(res, query);
+    return res.send(result);
   }
 
 

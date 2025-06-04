@@ -12,6 +12,7 @@ import { PassportModule } from '@nestjs/passport';
 import { UserModule } from './member/user.module';
 import { MovieModule } from './movie/movie.module';
 import { OrderModule } from './order/order.module';
+import { PromotionModule } from './promotion/promotion.module';
 
 @Module({
   imports: [
@@ -55,7 +56,8 @@ import { OrderModule } from './order/order.module';
     TesterModule,
     UserModule,
     MovieModule,
-    OrderModule
+    OrderModule,
+    PromotionModule
   ],
 })
 export class AppModule {}

@@ -13,7 +13,10 @@ export class Promotion {
   detail?: string;
 
   @Column({ type: 'varchar', nullable: false })
-  discount_level: string;
+  code: string;
+
+  @Column({ type: 'varchar', nullable: false })
+  discount: string;
 
   @Column({ type: 'datetime', nullable: true })
   start_time?: Date;
@@ -24,7 +27,8 @@ export class Promotion {
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   exchange?: string;
 
-
+  @Column({ type: 'boolean', default: true })
+  is_active: boolean;
   @OneToMany(() => Order, (order) => order.promotion)
   orders: Order[];
 }
