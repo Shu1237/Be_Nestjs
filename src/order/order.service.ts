@@ -140,6 +140,7 @@ export class OrderService {
         relations: ['seatType'],
       });
 
+
       if (seats.length !== seatIds.length) {
         throw new NotFoundException('Some seats were not found');
       }
@@ -149,20 +150,34 @@ export class OrderService {
         throw new BadRequestException(`Seats ${unavailableSeats.map(s => s.id).join(', ')} are already booked`);
       }
 
-      // Calculate total price (consider moving to a separate method)
+
+      let discount = promotion.discount;
       let totalPrice = 0;
+
       const ticketPrices = await Promise.all(
         orderBill.seats.map(async seatData => {
           const seat = seats.find(s => s.id === seatData.id);
           const ticketType = await this.getTicketTypeByAudienceType(seatData.audience_type);
           const seatPrice = parseFloat(seat?.seatType.seat_type_price as any);
-          const discount = parseFloat(ticketType.discount as any);
-          return seatPrice * (1 - discount / 100);
+          const audienceDiscount = parseFloat(ticketType.discount as any);
+          return seatPrice * (1 - audienceDiscount / 100);
         })
       );
 
+      const subTotal = ticketPrices.reduce((sum, price) => sum + price, 0);
 
-      totalPrice = ticketPrices.reduce((sum, price) => sum + price, 0);
+      if (Number(discount) === 0) {
+        totalPrice = subTotal;
+      } else {
+        const promotionDiscount = parseFloat(discount as any); 
+        totalPrice = subTotal * (1 - promotionDiscount / 100);
+      }
+
+
+
+      // Calculate total price (consider moving to a separate method)
+
+
       const inputTotal = parseFloat(orderBill.total_prices);
       if (Math.abs(totalPrice - inputTotal) > 0.01) {
         throw new BadRequestException('Total price mismatch. Please refresh and try again.');
@@ -189,8 +204,8 @@ export class OrderService {
 
       }
       if (Number(orderBill.payment_method_id) === 3) {
-        paymentCode= await this.paypalService.createOrderPaypal(orderBill.total_prices);
-        if (!paymentCode ) {
+        paymentCode = await this.paypalService.createOrderPaypal(orderBill.total_prices);
+        if (!paymentCode) {
           throw new BadRequestException('Failed to create PayPal payment');
         }
       }
