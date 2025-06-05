@@ -33,7 +33,7 @@ async function bootstrap() {
   await app.listen(3001, '0.0.0.0', () =>
     console.log(
       'Server is running on port 3001' +
-      '\nSwagger UI is available at http://<your-public-ip-or-dns>:3001/api'
+      '\nSwagger UI is available at http://ec2-16-176-182-83.ap-southeast-2.compute.amazonaws.com:3001/api'
     )
   );
 }
