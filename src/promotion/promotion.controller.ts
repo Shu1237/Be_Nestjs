@@ -3,6 +3,8 @@ import { PromotionService } from './promotion.service';
 import { CreatePromotionDto } from './dto/create-promotion.dto';
 import { UpdatePromotionDto } from './dto/update-promotion.dto';
 import { JwtAuthGuard } from 'src/guards/jwt.guard';
+import { ApiBearerAuth, ApiOperation, ApiBody } from '@nestjs/swagger';
+import { ChangePromotionDto } from './dto/change-promotion.dto';
 
 
 @UseGuards(JwtAuthGuard)
@@ -37,8 +39,11 @@ export class PromotionController {
     return this.promotionService.deleteSoftPromotion(id);
   }
 
-  // @Post('changePromotion')
-  // changePromotion(@Body() body: { id: number, exchange: number }, @Req() req) {
-  //   return this.promotionService.changePromotion(body, req.user);
-  // }
+  @Post('changePromotion')
+  @ApiBearerAuth() // Nếu dùng xác thực JWT
+  @ApiOperation({ summary: 'Đổi điểm lấy mã khuyến mãi' })
+  @ApiBody({ type: ChangePromotionDto })
+  changePromotion(@Body() body: ChangePromotionDto, @Req() req) {
+    return this.promotionService.changePromotion(body, req.user);
+  }
 }
