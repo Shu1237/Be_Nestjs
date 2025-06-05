@@ -16,12 +16,14 @@ import { TicketType } from 'src/typeorm/entities/order/ticket-type';
 import { Ticket } from 'src/typeorm/entities/order/ticket';
 import { Promotion } from 'src/typeorm/entities/promotion/promotion';
 import { Member } from 'src/typeorm/entities/user/member';
+import { PayPalModule } from './payment-menthod/paypal/paypal.module';
 
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Member,Promotion,Ticket,TicketType,Schedule,User,SeatType,Seat,Order, OrderDetail, Transaction, OrderProduct, PaymentMethod]),
     MomoModule, 
+    PayPalModule
   ],
   controllers: [OrderController],
   providers: [OrderService],

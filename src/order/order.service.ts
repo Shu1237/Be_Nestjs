@@ -15,6 +15,7 @@ import { Ticket } from 'src/typeorm/entities/order/ticket';
 import { TicketType } from 'src/typeorm/entities/order/ticket-type';
 import { MomoService } from './payment-menthod/momo/momo.service';
 import { Member } from 'src/typeorm/entities/user/member';
+import { PayPalService } from './payment-menthod/paypal/paypal.service';
 
 
 @Injectable()
@@ -45,6 +46,7 @@ export class OrderService {
     @InjectRepository(Member)
     private memberRepository: Repository<Member>,
     private readonly momoService: MomoService,
+    private readonly paypalService: PayPalService
   ) { }
 
   async getUserById(userId: string) {
@@ -166,35 +168,47 @@ export class OrderService {
         throw new BadRequestException('Total price mismatch. Please refresh and try again.');
       }
       // 1d = 1000 vnd
-      const totalScore = Math.floor(Number(orderBill.total_prices) / 1000);
-
-
+      // in member
+      // const totalScore = user.member.score + (Math.floor(Number(orderBill.total_prices) / 1000));
+      //in order
+      const orderScore = Math.floor(Number(orderBill.total_prices) / 1000);
+      // Create transaction
+      const paymentMethod = await this.paymentMethodRepository.findOne({
+        where: { id: Number(orderBill.payment_method_id) },
+      });
+      if (!paymentMethod) {
+        throw new NotFoundException(`Payment method ${orderBill.payment_method_id} not found`);
+      }
+      let paymentCode: any;
       // Create Momo payment
-      const paymentCode = await this.momoService.createPayment(orderBill.total_prices);
-      if (!paymentCode || !paymentCode.payUrl) {
-        throw new BadRequestException('Failed to create Momo payment');
+      if (Number(orderBill.payment_method_id) === 2) {
+        paymentCode = await this.momoService.createPayment(orderBill.total_prices);
+        if (!paymentCode) {
+          throw new BadRequestException('Failed to create Momo payment');
+        }
+
+      }
+      if (Number(orderBill.payment_method_id) === 3) {
+        paymentCode= await this.paypalService.createOrderPaypal(orderBill.total_prices);
+        if (!paymentCode ) {
+          throw new BadRequestException('Failed to create PayPal payment');
+        }
       }
       // Create order
       const newOrder = await this.orderRepository.save({
         booking_date: orderBill.booking_date,
-        add_score: totalScore,
+        add_score: orderScore,
         total_prices: orderBill.total_prices,
         status: 'pending',
         user,
         promotion,
       });
-      // add score to member
-      await this.memberRepository.update(user.member.id, {
-        score: totalScore
-      });
+      // // add score to member
+      // await this.memberRepository.update(user.member.id, {
+      //   score: totalScore
+      // });
 
-      // Create transaction
-      const paymentMethod = await this.paymentMethodRepository.findOne({
-        where: { name: orderBill.payment_method.toLowerCase() },
-      });
-      if (!paymentMethod) {
-        throw new NotFoundException(`Payment method ${orderBill.payment_method} not found`);
-      }
+
 
 
       const transaction = await this.transactionRepository.save({

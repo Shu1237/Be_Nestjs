@@ -30,9 +30,9 @@ class SeatInfoDto {
 }
 
 export class CreateOrderBillDto {
-  @ApiProperty({ example: 'momo', description: 'Payment method' })
+  @ApiProperty({ example: "1", description: 'Payment method ID' })
   @IsString()
-  payment_method: string;
+  payment_method_id: string;
 
   @ApiProperty({ example: '2025-06-04T10:00:00.000Z', description: 'Booking date' })
   @IsDate()

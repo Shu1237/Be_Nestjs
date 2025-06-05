@@ -64,7 +64,7 @@ export type SeatInfo = {
 }
 
 export type OrderBillType = {
-    payment_method: string;
+    payment_method_id: string;
     booking_date: Date;
     total_prices: string;
     promotion_id: number;
