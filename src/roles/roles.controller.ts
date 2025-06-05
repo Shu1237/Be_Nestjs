@@ -13,8 +13,9 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { Role } from '../enum/roles.enum';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+
 import { Request } from 'express';
+import { JwtAuthGuard } from 'src/guards/jwt.guard';
 
 interface RequestWithUser extends Request {
   user: {

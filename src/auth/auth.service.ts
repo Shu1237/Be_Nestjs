@@ -208,6 +208,12 @@ export class AuthService {
       secret: process.env.JWT_SECRET_KEY,
       expiresIn: process.env.JWT_EXPIRES_IN,
     });
+    const user = await this.userRepository.findOne({
+      where: { id: payload.account_id },
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
     // console.log('Access Token:', access_token);
     const refresh_token = uuidv4(); // Sử dụng UUID cho refresh token
     // console.log('Refresh Token:', refresh_token);
@@ -215,7 +221,7 @@ export class AuthService {
     await this.refreshTokenRepository.save({
       refresh_token: refresh_token,
       access_token: access_token,
-      user_id: payload.account_id,
+      user: user,
       revoked: false,
       expires_at: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
     });

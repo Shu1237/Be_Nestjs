@@ -11,6 +11,8 @@ import { allEntities } from './typeorm';
 import { PassportModule } from '@nestjs/passport';
 import { UserModule } from './member/user.module';
 import { MovieModule } from './movie/movie.module';
+import { OrderModule } from './order/order.module';
+import { PromotionModule } from './promotion/promotion.module';
 
 @Module({
   imports: [
@@ -56,6 +58,11 @@ import { MovieModule } from './movie/movie.module';
     TesterModule,
     UserModule,
     MovieModule,
+<<<<<<< HEAD
+=======
+    OrderModule,
+    PromotionModule
+>>>>>>> 305203b264459bad875d30402f7fa48f9da17746
   ],
 })
 export class AppModule {}

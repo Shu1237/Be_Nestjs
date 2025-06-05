@@ -13,7 +13,7 @@ import { Ticket } from '../order/ticket';
 
 @Entity('schedule') 
 export class Schedule {
-  @PrimaryGeneratedColumn({ type: 'int' }) 
+  @PrimaryGeneratedColumn() 
   id: number;
 
   @Column({ type: 'datetime', nullable: false })

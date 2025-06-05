@@ -13,12 +13,12 @@ import {
   ApiOperation,
   ApiResponse,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 
 import { UpdateUserDto } from '../dtos/update-user.dto';
 import { Request } from 'express';
 import { Role } from 'src/enum/roles.enum';
 import { ProfileService } from '../services/profile.service';
+import { JwtAuthGuard } from 'src/guards/jwt.guard';
 
 interface RequestWithUser extends Request {
   user: {

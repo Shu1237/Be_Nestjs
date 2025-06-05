@@ -1,19 +1,18 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToOne } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToOne, PrimaryColumn } from "typeorm";
 import { Schedule } from "../cinema/schedule";
 import { Order } from "./order";
 import { Ticket } from "./ticket";
 
 @Entity('order_detail')
 export class OrderDetail {
-  @PrimaryGeneratedColumn({ type: 'int' })
+  @PrimaryGeneratedColumn()
   id: number;
 
 
   @Column({ type: 'decimal', nullable: false, precision: 10, scale: 2 })
-  total_prices: number;
+  total_each_ticket: string;
 
-  @Column({ type: 'int', nullable: false })
-  use_score: number;
+
 
   @ManyToOne(() => Order, (order) => order.orderDetails)
   @JoinColumn({ name: 'order_id' })

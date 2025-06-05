@@ -3,7 +3,7 @@ import { Schedule } from "../cinema/schedule";
 import { Seat } from "../cinema/seat";
 import { OrderDetail } from "./order-detail";
 import { TicketType } from "./ticket-type";
-import { Movie } from "../cinema/movie";
+
 
 @Entity('ticket')
 export class Ticket {
@@ -29,7 +29,5 @@ export class Ticket {
   @OneToOne(() => OrderDetail, (orderDetail) => orderDetail.ticket)
   orderDetail: OrderDetail;
 
-  @ManyToOne(() => Movie, (movie) => movie.schedules)
-  @JoinColumn({ name: 'movie_id' })
-  movie: Movie;
+
 }
