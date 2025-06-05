@@ -58,11 +58,8 @@ import { PromotionModule } from './promotion/promotion.module';
     TesterModule,
     UserModule,
     MovieModule,
-<<<<<<< HEAD
-=======
     OrderModule,
-    PromotionModule
->>>>>>> 305203b264459bad875d30402f7fa48f9da17746
+    PromotionModule,
   ],
 })
 export class AppModule {}

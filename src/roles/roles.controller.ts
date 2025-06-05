@@ -23,7 +23,7 @@ interface RequestWithUser extends Request {
   };
 }
 
-@ApiTags('roles')
+@ApiTags('Roles')
 @ApiBearerAuth()
 @Controller('roles')
 @UseGuards(JwtAuthGuard)
