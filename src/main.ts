@@ -14,21 +14,27 @@ async function bootstrap() {
     origin: true,
     credentials: true,
   });
+
   // Swagger config
   const config = new DocumentBuilder()
     .setTitle('Movie Theater API')
     .setDescription('API documentation for movie theater project')
     .setVersion('1.0')
-     .addBearerAuth({
+    .addBearerAuth({
       type: 'http',
       scheme: 'bearer',
       bearerFormat: 'JWT',
-     })
+    })
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
-  await app.listen(3001, () => console.log('Server is running on port 3001' + '\nSwagger UI is available at http://localhost:3001/api'));
+  await app.listen(3001, '0.0.0.0', () =>
+    console.log(
+      'Server is running on port 3001' +
+      '\nSwagger UI is available at http://<your-public-ip-or-dns>:3001/api'
+    )
+  );
 }
 bootstrap();
