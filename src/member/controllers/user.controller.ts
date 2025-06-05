@@ -5,7 +5,6 @@ import {
   Body,
   Param,
   Put,
-  Delete,
   UseGuards,
   Req,
   ForbiddenException,
@@ -26,427 +25,209 @@ import { ChangeStatusDto } from '../dtos/change-status.dto';
 import { Request } from 'express';
 import { User } from 'src/typeorm/entities/user/user';
 
-interface RequestWithUser extends Request {
-  user: {
-    role_id: Role;
-  };
-}
+// Constants
+const CONTROLLER_TAG = 'Users';
+const CONTROLLER_PATH = 'users';
 
-@ApiTags('Users')
-@ApiBearerAuth()
-@Controller('users')
-@UseGuards(JwtAuthGuard)
-export class UserController {
-  constructor(private readonly userService: UserService) {}
+const ERROR_MESSAGES = {
+  SEARCH_USERS: 'Only admin or employee can search users',
+  VIEW_USER_DETAILS: 'Only admin or employee can view user details',
+  UPDATE_USERS: 'Only admin can update users',
+  DELETE_USERS: 'Only admin can delete users',
+  CHANGE_STATUS: 'Only admin can change user status',
+};
 
-  @Post('search')
-  @ApiOperation({ summary: 'Search all users (admin, employee only)' })
-  @ApiResponse({
+const API_OPERATIONS = {
+  GET_ALL: 'Get all users (admin, employee only)',
+  GET_ONE: 'Get user by ID (admin, employee only)',
+  UPDATE: 'Update user by ID (admin only)',
+  SOFT_DELETE: 'Soft delete user by ID (admin only)',
+  CHANGE_STATUS: 'Change user status by ID (admin only)',
+};
+
+// API Response Decorators
+const ApiUserResponse = (description: string) =>
+  ApiResponse({
     status: 200,
-    description: 'List of users.',
+    description,
+    type: User,
+    examples: {
+      example1: {
+        value: {
+          id: '1',
+          username: 'john_doe',
+          email: 'john.doe@example.com',
+          address: '123 Main St',
+          date_of_birth: '1990-01-01',
+          gender: 'male',
+          identity_card: '123456789',
+          image: 'https://example.com/avatar.jpg',
+          phone_number: '0123456789',
+          role: {
+            role_id: 1,
+            role_name: 'MEMBER',
+          },
+        },
+        summary: 'User details',
+      },
+    },
+  });
+
+const ApiUserListResponse = (description: string) =>
+  ApiResponse({
+    status: 200,
+    description,
     type: [User],
     examples: {
       example1: {
         value: [
           {
             id: '1',
-            first_name: 'John',
-            last_name: 'Doe',
+            username: 'john_doe',
             email: 'john.doe@example.com',
-            phone: '0123456789',
             address: '123 Main St',
-            status: true,
-            is_deleted: false,
+            date_of_birth: '1990-01-01',
+            gender: 'male',
+            identity_card: '123456789',
+            image: 'https://example.com/avatar.jpg',
+            phone_number: '0123456789',
             role: {
-              id: 1,
-              name: 'MEMBER',
+              role_id: 1,
+              role_name: 'MEMBER',
             },
           },
           {
             id: '2',
-            first_name: 'Jane',
-            last_name: 'Smith',
+            username: 'jane_smith',
             email: 'jane.smith@example.com',
-            phone: '0987654321',
             address: '456 Oak St',
-            status: true,
-            is_deleted: false,
+            date_of_birth: '1992-02-02',
+            gender: 'female',
+            identity_card: '987654321',
+            image: 'https://example.com/avatar2.jpg',
+            phone_number: '0987654321',
             role: {
-              id: 2,
-              name: 'EMPLOYEE',
+              role_id: 2,
+              role_name: 'EMPLOYEE',
             },
           },
         ],
-        summary: 'List of active users',
+        summary: 'List of users',
       },
     },
-  })
-  @ApiResponse({
+  });
+
+const ApiNotFoundResponse = () =>
+  ApiResponse({
+    status: 404,
+    description: 'User not found.',
+    examples: {
+      example1: {
+        value: {
+          statusCode: 404,
+          message: 'User with ID 999 not found',
+        },
+        summary: 'Not found response',
+      },
+    },
+  });
+
+const ApiForbiddenResponse = (message: string) =>
+  ApiResponse({
     status: 403,
-    description: 'Forbidden: Only admin or employee can search users.',
+    description: `Forbidden: ${message}`,
     examples: {
       example1: {
         value: {
           statusCode: 403,
-          message: 'Only admin or employee can search users',
+          message,
         },
         summary: 'Forbidden response',
       },
     },
-  })
-  findAll(@Req() req: RequestWithUser) {
-    const user = req.user;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException('Only admin or employee can search users');
+  });
+
+interface RequestWithUser extends Request {
+  user: {
+    role_id: Role;
+  };
+}
+
+@ApiTags(CONTROLLER_TAG)
+@ApiBearerAuth()
+@Controller(CONTROLLER_PATH)
+@UseGuards(JwtAuthGuard)
+export class UserController {
+  constructor(private readonly userService: UserService) {}
+
+  private checkAdminAccess(user: RequestWithUser['user']) {
+    if (user.role_id !== Role.ADMIN) {
+      throw new ForbiddenException(ERROR_MESSAGES.UPDATE_USERS);
     }
+  }
+
+  private checkAdminOrEmployeeAccess(user: RequestWithUser['user']) {
+    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
+      throw new ForbiddenException(ERROR_MESSAGES.SEARCH_USERS);
+    }
+  }
+
+  @Post('get-all')
+  @ApiOperation({ summary: API_OPERATIONS.GET_ALL })
+  @ApiUserListResponse('List of users')
+  @ApiForbiddenResponse(ERROR_MESSAGES.SEARCH_USERS)
+  findAll(@Req() req: RequestWithUser) {
+    this.checkAdminOrEmployeeAccess(req.user);
     return this.userService.findAll();
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get user by ID (admin, employee only)' })
-  @ApiResponse({
-    status: 200,
-    description: 'User found.',
-    type: User,
-    examples: {
-      example1: {
-        value: {
-          id: '1',
-          first_name: 'John',
-          last_name: 'Doe',
-          email: 'john.doe@example.com',
-          phone: '0123456789',
-          address: '123 Main St',
-          status: true,
-          is_deleted: false,
-          role: {
-            id: 1,
-            name: 'MEMBER',
-          },
-        },
-        summary: 'User details',
-      },
-    },
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'User not found.',
-    examples: {
-      example1: {
-        value: {
-          statusCode: 404,
-          message: 'User with ID 999 not found',
-        },
-        summary: 'Not found response',
-      },
-    },
-  })
-  @ApiResponse({
-    status: 403,
-    description: 'Forbidden: Only admin or employee can view user details.',
-    examples: {
-      example1: {
-        value: {
-          statusCode: 403,
-          message: 'Only admin or employee can view user details',
-        },
-        summary: 'Forbidden response',
-      },
-    },
-  })
+  @ApiOperation({ summary: API_OPERATIONS.GET_ONE })
+  @ApiUserResponse('User found')
+  @ApiNotFoundResponse()
+  @ApiForbiddenResponse(ERROR_MESSAGES.VIEW_USER_DETAILS)
   findOne(@Param('id') id: string, @Req() req: RequestWithUser) {
-    const user = req.user;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException(
-        'Only admin or employee can view user details',
-      );
-    }
+    this.checkAdminOrEmployeeAccess(req.user);
     return this.userService.findOne(id);
   }
 
   @Put(':id')
-  @ApiOperation({ summary: 'Update user by ID (admin only)' })
-  @ApiResponse({
-    status: 200,
-    description: 'User updated successfully.',
-    type: User,
-    examples: {
-      example1: {
-        value: {
-          id: '1',
-          first_name: 'John',
-          last_name: 'Doe',
-          email: 'john.doe@example.com',
-          phone: '0123456789',
-          address: '123 Main St',
-          status: true,
-          is_deleted: false,
-          role: {
-            id: 1,
-            name: 'MEMBER',
-          },
-        },
-        summary: 'Updated user details',
-      },
-    },
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'User not found.',
-    examples: {
-      example1: {
-        value: {
-          statusCode: 404,
-          message: 'User with ID 999 not found',
-        },
-        summary: 'Not found response',
-      },
-    },
-  })
-  @ApiResponse({
-    status: 403,
-    description: 'Forbidden: Only admin can update users.',
-    examples: {
-      example1: {
-        value: {
-          statusCode: 403,
-          message: 'Only admin can update users',
-        },
-        summary: 'Forbidden response',
-      },
-    },
-  })
-  @ApiBody({
-    type: UpdateUserDto,
-    examples: {
-      example1: {
-        value: {
-          first_name: 'John',
-          last_name: 'Doe',
-          email: 'john.doe@example.com',
-          phone: '0123456789',
-          address: '123 Main St',
-          role_id: 1,
-        },
-        summary: 'Update user information',
-      },
-    },
-  })
+  @ApiOperation({ summary: API_OPERATIONS.UPDATE })
+  @ApiUserResponse('User updated successfully')
+  @ApiNotFoundResponse()
+  @ApiForbiddenResponse(ERROR_MESSAGES.UPDATE_USERS)
+  @ApiBody({ type: UpdateUserDto })
   update(
     @Param('id') id: string,
     @Body() updateUserDto: UpdateUserDto,
     @Req() req: RequestWithUser,
   ) {
-    const user = req.user;
-    if (user.role_id !== Role.ADMIN) {
-      throw new ForbiddenException('Only admin can update users');
-    }
+    this.checkAdminAccess(req.user);
     return this.userService.update(id, updateUserDto);
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Soft delete user by ID (admin only)' })
-  @ApiResponse({
-    status: 200,
-    description: 'User soft-deleted successfully.',
-    type: User,
-    examples: {
-      example1: {
-        value: {
-          id: '1',
-          first_name: 'John',
-          last_name: 'Doe',
-          email: 'john.doe@example.com',
-          phone: '0123456789',
-          address: '123 Main St',
-          status: true,
-          is_deleted: true,
-          role: {
-            id: 1,
-            name: 'MEMBER',
-          },
-        },
-        summary: 'Soft-deleted user details',
-      },
-    },
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'User not found.',
-    examples: {
-      example1: {
-        value: {
-          statusCode: 404,
-          message: 'User with ID 999 not found',
-        },
-        summary: 'Not found response',
-      },
-    },
-  })
-  @ApiResponse({
-    status: 403,
-    description: 'Forbidden: Only admin can delete users.',
-    examples: {
-      example1: {
-        value: {
-          statusCode: 403,
-          message: 'Only admin can delete users',
-        },
-        summary: 'Forbidden response',
-      },
-    },
-  })
+  @ApiOperation({ summary: API_OPERATIONS.SOFT_DELETE })
+  @ApiUserResponse('User soft-deleted successfully')
+  @ApiNotFoundResponse()
+  @ApiForbiddenResponse(ERROR_MESSAGES.DELETE_USERS)
   softDelete(@Param('id') id: string, @Req() req: RequestWithUser) {
-    const user = req.user;
-    if (user.role_id !== Role.ADMIN) {
-      throw new ForbiddenException('Only admin can delete users');
-    }
+    this.checkAdminAccess(req.user);
     return this.userService.softDelete(id);
   }
 
-  @Delete(':id')
-  @ApiOperation({ summary: 'Hard delete user by ID (admin only)' })
-  @ApiResponse({
-    status: 200,
-    description: 'User deleted Successfully.',
-    examples: {
-      example1: {
-        value: {
-          message: 'User deleted Successfully',
-        },
-        summary: 'Success response',
-      },
-    },
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'User not found.',
-    examples: {
-      example1: {
-        value: {
-          statusCode: 404,
-          message: 'User with ID 999 not found',
-        },
-        summary: 'Not found response',
-      },
-    },
-  })
-  @ApiResponse({
-    status: 403,
-    description: 'Forbidden: Only admin can permanently delete users.',
-    examples: {
-      example1: {
-        value: {
-          statusCode: 403,
-          message: 'Only admin can permanently delete users',
-        },
-        summary: 'Forbidden response',
-      },
-    },
-  })
-  hardDelete(@Param('id') id: string, @Req() req: RequestWithUser) {
-    const user = req.user;
-    if (user.role_id !== Role.ADMIN) {
-      throw new ForbiddenException('Only admin can permanently delete users');
-    }
-    return this.userService.hardDelete(id);
-  }
-
   @Put(':id/status')
-  @ApiOperation({ summary: 'Change user status by ID (admin only)' })
-  @ApiResponse({
-    status: 200,
-    description: 'User status changed successfully.',
-    type: User,
-    examples: {
-      example1: {
-        value: {
-          id: '1',
-          first_name: 'John',
-          last_name: 'Doe',
-          email: 'john.doe@example.com',
-          phone: '0123456789',
-          address: '123 Main St',
-          status: true,
-          is_deleted: false,
-          role: {
-            id: 1,
-            name: 'MEMBER',
-          },
-        },
-        summary: 'User with enabled status',
-      },
-      example2: {
-        value: {
-          id: '1',
-          first_name: 'John',
-          last_name: 'Doe',
-          email: 'john.doe@example.com',
-          phone: '0123456789',
-          address: '123 Main St',
-          status: false,
-          is_deleted: false,
-          role: {
-            id: 1,
-            name: 'MEMBER',
-          },
-        },
-        summary: 'User with disabled status',
-      },
-    },
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'User not found.',
-    examples: {
-      example1: {
-        value: {
-          statusCode: 404,
-          message: 'User with ID 999 not found',
-        },
-        summary: 'Not found response',
-      },
-    },
-  })
-  @ApiResponse({
-    status: 403,
-    description: 'Forbidden: Only admin can change user status.',
-    examples: {
-      example1: {
-        value: {
-          statusCode: 403,
-          message: 'Only admin can change user status',
-        },
-        summary: 'Forbidden response',
-      },
-    },
-  })
-  @ApiBody({
-    type: ChangeStatusDto,
-    examples: {
-      example1: {
-        value: {
-          status: true,
-        },
-        summary: 'Enable user',
-      },
-      example2: {
-        value: {
-          status: false,
-        },
-        summary: 'Disable user',
-      },
-    },
-  })
+  @ApiOperation({ summary: API_OPERATIONS.CHANGE_STATUS })
+  @ApiUserResponse('User status changed successfully')
+  @ApiNotFoundResponse()
+  @ApiForbiddenResponse(ERROR_MESSAGES.CHANGE_STATUS)
+  @ApiBody({ type: ChangeStatusDto })
   async changeStatus(
     @Param('id') id: string,
     @Body() body: ChangeStatusDto,
     @Req() req: RequestWithUser,
   ) {
-    const user = req.user;
-    if (user.role_id !== Role.ADMIN) {
-      throw new ForbiddenException('Only admin can change user status');
-    }
+    this.checkAdminAccess(req.user);
     return await this.userService.changeStatus(id, body.status);
   }
 }
