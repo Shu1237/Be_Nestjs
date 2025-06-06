@@ -16,12 +16,11 @@ import { PromotionModule } from './promotion/promotion.module';
 
 @Module({
   imports: [
-    PassportModule,
     ConfigModule.forRoot({
       isGlobal: true,
     }),
     TypeOrmModule.forRoot({
-      type: process.env.DB_TYPE as any,
+      type: 'mysql',
       host: process.env.DB_HOST,
       port: parseInt(process.env.DB_PORT || '3306', 10),
       username: process.env.DB_USERNAME,
@@ -30,6 +29,9 @@ import { PromotionModule } from './promotion/promotion.module';
       entities: allEntities,
       synchronize: true,
       autoLoadEntities: true,
+    }),
+    PassportModule.register({
+      defaultStrategy: 'jwt',
     }),
     MailerModule.forRoot({
       transport: {
@@ -57,7 +59,7 @@ import { PromotionModule } from './promotion/promotion.module';
     UserModule,
     MovieModule,
     OrderModule,
-    PromotionModule
+    PromotionModule,
   ],
 })
 export class AppModule {}
