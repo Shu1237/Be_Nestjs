@@ -13,7 +13,6 @@ export class Ticket {
   @Column({ default: false })
   status: boolean;
 
-
   @ManyToOne(() => Schedule, (schedule) => schedule.tickets)
   @JoinColumn({ name: 'schedule_id' })
   schedule: Schedule;

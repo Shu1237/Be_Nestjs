@@ -9,7 +9,10 @@ import { Ticket } from 'src/typeorm/entities/order/ticket';
 import { Seat } from 'src/typeorm/entities/cinema/seat';
 import { Member } from 'src/typeorm/entities/user/member';
 import { User } from 'src/typeorm/entities/user/user';
-import { changeUSDToVN, changeVNtoUSD } from 'src/utils/helper';
+import { OrderBillType } from 'src/utils/type';
+import { Promotion } from 'src/typeorm/entities/promotion/promotion';
+import { TicketType } from 'src/typeorm/entities/order/ticket-type';
+import { changeVNtoUSDToCent } from 'src/utils/helper';
 
 @Injectable()
 export class PayPalService {
@@ -25,7 +28,11 @@ export class PayPalService {
         @InjectRepository(Member)
         private readonly memberRepository: Repository<Member>,
         @InjectRepository(User)
-        private readonly userRepository: Repository<User>
+        private readonly userRepository: Repository<User>,
+        @InjectRepository(Promotion)
+        private readonly promotionRepository: Repository<Promotion>,
+        @InjectRepository(TicketType)
+        private readonly ticketTypeRepository: Repository<TicketType>
     ) { }
 
     async generateAccessToken() {
@@ -37,16 +44,50 @@ export class PayPalService {
                 username: process.env.PAYPAL_CLIENT_ID as string,
                 password: process.env.PAYPAL_CLIENT_SECRET as string
             }
-        })
+        });
 
         return response.data.access_token
     }
 
-    async createOrderPaypal(total: string) {
+    async getSeatBasePrice(seatId: string): Promise<number> {
+        const seat = await this.seatRepository.findOne({
+            where: { id: seatId },
+            relations: ['seatType']
+        });
+        if (!seat) throw new Error(`Seat with ID ${seatId} not found`);
+        return seat.seatType.seat_type_price;
+    }
+
+    async getTicketDiscount(audienceType: string): Promise<number> {
+        const ticketType = await this.ticketTypeRepository.findOne({
+            where: { audience_type: audienceType },
+        });
+        if (!ticketType) throw new Error(`Ticket type not found for audience: ${audienceType}`);
+        return Number(ticketType.discount);
+    }
+
+    async createOrderPaypal(item: OrderBillType) {
         const accessToken = await this.generateAccessToken();
         if (!accessToken) throw new Error('Failed to generate access token');
 
-        const totalUSD = changeVNtoUSD(total);
+        const promotion = item.promotion_id
+            ? await this.promotionRepository.findOne({ where: { id: item.promotion_id } })
+            : null;
+        const promotionDiscount = promotion ? Number(promotion.discount) : 0;
+
+        let totalPriceVND = 0;
+
+        for (const seat of item.seats) {
+            const basePrice = await this.getSeatBasePrice(seat.id);
+            const ticketDiscount = await this.getTicketDiscount(seat.audience_type);
+
+            const discountedPrice = basePrice * (1 - ticketDiscount / 100);
+            const finalPrice = discountedPrice * (1 - promotionDiscount / 100);
+
+            totalPriceVND += finalPrice;
+        }
+
+        const totalUSD = changeVNtoUSDToCent(totalPriceVND.toString());
 
         const response = await axios.post(
             `${process.env.PAYPAL_BASE_URL}/v2/checkout/orders`,
@@ -58,6 +99,7 @@ export class PayPalService {
                             currency_code: 'USD',
                             value: totalUSD,
                         },
+                        description: `Booking for schedule ${item.schedule_id}, total seats: ${item.seats.length}`,
                     },
                 ],
                 application_context: {
@@ -123,16 +165,10 @@ export class PayPalService {
 
         transaction.order.status = 'success';
         await this.orderRepository.save(transaction.order);
-        const order =transaction.order;
-        // const user = await this.userRepository.findOne({
-        //     where: { id: order.user.id },
-        //     relations: ['member'],
-        // });
-        // if (!user) throw new NotFoundException('User not found');
-        // change money to vnd
+        const order = transaction.order;
+
         order.user.member.score += order.add_score;
         await this.memberRepository.save(order.user.member);
-        
 
         return {
             msg: 'Payment successful',
@@ -140,8 +176,8 @@ export class PayPalService {
         };
     }
 
-    async handleReturnCancelPaypal(orderId: string) {
-        const transaction = await this.getTransactionByOrderId(orderId);
+    async handleReturnCancelPaypal(transactionCode: string) {
+        const transaction = await this.getTransactionByOrderId(transactionCode);
         if (!transaction) throw new NotFoundException('Transaction not found');
 
         transaction.status = 'failed';

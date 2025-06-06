@@ -24,8 +24,8 @@ export class Promotion {
   @Column({ type: 'datetime', nullable: true })
   end_time?: Date;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
-  exchange?: string;
+  @Column({ type: 'int', nullable: false })
+  exchange: number;
 
   @Column({ type: 'boolean', default: true })
   is_active: boolean;

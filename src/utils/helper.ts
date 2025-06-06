@@ -12,24 +12,16 @@ export const comparePassword = async (password: string, hash: string): Promise<b
   return bcrypt.compare(password, hash);
 };
 
-export const changeVNtoUSD = (total: string): string => {
-
+export const changeVNtoUSDToCent = (total: string) => {
   const vndAmount = parseFloat(total.replace(/[,\s]/g, ''));
-
-  
   if (isNaN(vndAmount)) {
     throw new Error('Invalid VND amount provided');
   }
-
-
   const exchangeRate = 24000;
-
-
   const usdAmount = vndAmount / exchangeRate;
-
-
-  return usdAmount.toFixed(2);
+  return Math.round(usdAmount * 100).toString(); 
 };
+
 
 export const changeUSDToVN = (total: string): string => {
 

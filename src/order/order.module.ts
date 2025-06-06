@@ -17,6 +17,7 @@ import { Ticket } from 'src/typeorm/entities/order/ticket';
 import { Promotion } from 'src/typeorm/entities/promotion/promotion';
 import { Member } from 'src/typeorm/entities/user/member';
 import { PayPalModule } from './payment-menthod/paypal/paypal.module';
+import { VisaModule } from './payment-menthod/visa/visa.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { PayPalModule } from './payment-menthod/paypal/paypal.module';
     ]),
     MomoModule,
     PayPalModule,
+    VisaModule
   ],
   controllers: [OrderController],
   providers: [OrderService],
