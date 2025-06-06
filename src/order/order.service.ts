@@ -16,6 +16,8 @@ import { TicketType } from 'src/typeorm/entities/order/ticket-type';
 import { MomoService } from './payment-menthod/momo/momo.service';
 import { Member } from 'src/typeorm/entities/user/member';
 import { PayPalService } from './payment-menthod/paypal/paypal.service';
+import { Method } from 'src/enum/payment-menthod.enum';
+import { VisaService } from './payment-menthod/visa/visa.service';
 
 
 @Injectable()
@@ -46,7 +48,8 @@ export class OrderService {
     @InjectRepository(Member)
     private memberRepository: Repository<Member>,
     private readonly momoService: MomoService,
-    private readonly paypalService: PayPalService
+    private readonly paypalService: PayPalService,
+    private readonly visaService: VisaService
   ) { }
 
   async getUserById(userId: string) {
@@ -169,7 +172,7 @@ export class OrderService {
       if (Number(discount) === 0) {
         totalPrice = subTotal;
       } else {
-        const promotionDiscount = parseFloat(discount as any); 
+        const promotionDiscount = parseFloat(discount as any);
         totalPrice = subTotal * (1 - promotionDiscount / 100);
       }
 
@@ -196,41 +199,36 @@ export class OrderService {
       }
       let paymentCode: any;
       // Create Momo payment
-      if (Number(orderBill.payment_method_id) === 2) {
+      if (Number(orderBill.payment_method_id) === Method.MOMO) {
         paymentCode = await this.momoService.createPayment(orderBill.total_prices);
-        if (!paymentCode) {
-          throw new BadRequestException('Failed to create Momo payment');
-        }
+      }
+      if (Number(orderBill.payment_method_id) === Method.PAYPAL) {
+        paymentCode = await this.paypalService.createOrderPaypal(orderBill);
 
       }
-      if (Number(orderBill.payment_method_id) === 3) {
-        paymentCode = await this.paypalService.createOrderPaypal(orderBill.total_prices);
-        if (!paymentCode) {
-          throw new BadRequestException('Failed to create PayPal payment');
-        }
+      if (Number(orderBill.payment_method_id) === Method.VISA) {
+        paymentCode = await this.visaService.createOrderVisa(orderBill)
       }
+      if (!paymentCode) {
+        throw new BadRequestException('Failed to create Momo payment');
+      }
+
       // Create order
       const newOrder = await this.orderRepository.save({
         booking_date: orderBill.booking_date,
         add_score: orderScore,
         total_prices: orderBill.total_prices,
-        status: 'pending',
+        status: Number(orderBill.payment_method_id) === Method.CASH ? 'success' : 'pending',
         user,
         promotion,
       });
-      // // add score to member
-      // await this.memberRepository.update(user.member.id, {
-      //   score: totalScore
-      // });
-
-
 
 
       const transaction = await this.transactionRepository.save({
         transaction_code: paymentCode.orderId,
         transaction_date: new Date(),
         prices: orderBill.total_prices,
-        status: 'pending',
+        status: Number(orderBill.payment_method_id) === Method.CASH ? 'success' : 'pending',
         paymentMethod,
       });
 

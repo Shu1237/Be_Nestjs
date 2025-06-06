@@ -1,4 +1,4 @@
-export enum PaymentMethod {
+export enum Method {
     CASH = 1,
     MOMO = 2,
     PAYPAL = 3,

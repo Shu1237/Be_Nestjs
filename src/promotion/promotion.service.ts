@@ -22,21 +22,21 @@ export class PromotionService {
     return this.promotionRepository.find();
   }
 
-  async createPromotion(createPromotionDto: CreatePromotionType) {
-    const existing = await this.promotionRepository.findOne({
-      where: { code: createPromotionDto.code },
-    });
+  // async createPromotion(createPromotionDto: CreatePromotionType) {
+  //   const existing = await this.promotionRepository.findOne({
+  //     where: { code: createPromotionDto.code },
+  //   });
 
-    if (existing) {
-      throw new BadRequestException(`Promotion code "${createPromotionDto.code}" already exists`);
-    }
+  //   if (existing) {
+  //     throw new BadRequestException(`Promotion code "${createPromotionDto.code}" already exists`);
+  //   }
 
-    const promotion = this.promotionRepository.create({
-      ...createPromotionDto,
-      exchange: createPromotionDto.exchange?.toString(),
-    });
-    return this.promotionRepository.save(promotion);
-  }
+  //   const promotion = this.promotionRepository.create({
+  //     ...createPromotionDto,
+  //     exchange: createPromotionDto.exchange
+  //   });
+  //   return this.promotionRepository.save(promotion);
+  // }
 
   async getPromotionById(id: number) {
     const promotion = await this.promotionRepository.findOneBy({ id });

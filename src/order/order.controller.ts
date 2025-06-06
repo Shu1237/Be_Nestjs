@@ -6,6 +6,7 @@ import { JwtAuthGuard } from 'src/guards/jwt.guard';
 import { Response } from 'express';
 import { CreateOrderBillDto } from './dto/order-bill.dto';
 import { ApiOperation, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { VisaService } from './payment-menthod/visa/visa.service';
 
 @Controller('order')
 export class OrderController {
@@ -13,7 +14,8 @@ export class OrderController {
     private readonly orderService: OrderService,
     private readonly momoService: MomoService,
     private readonly payPalService: PayPalService,
-  ) {}
+    private readonly visaService: VisaService,
+  ) { }
 
   @UseGuards(JwtAuthGuard)
   @Post()
@@ -52,6 +54,28 @@ export class OrderController {
   @ApiOperation({ summary: 'Handle PayPal payment cancel return' })
   @ApiResponse({ status: 200, description: 'Return from PayPal cancel handled' })
   async handlePaypalCancel(@Query('token') orderId: string, @Res() res: Response) {
+    const result = await this.payPalService.handleReturnCancelPaypal(orderId);
+    if (!result) {
+      throw new BadRequestException('Invalid order ID');
+    }
+    return res.send(result);
+  }
+
+
+
+
+  // visa
+  @Get('visa/success/return')
+  async handleVisaSuccess(@Query('orderId') orderId: string, @Query('PayerID') payerId: string, @Res() res: Response) {
+    const result = await this.payPalService.handleReturnSuccessPaypal(orderId);
+    if (!result) {
+      throw new BadRequestException('Invalid order ID or Payer ID');
+    }
+    return res.send(result);
+  }
+
+  @Get('visa/cancel/return')
+  async handleVisaCancel(@Query('orderId') orderId: string, @Res() res: Response) {
     const result = await this.payPalService.handleReturnCancelPaypal(orderId);
     if (!result) {
       throw new BadRequestException('Invalid order ID');
