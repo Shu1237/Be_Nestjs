@@ -5,15 +5,11 @@ import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
-
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }));
   app.enableCors({
     origin: true,
     credentials: true,
@@ -37,10 +33,10 @@ async function bootstrap() {
   await app.listen(3001, '0.0.0.0', () =>
     console.log(
       'Server is running on port 3001' +
-        '\nSwagger UI is available at http://localhost:3001/api',
-      '\nSwagger UI is available at http://ec2-16-176-182-83.ap-southeast-2.compute.amazonaws.com:3001/api',
-    ),
+      '\nSwagger UI is available at http://ec2-16-176-182-83.ap-southeast-2.compute.amazonaws.com:3001/api'
+    )
   );
+  // await app.listen(3001, () => console.log('Server is running on port 3001' + '\nSwagger UI is available at http://localhost:3001/api'));
+  // console.log('Server is running on port 3001');
 }
-
 bootstrap();
