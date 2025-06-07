@@ -30,14 +30,14 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
-  await app.listen(3001, '0.0.0.0', () =>
-    console.log(
-      'Server is running on port 3001' +
-      '\nSwagger UI is available at http://ec2-16-176-182-83.ap-southeast-2.compute.amazonaws.com:3001/api'
-    )
-  );
-  // await app.listen(3001, () => console.log('Server is running on port 3001' + '\nSwagger UI is available at http://localhost:3001/api'));
-  // console.log('Server is running on port 3001');
+  // await app.listen(3001, '0.0.0.0', () =>
+  //   console.log(
+  //     'Server is running on port 3001' +
+  //     '\nSwagger UI is available at http://ec2-16-176-182-83.ap-southeast-2.compute.amazonaws.com:3001/api'
+  //   )
+  // );
+  await app.listen(3001, () => console.log('Server is running on port 3001' + '\nSwagger UI is available at http://localhost:3001/api'));
+  console.log('Server is running on port 3001');
 }
 bootstrap();
 
