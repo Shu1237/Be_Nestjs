@@ -10,6 +10,7 @@ import {
   UseGuards,
   Req,
   ForbiddenException,
+  Put,
 } from '@nestjs/common';
 import { GerneService } from './gerne.service';
 import { Gerne } from 'src/typeorm/entities/cinema/gerne';
@@ -70,7 +71,7 @@ export class GerneController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Patch(':id')
+  @Put(':id')
   @ApiOperation({ summary: 'Update genre by ID (admin, employee only)' })
   @ApiResponse({
     status: 200,
@@ -92,6 +93,20 @@ export class GerneController {
     }
     return await this.gerneService.updateGerne(id, updateGerneDto);
   }
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/soft-delete')
+  @ApiOperation({ summary: 'Soft delete a genre (admin, employee only)' })
+  @ApiResponse({ status: 200, description: 'Genre soft-deleted successfully.' })
+  @ApiResponse({ status: 403, description: 'Unauthorized.' })
+  async softDeleteGerne(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    const user = req.user as JWTUserType;
+    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
+      throw new ForbiddenException(
+        'Unauthorized: Only admin or employee can soft delete a genre.',
+      );
+    }
+    return await this.gerneService.softDeleteGerne(id);
+  }
 
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
@@ -111,11 +126,13 @@ export class GerneController {
     }
     return await this.gerneService.deleteGerne(id);
   }
- 
+
   @Get(':gerneId/movies')
   @ApiOperation({ summary: 'Get all movies of a genre' })
   @ApiResponse({ status: 200, description: 'List of movies.', type: [Movie] })
-  async getMoviesOfGerne(@Param('gerneId', ParseIntPipe) gerneId: number): Promise<Movie[]> {
+  async getMoviesOfGerne(
+    @Param('gerneId', ParseIntPipe) gerneId: number,
+  ): Promise<Movie[]> {
     return await this.gerneService.getMoviesOfGerne(gerneId);
   }
 }

@@ -7,6 +7,7 @@ import { Movie } from 'src/typeorm/entities/cinema/movie';
 import { CinemaRoom } from 'src/typeorm/entities/cinema/cinema-room';
 import { CreateScheduleDto } from './dto/create-schedule.dto';
 import { ISchedule } from 'src/utils/type';
+import { Gerne } from 'src/typeorm/entities/cinema/gerne';
 
 @Injectable()
 export class ScheduleService {
@@ -168,5 +169,19 @@ export class ScheduleService {
     if (result.affected === 0) {
       throw new NotFoundException('Schedule not found');
     }
+  }
+
+  async softDeleteSchedule(
+    id: number,
+  ): Promise<{ msg: string; schedule: Schedule }> {
+    const schedule = await this.scheduleRepository.findOne({ where: { id } });
+    if (!schedule) {
+      throw new NotFoundException(`Schedule with ID ${id} not found`);
+    }
+
+    schedule.is_deleted = true; // Đánh dấu là đã xóa
+    await this.scheduleRepository.save(schedule);
+
+    return { msg: 'Schedule soft-deleted successfully', schedule };
   }
 }

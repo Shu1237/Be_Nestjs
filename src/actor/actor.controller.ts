@@ -11,6 +11,7 @@ import {
   Req,
   ParseIntPipe,
   Query,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ActorService } from './actor.service';
 import { CreateActorDto } from './dtos/createActor.dto';
@@ -58,26 +59,21 @@ export class ActorController {
     return await this.actorService.findAllActors();
   }
 
-
-  
   @Get('search')
   @ApiOperation({ summary: 'Get actor by name' })
   @ApiResponse({ status: 200, description: 'Actor found.', type: Actor })
   @ApiResponse({ status: 404, description: 'Actor not found.' })
   async search(@Query('name') name: string) {
-    
     return await this.actorService.findActorByName(name);
   }
-  
+
   @Get(':id')
   @ApiOperation({ summary: 'Get actor by ID' })
   @ApiResponse({ status: 200, description: 'Actor found.', type: Actor })
   @ApiResponse({ status: 404, description: 'Actor not found.' })
   async findActorById(@Param('id') id: string) {
-
     return await this.actorService.findActorById(+id);
   }
-
 
   @UseGuards(JwtAuthGuard)
   @Put(':id')
@@ -102,23 +98,20 @@ export class ActorController {
     return await this.actorService.updateActor(+id, updateActorDto);
   }
 
-  // @UseGuards(JwtAuthGuard)
-  // @Patch(':id/soft-delete')
-  // @ApiOperation({ summary: 'Soft delete an actor' })
-  // @ApiResponse({ status: 200, description: 'Actor soft-deleted successfully.' })
-  // async softDeleteActor(@Req() req, @Param('id') id: string) {
-  //   const user = req.user as JWTUserType;
-  //   if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-  //     return {
-  //       statusCode: 403,
-  //       message:
-  //         'Unauthorized: Only admin or employee can soft delete an actor.',
-  //     };
-  //   }
-  //   return await this.actorService.softDeleteActor(+id);
-  // }
-
- 
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/soft-delete')
+  @ApiOperation({ summary: 'Soft delete an actor (admin, employee only)' })
+  @ApiResponse({ status: 200, description: 'Actor soft-deleted successfully.' })
+  @ApiResponse({ status: 403, description: 'Unauthorized.' })
+  async softDeleteActor(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    const user = req.user as JWTUserType;
+    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
+      throw new ForbiddenException(
+        'Unauthorized: Only admin or employee can soft delete an actor.',
+      );
+    }
+    return await this.actorService.softDeleteActor(id);
+  }
 
   @UseGuards(JwtAuthGuard)
   @Delete(':id')

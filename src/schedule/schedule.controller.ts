@@ -9,6 +9,8 @@ import {
   UseGuards,
   Req,
   ForbiddenException,
+  Put,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ScheduleService } from './schedule.service';
 import { CreateScheduleDto } from './dto/create-schedule.dto';
@@ -61,7 +63,7 @@ export class ScheduleController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Patch(':id')
+  @Put(':id')
   @ApiOperation({ summary: 'Update schedule by ID (admin, employee only)' })
   @ApiResponse({ status: 200, description: 'Schedule updated successfully.' })
   @ApiResponse({ status: 403, description: 'Forbidden.' })
@@ -77,6 +79,23 @@ export class ScheduleController {
       );
     }
     return await this.scheduleService.update(id, updateScheduleDto);
+  }
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/soft-delete')
+  @ApiOperation({ summary: 'Soft delete a schedule (admin, employee only)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Schedule soft-deleted successfully.',
+  })
+  @ApiResponse({ status: 403, description: 'Unauthorized.' })
+  async softDeleteSchedule(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    const user = req.user as JWTUserType;
+    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
+      throw new ForbiddenException(
+        'Unauthorized: Only admin or employee can soft delete a schedule.',
+      );
+    }
+    return await this.scheduleService.softDeleteSchedule(id);
   }
 
   @UseGuards(JwtAuthGuard)

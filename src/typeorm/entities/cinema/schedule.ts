@@ -23,6 +23,9 @@ export class Schedule {
   @DeleteDateColumn({ nullable: true })
   deletedAt?: Date;
 
+  @Column({ type: 'boolean', default: false })
+  is_deleted: boolean; //
+  
   @ManyToOne(() => CinemaRoom, (cinemaRoom) => cinemaRoom.schedules)
   @JoinColumn({ name: 'cinema_room_id' })
   cinemaRoom: CinemaRoom;

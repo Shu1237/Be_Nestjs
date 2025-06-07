@@ -156,20 +156,20 @@ export class MovieController {
     return await this.movieService.getVersionsOfMovie(movieId);
   }
 
-  @UseGuards(JwtAuthGuard)
-  @Patch(':movieId/remove-version/:versionId')
-  @ApiOperation({ summary: 'Remove a version from a movie' })
-  async removeVersionFromMovie(
-    @Param('movieId', ParseIntPipe) movieId: number,
-    @Param('versionId', ParseIntPipe) versionId: number,
-    @Req() req,
-  ) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException(
-        'Unauthorized: Only admin or employee can remove a version from a movie.',
-      );
-    }
-    return await this.movieService.removeVersionFromMovie(movieId, versionId);
-  }
+  // @UseGuards(JwtAuthGuard)
+  // @Patch(':movieId/remove-version/:versionId')
+  // @ApiOperation({ summary: 'Remove a version from a movie' })
+  // async removeVersionFromMovie(
+  //   @Param('movieId', ParseIntPipe) movieId: number,
+  //   @Param('versionId', ParseIntPipe) versionId: number,
+  //   @Req() req,
+  // ) {
+  //   const user = req.user as JWTUserType;
+  //   if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
+  //     throw new ForbiddenException(
+  //       'Unauthorized: Only admin or employee can remove a version from a movie.',
+  //     );
+  //   }
+  //   return await this.movieService.removeVersionFromMovie(movieId, versionId);
+  // }
 }

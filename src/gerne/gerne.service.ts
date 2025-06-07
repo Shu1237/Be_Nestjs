@@ -47,7 +47,17 @@ export class GerneService {
       throw new NotFoundException(`Gerne with ID ${id} not found`);
     }
   }
+  async softDeleteGerne(id: number): Promise<{ msg: string; gerne: Gerne }> {
+    const gerne = await this.gerneRepository.findOne({ where: { id } });
+    if (!gerne) {
+      throw new NotFoundException(`Gerne with ID ${id} not found`);
+    }
 
+    gerne.is_deleted = true; // Đánh dấu là đã xóa
+    await this.gerneRepository.save(gerne);
+
+    return { msg: 'Gerne soft-deleted successfully', gerne };
+  }
 
   async getMoviesOfGerne(gerneId: number): Promise<Movie[]> {
     const gerne = await this.gerneRepository.findOne({

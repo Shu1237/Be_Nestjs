@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateVersionDto } from './dto/create-version.dto';
@@ -18,7 +22,9 @@ export class VersionService {
       where: { name: createVersionDto.name },
     });
     if (existingVersion) {
-      throw new BadRequestException(`Version with name "${createVersionDto.name}" already exists.`);
+      throw new BadRequestException(
+        `Version with name "${createVersionDto.name}" already exists.`,
+      );
     }
 
     const version = this.versionRepository.create(createVersionDto);
@@ -36,7 +42,10 @@ export class VersionService {
     return version;
   }
 
-  async update(id: number, updateVersionDto: UpdateVersionDto): Promise<Version> {
+  async update(
+    id: number,
+    updateVersionDto: UpdateVersionDto,
+  ): Promise<Version> {
     const version = await this.findOne(id);
 
     // Kiểm tra nếu `name` đã tồn tại (trừ chính bản ghi hiện tại)
@@ -45,12 +54,27 @@ export class VersionService {
         where: { name: updateVersionDto.name },
       });
       if (existingVersion && existingVersion.id !== id) {
-        throw new BadRequestException(`Version with name "${updateVersionDto.name}" already exists.`);
+        throw new BadRequestException(
+          `Version with name "${updateVersionDto.name}" already exists.`,
+        );
       }
     }
 
     Object.assign(version, updateVersionDto);
     return await this.versionRepository.save(version);
+  }
+  async softDeleteVersion(
+    id: number,
+  ): Promise<{ msg: string; version: Version }> {
+    const version = await this.versionRepository.findOne({ where: { id } });
+    if (!version) {
+      throw new NotFoundException(`Version with ID ${id} not found`);
+    }
+
+    version.is_deleted = true; // Đánh dấu là đã xóa
+    await this.versionRepository.save(version);
+
+    return { msg: 'Version soft-deleted successfully', version };
   }
 
   async remove(id: number): Promise<void> {

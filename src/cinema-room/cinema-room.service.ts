@@ -61,4 +61,19 @@ export class CinemaRoomService {
     const cinemaRoom = await this.findOne(id);
     await this.cinemaRoomRepository.remove(cinemaRoom);
   }
+  async softDeleteCinemaRoom(
+    id: number,
+  ): Promise<{ msg: string; cinemaRoom: CinemaRoom }> {
+    const cinemaRoom = await this.cinemaRoomRepository.findOne({
+      where: { id },
+    });
+    if (!cinemaRoom) {
+      throw new NotFoundException(`Cinema Room with ID ${id} not found`);
+    }
+
+    cinemaRoom.is_deleted = true; // Đánh dấu là đã xóa
+    await this.cinemaRoomRepository.save(cinemaRoom);
+
+    return { msg: 'Cinema Room soft-deleted successfully', cinemaRoom };
+  }
 }

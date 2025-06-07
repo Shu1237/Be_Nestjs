@@ -16,7 +16,8 @@ export class Gerne {
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   genre_name: string;
-
+  @Column({ type: 'boolean', default: false })
+  is_deleted: boolean; //
   // @OneToMany(() => MovieGenre, (movieGenre) => movieGenre.genre)
   // movieGenres: MovieGenre[];
 

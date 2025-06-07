@@ -9,6 +9,8 @@ import {
   UseGuards,
   Req,
   ForbiddenException,
+  Put,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { CinemaRoomService } from './cinema-room.service';
 import { CreateCinemaRoomDto } from './dto/create-cinema-room.dto';
@@ -65,7 +67,7 @@ export class CinemaRoomController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Patch(':id')
+  @Put(':id')
   @ApiOperation({ summary: 'Update cinema room by ID (admin, employee only)' })
   @ApiResponse({
     status: 200,
@@ -84,6 +86,26 @@ export class CinemaRoomController {
       );
     }
     return await this.cinemaRoomService.update(id, updateCinemaRoomDto);
+  }
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/soft-delete')
+  @ApiOperation({ summary: 'Soft delete a cinema room (admin, employee only)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Cinema room soft-deleted successfully.',
+  })
+  @ApiResponse({ status: 403, description: 'Unauthorized.' })
+  async softDeleteCinemaRoom(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req,
+  ) {
+    const user = req.user as JWTUserType;
+    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
+      throw new ForbiddenException(
+        'Unauthorized: Only admin or employee can soft delete a cinema room.',
+      );
+    }
+    return await this.cinemaRoomService.softDeleteCinemaRoom(id);
   }
 
   @UseGuards(JwtAuthGuard)

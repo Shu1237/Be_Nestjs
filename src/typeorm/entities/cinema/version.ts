@@ -9,6 +9,8 @@ export class Version {
   @Column({ type: 'varchar', length: 255 })
   name: string;
 
+  @Column({ type: 'boolean', default: false })
+  is_deleted: boolean; //
   @ManyToMany(() => Movie, (movie) => movie.versions)
   @JoinTable()
   movies: Movie[];
