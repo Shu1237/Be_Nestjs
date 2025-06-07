@@ -1,5 +1,4 @@
 import { Module } from "@nestjs/common";
-import { MomoController } from "./momo.controller";
 import { MomoService } from "./momo.service";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { Transaction } from "src/typeorm/entities/order/transaction";
@@ -12,7 +11,7 @@ import { Member } from "src/typeorm/entities/user/member";
 
 @Module({
     imports: [TypeOrmModule.forFeature([Member,User,Transaction,Order,Ticket,Seat])],
-    controllers: [MomoController],
+    controllers: [],
     providers: [MomoService],
     exports: [MomoService]
 
