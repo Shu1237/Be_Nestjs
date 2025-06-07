@@ -75,3 +75,16 @@ export type IMovie = {
   gernes: IGerne[]; // Chỉ chứa id và genre_name
   versions: IVersion[]; // Chỉ chứa id và name
 };
+
+export type ISchedule = {
+  id: number;
+  show_date: Date;
+  movie: IMovieBasic;
+  cinema_room_id: number;
+   // Chỉ chứa id và name
+}
+
+export type IMovieBasic = {
+  id: number;
+  name: string;
+};

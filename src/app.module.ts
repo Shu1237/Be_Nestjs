@@ -14,6 +14,9 @@ import { MovieModule } from './movie/movie.module';
 import { ActorModule } from './actor/actor.module';
 import { GerneModule } from './gerne/gerne.module';
 import { VersionModule } from './version/version.module';
+import { CinemaRoomModule } from './cinema-room/cinema-room.module';
+import { ScheduleModule } from './schedule/schedule.module';
+// import { SeatModule } from './seat/seat.module';
 
 @Module({
   imports: [
@@ -60,6 +63,9 @@ import { VersionModule } from './version/version.module';
     ActorModule,
     GerneModule,
     VersionModule,
+    CinemaRoomModule,
+    ScheduleModule,
+    // SeatModule,
   ],
 })
 export class AppModule {}

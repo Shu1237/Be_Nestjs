@@ -5,6 +5,7 @@ import {
   ManyToOne,
   JoinColumn,
   OneToMany,
+  DeleteDateColumn,
 } from 'typeorm';
 import { CinemaRoom } from './cinema-room';
 import { Movie } from './movie';
@@ -19,6 +20,8 @@ export class Schedule {
   @Column({ type: 'datetime', nullable: false })
   show_date: Date;
 
+  @DeleteDateColumn({ nullable: true })
+  deletedAt?: Date;
 
   @ManyToOne(() => CinemaRoom, (cinemaRoom) => cinemaRoom.schedules)
   @JoinColumn({ name: 'cinema_room_id' })

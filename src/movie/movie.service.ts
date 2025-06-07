@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 
 import { Movie } from 'src/typeorm/entities/cinema/movie';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
 import { In, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Actor } from 'src/typeorm/entities/cinema/actor';
@@ -164,18 +164,24 @@ export class MovieService {
       thumbnail: savedMovie.thumbnail,
       banner: savedMovie.banner,
       is_deleted: savedMovie.is_deleted,
-      actors: savedMovie.actors.map((actor) => ({
-        id: actor.id,
-        name: actor.name,
-      })),
-      gernes: savedMovie.gernes.map((gerne) => ({
-        id: gerne.id,
-        genre_name: gerne.genre_name,
-      })),
-      versions: savedMovie.versions.map((version) => ({
-        id: version.id,
-        name: version.name,
-      })),
+      actors: savedMovie.actors
+        ? savedMovie.actors.map((actor) => ({
+            id: actor.id,
+            name: actor.name,
+          }))
+        : [],
+      gernes: savedMovie.gernes
+        ? savedMovie.gernes.map((gerne) => ({
+            id: gerne.id,
+            genre_name: gerne.genre_name,
+          }))
+        : [],
+      versions: savedMovie.versions
+        ? savedMovie.versions.map((version) => ({
+            id: version.id,
+            name: version.name,
+          }))
+        : [],
     };
   }
 
