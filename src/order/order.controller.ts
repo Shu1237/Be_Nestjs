@@ -5,8 +5,9 @@ import { PayPalService } from './payment-menthod/paypal/paypal.service';
 import { JwtAuthGuard } from 'src/guards/jwt.guard';
 import { Response } from 'express';
 import { CreateOrderBillDto } from './dto/order-bill.dto';
-import { ApiOperation, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { VisaService } from './payment-menthod/visa/visa.service';
+import { ApiOperation, ApiBody, ApiResponse, ApiBearerAuth, ApiExcludeEndpoint } from '@nestjs/swagger';
+import { VnpayService } from './payment-menthod/vnpay/vnpay.service';
+import { ZalopayService } from './payment-menthod/zalopay/zalopay.service';
 
 @Controller('order')
 export class OrderController {
@@ -14,7 +15,8 @@ export class OrderController {
     private readonly orderService: OrderService,
     private readonly momoService: MomoService,
     private readonly payPalService: PayPalService,
-    private readonly visaService: VisaService,
+    private readonly vnpayService: VnpayService,
+    private readonly zalopayService: ZalopayService,
   ) { }
 
   @UseGuards(JwtAuthGuard)
@@ -24,23 +26,23 @@ export class OrderController {
   @ApiBody({ type: CreateOrderBillDto })
   @ApiResponse({ status: 201, description: 'Order created successfully' })
   createOrder(@Body() body: CreateOrderBillDto, @Req() req) {
-    return this.orderService.createOrder(req.user, body);
+    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    if (!clientIp) {
+      throw new InternalServerErrorException('Client IP address not found');
+    }
+    return this.orderService.createOrder(req.user, body, clientIp);
   }
 
+  @ApiExcludeEndpoint()
   @Get('momo/return')
-  @ApiOperation({ summary: 'Handle MoMo payment return' })
-  @ApiResponse({ status: 200, description: 'Return from MoMo handled' })
   async handleMomoReturn(@Query() query: any, @Res() res: Response) {
     const result = await this.momoService.handleReturn(res, query);
     return res.send(result);
   }
-
+  @ApiExcludeEndpoint()
   @Get('paypal/success/return')
-  @ApiOperation({ summary: 'Handle PayPal payment success return' })
-  @ApiResponse({ status: 200, description: 'Return from PayPal success handled' })
   async handlePaypalSuccess(
     @Query('token') orderId: string,
-    @Query('PayerID') payerId: string,
     @Res() res: Response,
   ) {
     const result = await this.payPalService.handleReturnSuccessPaypal(orderId);
@@ -49,10 +51,8 @@ export class OrderController {
     }
     return res.send(result);
   }
-
+  @ApiExcludeEndpoint()
   @Get('paypal/cancel/return')
-  @ApiOperation({ summary: 'Handle PayPal payment cancel return' })
-  @ApiResponse({ status: 200, description: 'Return from PayPal cancel handled' })
   async handlePaypalCancel(@Query('token') orderId: string, @Res() res: Response) {
     const result = await this.payPalService.handleReturnCancelPaypal(orderId);
     if (!result) {
@@ -65,6 +65,7 @@ export class OrderController {
 
 
   // visa
+  @ApiExcludeEndpoint()
   @Get('visa/success/return')
   async handleVisaSuccess(@Query('orderId') orderId: string, @Query('PayerID') payerId: string, @Res() res: Response) {
     const result = await this.payPalService.handleReturnSuccessPaypal(orderId);
@@ -73,13 +74,31 @@ export class OrderController {
     }
     return res.send(result);
   }
-
+  @ApiExcludeEndpoint()
   @Get('visa/cancel/return')
   async handleVisaCancel(@Query('orderId') orderId: string, @Res() res: Response) {
     const result = await this.payPalService.handleReturnCancelPaypal(orderId);
     if (!result) {
       throw new BadRequestException('Invalid order ID');
     }
+    return res.send(result);
+  }
+
+
+  // VnPay
+  @ApiExcludeEndpoint()
+  @Get('vnpay/return')
+  async handleVnPayReturn(@Query() query: any, @Res() res: Response) {
+    const result = await this.vnpayService.handleReturnVnPay(query);
+    return res.send(result);
+  }
+
+
+  // ZaloPay
+  @ApiExcludeEndpoint()
+  @Get('zalopay/return')
+  async handleZaloPayReturn(@Query() query: any, @Res() res: Response) {
+    const result = await this.zalopayService.handleReturnZaloPay(query);
     return res.send(result);
   }
 }

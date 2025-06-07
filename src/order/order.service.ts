@@ -13,11 +13,13 @@ import { Promotion } from 'src/typeorm/entities/promotion/promotion';
 import { Schedule } from 'src/typeorm/entities/cinema/schedule';
 import { Ticket } from 'src/typeorm/entities/order/ticket';
 import { TicketType } from 'src/typeorm/entities/order/ticket-type';
-import { MomoService } from './payment-menthod/momo/momo.service';
-import { Member } from 'src/typeorm/entities/user/member';
+
 import { PayPalService } from './payment-menthod/paypal/paypal.service';
 import { Method } from 'src/enum/payment-menthod.enum';
 import { VisaService } from './payment-menthod/visa/visa.service';
+import { VnpayService } from './payment-menthod/vnpay/vnpay.service';
+import { MomoService } from './payment-menthod/momo/momo.service';
+import { ZalopayService } from './payment-menthod/zalopay/zalopay.service';
 
 
 @Injectable()
@@ -35,8 +37,6 @@ export class OrderService {
     private userRepository: Repository<User>,
     @InjectRepository(Seat)
     private seatRepository: Repository<Seat>,
-    @InjectRepository(SeatType)
-    private seatTypeRepository: Repository<SeatType>,
     @InjectRepository(Promotion)
     private promotionRepository: Repository<Promotion>,
     @InjectRepository(Schedule)
@@ -44,12 +44,13 @@ export class OrderService {
     @InjectRepository(Ticket)
     private ticketRepository: Repository<Ticket>,
     @InjectRepository(TicketType)
+    
     private ticketTypeRepository: Repository<TicketType>,
-    @InjectRepository(Member)
-    private memberRepository: Repository<Member>,
     private readonly momoService: MomoService,
     private readonly paypalService: PayPalService,
-    private readonly visaService: VisaService
+    private readonly visaService: VisaService,
+    private readonly vnpayService: VnpayService,
+    private readonly zalopayService: ZalopayService,
   ) { }
 
   async getUserById(userId: string) {
@@ -125,7 +126,7 @@ export class OrderService {
     return ticketType;
   }
 
-  async createOrder(userData: JWTUserType, orderBill: OrderBillType) {
+  async createOrder(userData: JWTUserType, orderBill: OrderBillType, clientIp: string) {
 
     try {
       const user = await this.getUserById(userData.account_id)
@@ -199,20 +200,32 @@ export class OrderService {
       }
       let paymentCode: any;
       // Create Momo payment
-      if (Number(orderBill.payment_method_id) === Method.MOMO) {
-        paymentCode = await this.momoService.createPayment(orderBill.total_prices);
+      switch (Number(orderBill.payment_method_id)) {
+        case Method.MOMO:
+          paymentCode = await this.momoService.createOrderMomo(orderBill.total_prices);
+          break;
+        case Method.PAYPAL:
+          paymentCode = await this.paypalService.createOrderPaypal(orderBill);
+          break;
+        case Method.VISA:
+          paymentCode = await this.visaService.createOrderVisa(orderBill);
+          break;
+        case Method.VNPAY:
+          paymentCode = await this.vnpayService.createOrderVnPay(orderBill, clientIp);
+          break;
+        case Method.ZALOPAY:
+          paymentCode = await this.zalopayService.createOrderZaloPay(orderBill);
+          break;
+        default:
+          paymentCode = {
+            payUrl: 'Payment successful by Cash',
+            orderId: 'CASH_ORDER_' + new Date().getTime(),
+          };
       }
-      if (Number(orderBill.payment_method_id) === Method.PAYPAL) {
-        paymentCode = await this.paypalService.createOrderPaypal(orderBill);
 
+      if (!paymentCode || !paymentCode.payUrl || !paymentCode.orderId) {
+        throw new BadRequestException('Payment method failed to create order');
       }
-      if (Number(orderBill.payment_method_id) === Method.VISA) {
-        paymentCode = await this.visaService.createOrderVisa(orderBill)
-      }
-      if (!paymentCode) {
-        throw new BadRequestException('Failed to create Momo payment');
-      }
-
       // Create order
       const newOrder = await this.orderRepository.save({
         booking_date: orderBill.booking_date,
@@ -223,7 +236,7 @@ export class OrderService {
         promotion,
       });
 
-
+     console.log(paymentCode)
       const transaction = await this.transactionRepository.save({
         transaction_code: paymentCode.orderId,
         transaction_date: new Date(),
@@ -249,7 +262,7 @@ export class OrderService {
 
         // Create ticket
         const newTicket = await this.ticketRepository.save({
-          status: true,
+          status: false,
           schedule,
           seat,
           ticketType,

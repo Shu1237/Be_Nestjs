@@ -12,7 +12,8 @@ import { User } from 'src/typeorm/entities/user/user';
 import { OrderBillType } from 'src/utils/type';
 import { Promotion } from 'src/typeorm/entities/promotion/promotion';
 import { TicketType } from 'src/typeorm/entities/order/ticket-type';
-import { changeVNtoUSDToCent } from 'src/utils/helper';
+import { changeVnToUSD } from 'src/utils/helper';
+import { Method } from 'src/enum/payment-menthod.enum';
 
 @Injectable()
 export class PayPalService {
@@ -27,8 +28,6 @@ export class PayPalService {
         private readonly seatRepository: Repository<Seat>,
         @InjectRepository(Member)
         private readonly memberRepository: Repository<Member>,
-        @InjectRepository(User)
-        private readonly userRepository: Repository<User>,
         @InjectRepository(Promotion)
         private readonly promotionRepository: Repository<Promotion>,
         @InjectRepository(TicketType)
@@ -87,7 +86,7 @@ export class PayPalService {
             totalPriceVND += finalPrice;
         }
 
-        const totalUSD = changeVNtoUSDToCent(totalPriceVND.toString());
+        const totalUSD = changeVnToUSD(totalPriceVND.toString());
 
         const response = await axios.post(
             `${process.env.PAYPAL_BASE_URL}/v2/checkout/orders`,
@@ -157,7 +156,14 @@ export class PayPalService {
     async handleReturnSuccessPaypal(transactionCode: string) {
         const transaction = await this.getTransactionByOrderId(transactionCode);
         if (!transaction) throw new NotFoundException('Transaction not found');
+        // 1. Confirm transaction status
+        if (Number(transaction.paymentMethod) === Method.PAYPAL) {
+            const captureResult = await this.captureOrderPaypal(transaction.transaction_code);
 
+            if (captureResult.status !== 'COMPLETED') {
+                throw new Error('Payment not completed on PayPal');
+            }
+        }
         transaction.status = 'success';
         await this.transactionRepository.save(transaction);
 
@@ -170,35 +176,41 @@ export class PayPalService {
         order.user.member.score += order.add_score;
         await this.memberRepository.save(order.user.member);
 
+        for (const orderDetail of order.orderDetails) {
+            const ticket = orderDetail.ticket;
+            if (ticket) {
+                ticket.status = true;
+                await this.ticketRepository.save(ticket);
+            }
+        }
+
         return {
             msg: 'Payment successful',
             order
         };
     }
 
+
     async handleReturnCancelPaypal(transactionCode: string) {
         const transaction = await this.getTransactionByOrderId(transactionCode);
         if (!transaction) throw new NotFoundException('Transaction not found');
-
         transaction.status = 'failed';
         await this.transactionRepository.save(transaction);
-
         if (!transaction.order) throw new NotFoundException('Order not found for this transaction');
-
         transaction.order.status = 'failed';
         await this.orderRepository.save(transaction.order);
 
         for (const orderDetail of transaction.order.orderDetails) {
             const ticket = orderDetail.ticket;
             if (ticket) {
-                ticket.status = false;
                 if (ticket.seat) {
                     ticket.seat.status = false;
                     await this.seatRepository.save(ticket.seat);
                 }
-                await this.ticketRepository.save(ticket);
             }
+
         }
+
 
         return {
             msg: 'Payment cancelled',

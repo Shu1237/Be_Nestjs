@@ -18,6 +18,8 @@ import { Promotion } from 'src/typeorm/entities/promotion/promotion';
 import { Member } from 'src/typeorm/entities/user/member';
 import { PayPalModule } from './payment-menthod/paypal/paypal.module';
 import { VisaModule } from './payment-menthod/visa/visa.module';
+import { VnpayModule } from './payment-menthod/vnpay/vnpay.module';
+import { ZalopayModule } from './payment-menthod/zalopay/zalopay.module';
 
 @Module({
   imports: [
@@ -38,7 +40,9 @@ import { VisaModule } from './payment-menthod/visa/visa.module';
     ]),
     MomoModule,
     PayPalModule,
-    VisaModule
+    VisaModule,
+    VnpayModule,
+    ZalopayModule,
   ],
   controllers: [OrderController],
   providers: [OrderService],
