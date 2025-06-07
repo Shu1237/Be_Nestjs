@@ -7,8 +7,7 @@ import Stripe from "stripe";
 import { TicketType } from "src/typeorm/entities/order/ticket-type";
 import { Seat } from "src/typeorm/entities/cinema/seat";
 import { Promotion } from "src/typeorm/entities/promotion/promotion";
-import { changeVNtoUSDToCent } from "src/utils/helper";
-import { Transaction } from "src/typeorm/entities/order/transaction";
+import {  changeVNtoUSDToCent } from "src/utils/helper";
 
 @Injectable()
 export class VisaService {

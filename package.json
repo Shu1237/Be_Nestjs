@@ -37,6 +37,7 @@
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.13",
     "jsonwebtoken": "^9.0.2",
+    "moment": "^2.30.1",
     "mysql2": "^3.14.1",
     "nodemailer": "^7.0.3",
     "passport": "^0.7.0",

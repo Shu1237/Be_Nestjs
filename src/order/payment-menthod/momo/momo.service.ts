@@ -26,9 +26,9 @@ export class MomoService {
     private readonly memberRepository: Repository<Member>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>
-  ) {}
+  ) { }
 
-  async createPayment(total: string) {
+  async createOrderMomo(total: string) {
     const accessKey = process.env.MOMO_ACCESS_KEY;
     const secretKey = process.env.MOMO_SECRET_KEY;
     const partnerCode = process.env.MOMO_PARTNER_CODE;
@@ -82,15 +82,29 @@ export class MomoService {
     }
   }
 
+  async getTransactionByOrderId(orderId: string) {
+    const transaction = await this.transactionRepository.findOne({
+      where: { transaction_code: orderId },
+      relations: [
+        'order',
+        'order.orderDetails',
+        'order.orderDetails.ticket',
+        'order.orderDetails.ticket.seat',
+        'order.user',
+        'order.user.member',
+      ],
+    });
+
+    if (!transaction) {
+      throw new NotFoundException('Transaction not found');
+    }
+    return transaction;
+  }
+
   async handleReturn(res, query: any) {
     const { orderId, resultCode } = query;
 
-    const transaction = await this.transactionRepository.findOne({
-      where: { transaction_code: orderId },
-      relations: ['order', 'order.orderDetails', 'order.orderDetails.ticket', 'order.orderDetails.ticket.seat', 'order.user', 'order.user.member'],
-    });
-    if (!transaction) throw new NotFoundException('Transaction not found');
-
+    const transaction = await this.getTransactionByOrderId(orderId);
     const order = transaction.order;
 
     if (Number(resultCode) === 0) {
@@ -99,13 +113,6 @@ export class MomoService {
 
       await this.transactionRepository.save(transaction);
       const savedOrder = await this.orderRepository.save(order);
-
-      // const user = await this.userRepository.findOne({
-      //   where: { id: order.user.id },
-      //   relations: ['member'],
-      // });
-      // if (!user || !user.member) throw new NotFoundException('User or member not found');
-
       order.user.member.score += order.add_score;
       await this.memberRepository.save(order.user.member);
 
@@ -113,10 +120,6 @@ export class MomoService {
         const ticket = detail.ticket;
         if (ticket) {
           ticket.status = true;
-          if (ticket.seat) {
-            ticket.seat.status = true;
-            await this.seatRepository.save(ticket.seat);
-          }
           await this.ticketRepository.save(ticket);
         }
       }
@@ -128,22 +131,18 @@ export class MomoService {
     } else {
       transaction.status = 'failed';
       order.status = 'failed';
-
       await this.transactionRepository.save(transaction);
       await this.orderRepository.save(order);
-
       for (const detail of order.orderDetails) {
         const ticket = detail.ticket;
         if (ticket) {
-          ticket.status = false;
           if (ticket.seat) {
             ticket.seat.status = false;
             await this.seatRepository.save(ticket.seat);
           }
-          await this.ticketRepository.save(ticket);
+
         }
       }
-
       return { message: 'Payment failed' };
     }
   }
