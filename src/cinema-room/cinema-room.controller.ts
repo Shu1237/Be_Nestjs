@@ -24,7 +24,8 @@ import {
 } from '@nestjs/swagger';
 import { JWTUserType } from '../utils/type';
 import { Role } from '../enum/roles.enum';
-import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from 'src/guards/jwt.guard';
+
 
 @ApiTags('Cinema Rooms')
 @ApiBearerAuth()
