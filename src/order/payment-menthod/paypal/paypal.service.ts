@@ -146,7 +146,7 @@ export class PayPalService {
 
         const transaction = await this.transactionRepository.findOne({
             where: { transaction_code: orderId },
-            relations: ['order', 'order.orderDetails', 'order.orderDetails.ticket', 'order.orderDetails.ticket.seat', 'order.user', 'order.user.member'],
+            relations: ['paymentMethod','order', 'order.orderDetails', 'order.orderDetails.ticket', 'order.orderDetails.ticket.seat', 'order.user', 'order.user.member'],
         });
 
         if (!transaction) throw new NotFoundException('Transaction not found');
@@ -157,9 +157,9 @@ export class PayPalService {
         const transaction = await this.getTransactionByOrderId(transactionCode);
         if (!transaction) throw new NotFoundException('Transaction not found');
         // 1. Confirm transaction status
-        if (Number(transaction.paymentMethod) === Method.PAYPAL) {
-            const captureResult = await this.captureOrderPaypal(transaction.transaction_code);
 
+        if (transaction.paymentMethod.id === Method.PAYPAL) {
+            const captureResult = await this.captureOrderPaypal(transaction.transaction_code);
             if (captureResult.status !== 'COMPLETED') {
                 throw new Error('Payment not completed on PayPal');
             }
