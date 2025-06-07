@@ -64,6 +64,10 @@ export class AuthController {
     // console.log(req.user);
     return this.authService.login(req.user);
   }
+  // @Post('login/azure')
+  // loginAzure(@Body() body:any){
+  //   return this.authService.loginAzure(body);
+  // }
 
   @UseGuards(JwtAuthGuard)
   @Get('refreshToken')
