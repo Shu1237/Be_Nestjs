@@ -1,5 +1,6 @@
-import { Entity, Column, PrimaryGeneratedColumn, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { ActorMovie } from './actor-movie';
+import { Entity, Column, PrimaryGeneratedColumn, OneToMany, CreateDateColumn, UpdateDateColumn, ManyToMany, JoinTable } from 'typeorm';
+// import { ActorMovie } from './actor-movie';
+import { Movie } from './movie';
 
 
 @Entity('actor')
@@ -34,6 +35,10 @@ export class Actor {
   @UpdateDateColumn({ type: 'datetime' })
   updated_at: Date;
 
-  @OneToMany(() => ActorMovie, (actorMovie) => actorMovie.actor)
-  actorMovies: ActorMovie[];
+  @Column({ type: 'boolean', default: false }) 
+  is_deleted: boolean;
+
+  @ManyToMany(() => Movie, (movie) => movie.actors)
+  @JoinTable()
+  movies: Movie[];
 }
