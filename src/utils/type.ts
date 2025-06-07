@@ -1,5 +1,4 @@
-
-import { User } from "src/typeorm/entities/user/user";
+import { Role } from 'src/enum/roles.enum';
 
 export type CreateAccountType = {
   address: string;
@@ -16,40 +15,37 @@ export type CreateAccountType = {
 
 export type LogoutType = {
   refresh_token: string;
-}
+};
 
 export type LoginType = {
   username: string;
   password: string;
-}
+};
 export type changePasswordType = {
   newPassword: string;
   token: string;
-}
+};
 export type RefreshTokenType = {
   refresh_token: string;
-}
+};
 export type JWTUserType = {
   account_id: string;
   username: string;
-  role_id: number;
-}
+  role_id: Role;
+};
 
 export type GoogleUserType = {
   email: string;
   avatarUrl: string;
   password?: string;
-}
-
-
-
+};
 
 export type SeatInfo = {
   id: string;
   seat_row: string;
   seat_column: string;
   audience_type: 'adult' | 'student' | 'child';
-}
+};
 
 export type OrderBillType = {
   payment_method_id: string;
@@ -58,9 +54,7 @@ export type OrderBillType = {
   promotion_id: number;
   schedule_id: number;
   seats: SeatInfo[];
-}
-
-
+};
 
 export type CreatePromotionType = {
   title: string;
@@ -84,21 +78,10 @@ export type UpdatePromotionType = {
   is_active?: boolean;
 };
 
-
 export type ChangePromotionType = {
   id: number;
   exchange: number;
 };
-
-
-
-
-
-
-
-
-
-
 
 export type IActor = {
   id: number;
@@ -139,10 +122,9 @@ export type ISchedule = {
   movie: IMovieBasic;
   cinema_room_id: number;
   // Chỉ chứa id và name
-}
+};
 
 export type IMovieBasic = {
   id: number;
   name: string;
 };
-

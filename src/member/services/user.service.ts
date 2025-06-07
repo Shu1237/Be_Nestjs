@@ -38,23 +38,15 @@ export class UserService {
     return await this.userRepository.save(user);
   }
 
-  async changeStatus(id: string, status: boolean): Promise<User> {
+  async changeStatus(id: string): Promise<User> {
     const user = await this.findOne(id);
-    user.status = status;
+    user.status = !user.status;
     return await this.userRepository.save(user);
   }
 
-  async softDelete(id: string): Promise<User> {
+  async softDelete(id: string): Promise<void> {
     const user = await this.findOne(id);
     user.is_deleted = true;
-    return await this.userRepository.save(user);
-  }
-
-  async hardDelete(id: string): Promise<{ message: string }> {
-    const result = await this.userRepository.delete(id);
-    if (result.affected === 0) {
-      throw new NotFoundException(`User with ID ${id} not found`);
-    }
-    return { message: 'User permanently deleted' };
+    await this.userRepository.save(user);
   }
 }

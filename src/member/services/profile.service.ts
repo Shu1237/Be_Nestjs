@@ -61,9 +61,7 @@ export class ProfileService {
       throw new NotFoundException('Profile not found');
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { status, ...personalInfo } = updateUserDto;
-    Object.assign(user, personalInfo);
+    Object.assign(user, updateUserDto);
 
     return await this.userRepository.save(user);
   }
