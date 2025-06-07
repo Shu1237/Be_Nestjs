@@ -34,7 +34,7 @@ export class ZalopayService {
     private readonly ticketTypeRepository: Repository<TicketType>,
     @InjectRepository(Promotion)
     private readonly promotionRepository: Repository<Promotion>,
-  ) {}
+  ) { }
 
   private app_id = Number(process.env.ZALO_APP_ID);
   private key1 = process.env.ZALO_KEY;
@@ -90,7 +90,9 @@ export class ZalopayService {
     }
 
     const app_time = dayjs().valueOf();
-    const embed_data = {};
+    const embed_data = {
+      redirecturl: this.callback_url,
+    };
     const item = items;
 
     const rawData = {
@@ -103,7 +105,6 @@ export class ZalopayService {
       embed_data: JSON.stringify(embed_data),
       description: "Thanh toán vé xem phim",
       bank_code: "zalopayapp",
-      callback_url: this.callback_url,
     };
 
     const dataToMac = [
@@ -158,17 +159,7 @@ export class ZalopayService {
   }
 
   async handleReturnZaloPay(query: any) {
-    const { appid, apptransid, amount, status, checksum } = query;
-
-    if (!this.key1) throw new Error("ZaloPay key is not configured");
-
-    const data = `${appid}|${apptransid}|${amount}|${status}|${this.key1}`;
-    const calculatedChecksum = crypto.createHmac("sha256", this.key1).update(data).digest("hex");
-
-    if (checksum !== calculatedChecksum) {
-      throw new UnauthorizedException("Invalid ZaloPay checksum");
-    }
-
+    const { apptransid, status } = query;
     const transaction = await this.getTransactionByOrderId(apptransid);
     const order = transaction.order;
 

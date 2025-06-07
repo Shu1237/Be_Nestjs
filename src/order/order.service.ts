@@ -236,7 +236,6 @@ export class OrderService {
         promotion,
       });
 
-     console.log(paymentCode)
       const transaction = await this.transactionRepository.save({
         transaction_code: paymentCode.orderId,
         transaction_date: new Date(),
