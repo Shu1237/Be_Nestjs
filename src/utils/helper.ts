@@ -48,3 +48,4 @@ export const changeVNtoUSDToCent = (total: string): number => {
   const usdAmount = vndAmount / exchangeRate;
   return Math.round(usdAmount * 100); // trả về số cent (integer)
 };
+

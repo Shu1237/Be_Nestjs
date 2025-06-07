@@ -11,15 +11,25 @@ import { allEntities } from './typeorm';
 import { PassportModule } from '@nestjs/passport';
 import { UserModule } from './member/user.module';
 import { MovieModule } from './movie/movie.module';
+
 import { OrderModule } from './order/order.module';
 import { PromotionModule } from './promotion/promotion.module';
+import { ActorModule } from './actor/actor.module';
+import { GerneModule } from './gerne/gerne.module';
+import { VersionModule } from './version/version.module';
+import { CinemaRoomModule } from './cinema-room/cinema-room.module';
+import { ScheduleModule } from './schedule/schedule.module';
+// import { SeatModule } from './seat/seat.module';
 
 @Module({
   imports: [
+    PassportModule,
+
     ConfigModule.forRoot({
       isGlobal: true,
     }),
     TypeOrmModule.forRoot({
+
       type: 'mysql',
       host: process.env.DB_HOST,
       port: parseInt(process.env.DB_PORT || '3306', 10),
@@ -30,9 +40,11 @@ import { PromotionModule } from './promotion/promotion.module';
       synchronize: true,
       autoLoadEntities: true,
     }),
+
     PassportModule.register({
       defaultStrategy: 'jwt',
     }),
+
     MailerModule.forRoot({
       transport: {
         host: process.env.MAIL_HOST,
@@ -58,8 +70,17 @@ import { PromotionModule } from './promotion/promotion.module';
     TesterModule,
     UserModule,
     MovieModule,
+
     OrderModule,
     PromotionModule,
+
+    ActorModule,
+    GerneModule,
+    VersionModule,
+    CinemaRoomModule,
+    ScheduleModule,
+    // SeatModule,
+
   ],
 })
 export class AppModule {}

@@ -14,7 +14,6 @@ async function bootstrap() {
     origin: true,
     credentials: true,
   });
-
   // Swagger config
   const config = new DocumentBuilder()
     .setTitle('Movie Theater API')
@@ -25,6 +24,7 @@ async function bootstrap() {
       scheme: 'bearer',
       bearerFormat: 'JWT',
     })
+
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
