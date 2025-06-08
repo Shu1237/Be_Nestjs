@@ -264,6 +264,7 @@ export class OrderService {
 
         // Create ticket
         const newTicket = await this.ticketRepository.save({
+          status: Number(orderBill.payment_method_id) === Method.CASH ? true : false,
           schedule,
           seat,
           ticketType,
