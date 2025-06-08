@@ -5,7 +5,7 @@ import { Order } from 'src/typeorm/entities/order/order';
 import { OrderDetail } from 'src/typeorm/entities/order/order-detail';
 import { PaymentMethod } from 'src/typeorm/entities/order/payment-method';
 import { Transaction } from 'src/typeorm/entities/order/transaction';
-import { JWTUserType, OrderBillType, SeatInfo } from 'src/utils/type';
+import { HoldSeatType, JWTUserType, OrderBillType, SeatInfo } from 'src/utils/type';
 import { User } from 'src/typeorm/entities/user/user';
 import { Seat } from 'src/typeorm/entities/cinema/seat';
 import { Promotion } from 'src/typeorm/entities/promotion/promotion';
@@ -19,6 +19,7 @@ import { VisaService } from './payment-menthod/visa/visa.service';
 import { VnpayService } from './payment-menthod/vnpay/vnpay.service';
 import { MomoService } from './payment-menthod/momo/momo.service';
 import { ZalopayService } from './payment-menthod/zalopay/zalopay.service';
+import { Cache } from 'cache-manager';
 
 
 
@@ -52,6 +53,7 @@ export class OrderService {
     private readonly visaService: VisaService,
     private readonly vnpayService: VnpayService,
     private readonly zalopayService: ZalopayService,
+    @Inject('CACHE_MANAGER') private cacheManager: Cache,
 
 
   ) { }
@@ -151,10 +153,30 @@ export class OrderService {
       if (seats.length !== seatIds.length) {
         throw new NotFoundException('Some seats were not found');
       }
+      // check cache
+      const cacheHoldSeats = await this.cacheManager.get<HoldSeatType>(`seat-${user.id}`);
 
-      const unavailableSeats = seats.filter(seat => !seat.status);
+      if (!cacheHoldSeats || !Array.isArray(cacheHoldSeats.seatIds)) {
+        throw new BadRequestException('No seats held for this user. Please hold seats before booking.');
+      }
+
+      if (cacheHoldSeats.cinema_id === schedule.cinemaRoom.id) {
+        const seats = await this.seatRepository.findBy({
+          id: In(cacheHoldSeats.seatIds),
+        });
+
+        await Promise.all(
+          seats.map(async seat => {
+            seat.is_hold = false;
+            await this.seatRepository.save(seat);
+          })
+        );
+
+        await this.cacheManager.del(`seat-${user.id}`);
+      }
+      const unavailableSeats = seats.filter(seat => !seat.status && seat.is_hold);
       if (unavailableSeats.length > 0) {
-        throw new BadRequestException(`Seats ${unavailableSeats.map(s => s.id).join(', ')} are already booked`);
+        throw new BadRequestException(`Seats ${unavailableSeats.map(s => s.id).join(', ')} are already booked or another was held.`);
       }
 
 
@@ -289,7 +311,7 @@ export class OrderService {
 
       }
 
-    
+
 
       return { payUrl: paymentCode.payUrl };
     } catch (error) {
