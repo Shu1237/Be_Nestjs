@@ -19,6 +19,7 @@ import { GerneModule } from './gerne/gerne.module';
 import { VersionModule } from './version/version.module';
 import { CinemaRoomModule } from './cinema-room/cinema-room.module';
 import { ScheduleModule } from './schedule/schedule.module';
+import { SeatModule } from './seat/seat.module';
 // import { SeatModule } from './seat/seat.module';
 
 @Module({
@@ -29,7 +30,6 @@ import { ScheduleModule } from './schedule/schedule.module';
       isGlobal: true,
     }),
     TypeOrmModule.forRoot({
-
       type: 'mysql',
       host: process.env.DB_HOST,
       port: parseInt(process.env.DB_PORT || '3306', 10),
@@ -79,8 +79,7 @@ import { ScheduleModule } from './schedule/schedule.module';
     VersionModule,
     CinemaRoomModule,
     ScheduleModule,
-    // SeatModule,
-
+    SeatModule,
   ],
 })
 export class AppModule {}
