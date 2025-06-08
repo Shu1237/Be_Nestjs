@@ -12,6 +12,7 @@ import { LocalStrategy } from './strategies/local.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RefreshTokenStrategy } from './strategies/refresh_token.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
+import { MailerModule } from '@nestjs-modules/mailer';
 
 
 
@@ -22,7 +23,9 @@ import { GoogleStrategy } from './strategies/google.strategy';
   JwtModule.register({
     secret: process.env.JWT_SECRET_KEY || 'defaultSecretKey',
     signOptions: { expiresIn: process.env.JWT_EXPIRES_IN || '1h' },
-  })],
+  }),
+  MailerModule
+],
   controllers: [AuthController],
   providers: [AuthService,LocalStrategy,JwtStrategy,RefreshTokenStrategy,GoogleStrategy]
 })

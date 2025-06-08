@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { Order } from 'src/typeorm/entities/order/order';
@@ -8,7 +8,6 @@ import { Transaction } from 'src/typeorm/entities/order/transaction';
 import { JWTUserType, OrderBillType, SeatInfo } from 'src/utils/type';
 import { User } from 'src/typeorm/entities/user/user';
 import { Seat } from 'src/typeorm/entities/cinema/seat';
-import { SeatType } from 'src/typeorm/entities/cinema/seat-type';
 import { Promotion } from 'src/typeorm/entities/promotion/promotion';
 import { Schedule } from 'src/typeorm/entities/cinema/schedule';
 import { Ticket } from 'src/typeorm/entities/order/ticket';
@@ -20,6 +19,7 @@ import { VisaService } from './payment-menthod/visa/visa.service';
 import { VnpayService } from './payment-menthod/vnpay/vnpay.service';
 import { MomoService } from './payment-menthod/momo/momo.service';
 import { ZalopayService } from './payment-menthod/zalopay/zalopay.service';
+
 
 
 @Injectable()
@@ -44,13 +44,16 @@ export class OrderService {
     @InjectRepository(Ticket)
     private ticketRepository: Repository<Ticket>,
     @InjectRepository(TicketType)
-    
     private ticketTypeRepository: Repository<TicketType>,
+
+
     private readonly momoService: MomoService,
     private readonly paypalService: PayPalService,
     private readonly visaService: VisaService,
     private readonly vnpayService: VnpayService,
     private readonly zalopayService: ZalopayService,
+
+
   ) { }
 
   async getUserById(userId: string) {
@@ -261,7 +264,6 @@ export class OrderService {
 
         // Create ticket
         const newTicket = await this.ticketRepository.save({
-          status: false,
           schedule,
           seat,
           ticketType,
@@ -283,8 +285,10 @@ export class OrderService {
           schedule: schedule,
 
         });
+
       }
 
+    
 
       return { payUrl: paymentCode.payUrl };
     } catch (error) {
@@ -292,7 +296,76 @@ export class OrderService {
       throw error;
     }
   }
+
+
+
+  async getAllOrders() {
+    const orders = await this.orderRepository.find({
+      relations: ['user', 'promotion', 'transaction', 'transaction.paymentMethod', 'orderDetails', 'orderDetails.ticket', 'orderDetails.schedule', 'orderDetails.schedule.movie', 'orderDetails.ticket', 'orderDetails.ticket.seat', 'orderDetails.ticket.ticketType'],
+    });
+
+    const bookingSummaries = orders.map(order => this.mapToBookingSummaryLite(order));
+    return bookingSummaries;
+  }
+
+  async getOrderByIdEmployeeAndAdmin(orderId: number) {
+    const order = await this.orderRepository.findOne({
+      where: { id: orderId },
+      relations: ['user', 'promotion', 'transaction', 'transaction.paymentMethod', 'orderDetails', 'orderDetails.ticket', 'orderDetails.schedule', 'orderDetails.schedule.movie', 'orderDetails.ticket.seat', 'orderDetails.ticket.ticketType'],
+    });
+    if (!order) {
+      throw new NotFoundException(`Order with ID ${orderId} not found`);
+    }
+    return this.mapToBookingSummaryLite(order);
+  }
+  async getMyOrders(userId: string) {
+    const orderByUser = await this.orderRepository.find({
+      where: { user: { id: userId } },
+      relations: ['user', 'promotion', 'transaction', 'transaction.paymentMethod', 'orderDetails', 'orderDetails.ticket', 'orderDetails.schedule', 'orderDetails.schedule.movie', 'orderDetails.ticket.seat', 'orderDetails.ticket.ticketType'],
+    });
+
+    const bookingSummaries = orderByUser.map(order => this.mapToBookingSummaryLite(order));
+    return bookingSummaries;
+  }
+
+  private mapToBookingSummaryLite(order: Order) {
+    return {
+      id: order.id,
+      booking_date: order.booking_date,
+      total_prices: order.total_prices,
+      status: order.status,
+      user: {
+        id: order.user.id,
+        username: order.user.username,
+        email: order.user.email,
+      },
+      promotion: {
+        title: order.promotion?.title
+      },
+      orderDetails: order.orderDetails.map(detail => ({
+        id: detail.id,
+        total_each_ticket: detail.total_each_ticket,
+        seat: {
+          id: detail.ticket.seat.id,
+          seat_row: detail.ticket.seat.seat_row,
+          seat_column: detail.ticket.seat.seat_column,
+        },
+        ticketType: {
+          ticket_name: detail.ticket.ticketType.ticket_name,
+        },
+        show_date: detail.schedule.show_date,
+        movie: {
+          id: detail.schedule.movie.id,
+          name: detail.schedule.movie.name,
+        },
+      })),
+      transaction: {
+        transaction_code: order.transaction.transaction_code,
+        status: order.transaction.status,
+        PaymentMethod: {
+          method_name: order.transaction.paymentMethod.name
+        }
+      },
+    };
+  }
 }
-
-
-

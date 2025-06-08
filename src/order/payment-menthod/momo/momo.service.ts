@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import * as crypto from 'crypto';
 import axios from 'axios';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -10,6 +10,7 @@ import { Ticket } from 'src/typeorm/entities/order/ticket';
 import { Seat } from 'src/typeorm/entities/cinema/seat';
 import { Member } from 'src/typeorm/entities/user/member';
 import { User } from 'src/typeorm/entities/user/user';
+import { MailerService } from '@nestjs-modules/mailer';
 
 @Injectable()
 export class MomoService {
@@ -24,8 +25,8 @@ export class MomoService {
     private readonly seatRepository: Repository<Seat>,
     @InjectRepository(Member)
     private readonly memberRepository: Repository<Member>,
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>
+
+    private mailerService: MailerService,
   ) { }
 
   async createOrderMomo(total: string) {
@@ -89,9 +90,14 @@ export class MomoService {
         'order',
         'order.orderDetails',
         'order.orderDetails.ticket',
+        'order.orderDetails.ticket.ticketType',
         'order.orderDetails.ticket.seat',
         'order.user',
         'order.user.member',
+        'order.orderDetails.ticket.schedule',
+        'order.orderDetails.ticket.schedule.movie',
+        'order.orderDetails.ticket.schedule.cinemaRoom',
+        'paymentMethod',
       ],
     });
 
@@ -101,7 +107,7 @@ export class MomoService {
     return transaction;
   }
 
-  async handleReturn(res, query: any) {
+  async handleReturn( query: any) {
     const { orderId, resultCode } = query;
 
     const transaction = await this.getTransactionByOrderId(orderId);
@@ -124,6 +130,38 @@ export class MomoService {
         }
       }
 
+      // Send email notification
+      try {
+        const firstTicket = order.orderDetails[0]?.ticket;
+        await this.mailerService.sendMail({
+          to: order.user.email,
+          subject: 'Your Order Successful',
+          template: 'order-confirmation',
+          context: {
+            user: order.user.username,
+            transactionCode: transaction.transaction_code,
+            bookingDate: order.booking_date,
+            total: order.total_prices,
+            addScore: order.add_score,
+            paymentMethod: transaction.paymentMethod.name,
+
+            // Thông tin chung 1 lần
+            movieName: firstTicket?.schedule.movie.name,
+            showDate: firstTicket?.schedule.show_date,
+            roomName: firstTicket?.schedule.cinemaRoom.cinema_room_name,
+
+            // Danh sách ghế
+            seats: order.orderDetails.map(detail => ({
+              row: detail.ticket.seat.seat_row,
+              column: detail.ticket.seat.seat_column,
+              ticketType: detail.ticket.ticketType.ticket_name,
+              price: detail.total_each_ticket,
+            })),
+          },
+        });
+      } catch (error) {
+        throw new NotFoundException('Failed to send confirmation email');
+      }
       return {
         message: 'Payment successful',
         order: savedOrder,
