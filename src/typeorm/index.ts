@@ -1,8 +1,7 @@
 import { Actor } from './entities/cinema/actor';
-import { ActorMovie } from './entities/cinema/actor-movie';
+
 import { CinemaRoom } from './entities/cinema/cinema-room';
-import { Genre } from './entities/cinema/gerne';
-import { MovieGenre } from './entities/cinema/gerne-movie';
+import { Gerne } from './entities/cinema/gerne';
 
 import { Movie } from './entities/cinema/movie';
 import { Schedule } from './entities/cinema/schedule';
@@ -32,14 +31,11 @@ export const allEntities = [
   MailOTP,
   RefreshToken,
   Member,
-
   Food,
   Drink,
   Combo,
   ComboDetail,
-
   Promotion,
-
   Order,
   OrderDetail,
   OrderProduct,
@@ -47,13 +43,10 @@ export const allEntities = [
   Transaction,
   Ticket,
   TicketType,
-
   Movie,
   Actor,
-  ActorMovie,
   CinemaRoom,
-  Genre,
-  MovieGenre,
+  Gerne,
   Schedule,
   Seat,
   SeatType,

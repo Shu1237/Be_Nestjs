@@ -8,6 +8,8 @@ export class CinemaRoom {
   @PrimaryGeneratedColumn({ type: 'int' })
   id: number;
 
+  @Column({ type: 'boolean', default: false })
+  is_deleted: boolean; //
   @Column({ type: 'varchar', nullable: false, length: 100 })
   cinema_room_name: string;
 

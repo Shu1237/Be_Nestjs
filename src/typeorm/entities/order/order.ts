@@ -16,9 +16,6 @@ export class Order {
   @Column({ type: 'int', default: 0 })
   add_score: number;
 
-  @Column({ type: 'int', default: 0 })
-  use_score: number;
-
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: false })
   total_prices: string;
 

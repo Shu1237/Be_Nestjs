@@ -13,6 +13,8 @@ export class Ticket {
   @Column({ default: false })
   status: boolean;
 
+  @Column({ default: false })
+  is_used: boolean;
 
   @ManyToOne(() => Schedule, (schedule) => schedule.tickets)
   @JoinColumn({ name: 'schedule_id' })
@@ -21,6 +23,7 @@ export class Ticket {
   @ManyToOne(() => Seat, (seat) => seat.tickets)
   @JoinColumn({ name: 'seat_id' })
   seat: Seat;
+  
 
   @ManyToOne(() => TicketType, (ticketType) => ticketType.tickets)
   @JoinColumn({ name: 'ticket_type_id' })

@@ -1,10 +1,16 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Promotion } from 'src/typeorm/entities/promotion/promotion';
 import { Member } from 'src/typeorm/entities/user/member';
 import { User } from 'src/typeorm/entities/user/user';
-import { CreatePromotionType, JWTUserType } from 'src/utils/type';
+import { ChangePromotionType, JWTUserType } from 'src/utils/type';
 import { Repository } from 'typeorm';
+import { CreatePromotionDto } from './dto/create-promotion.dto';
+import { UpdatePromotionDto } from './dto/update-promotion.dto';
 
 @Injectable()
 export class PromotionService {
@@ -18,76 +24,110 @@ export class PromotionService {
   ) {}
 
   async getAllPromotions() {
-    return this.promotionRepository.find();
+    return this.promotionRepository.find({
+      where: { is_active: true },
+    });
   }
 
-  async createPromotion(createPromotionDto: CreatePromotionType) {
-    const existing = await this.promotionRepository.findOne({
+  async createPromotion(createPromotionDto: CreatePromotionDto) {
+    const existingPromotion = await this.promotionRepository.findOne({
       where: { code: createPromotionDto.code },
     });
 
-    if (existing) {
-      throw new BadRequestException(`Promotion code "${createPromotionDto.code}" already exists`);
+    if (existingPromotion) {
+      throw new BadRequestException('Promotion code already exists');
     }
 
-    const promotion = this.promotionRepository.create({
-      ...createPromotionDto,
-      exchange: createPromotionDto.exchange?.toString(),
-    });
-    return this.promotionRepository.save(promotion);
+    const promotion = this.promotionRepository.create(createPromotionDto);
+    await this.promotionRepository.save(promotion);
+    return { msg: 'Promotion created successfully' };
   }
 
   async getPromotionById(id: number) {
-    const promotion = await this.promotionRepository.findOneBy({ id });
+    const promotion = await this.promotionRepository.findOne({
+      where: { id, is_active: true },
+    });
     if (!promotion) throw new NotFoundException('Promotion not found');
     return promotion;
   }
 
-  // async updatePromotion(id: number, updatePromotionDto: UpdatePromotionDto) {
-  //   await this.promotionRepository.update(id, updatePromotionDto);
-  //   return this.getPromotionById(id);
-  // }
+  async updatePromotion(id: number, updatePromotionDto: UpdatePromotionDto) {
+    const promotion = await this.getPromotionById(id);
 
-  async deletePromotion(id: number) {
-    return this.promotionRepository.delete(id);
+    if (updatePromotionDto.code) {
+      const existing = await this.promotionRepository.findOne({
+        where: { code: updatePromotionDto.code },
+      });
+      if (existing && existing.id !== id) {
+        throw new BadRequestException(
+          `Promotion code "${updatePromotionDto.code}" already exists`,
+        );
+      }
+    }
+
+    Object.assign(promotion, updatePromotionDto);
+    return this.promotionRepository.save(promotion);
   }
 
-  async deleteSoftPromotion(id: number) {
-    return this.promotionRepository.update(id, { is_active: false });
+  async deletePromotion(id: number): Promise<void> {
+    const promotion = await this.promotionRepository.findOne({
+      where: { id },
+    });
+    if (!promotion) {
+      throw new NotFoundException('Promotion not found');
+    }
+    await this.promotionRepository.remove(promotion);
   }
 
-  // async changePromotion(body: ChangePromotionDto, user: JWTUserType) {
-  //   const userData = await this.userRepository.findOne({
-  //     where: { id: user.account_id },
-  //     relations: ['member'],
-  //   });
-  //   if (!userData) throw new NotFoundException('User not found');
+  async deleteSoftPromotion(id: number): Promise<void> {
+    const promotion = await this.promotionRepository.findOne({
+      where: { id },
+    });
+    if (!promotion) {
+      throw new NotFoundException('Promotion not found');
+    }
+    promotion.is_active = false;
+    await this.promotionRepository.save(promotion);
+  }
 
-  //   const promotion = await this.promotionRepository.findOne({
-  //     where: { id: body.id, is_active: true },
-  //   });
-  //   if (!promotion) throw new NotFoundException('Promotion not found or inactive');
+  async changePromotion(body: ChangePromotionType, user: JWTUserType) {
+    const userData = await this.userRepository.findOne({
+      where: { id: user.account_id },
+      relations: ['member'],
+    });
+    if (!userData) throw new NotFoundException('User not found');
 
-  //   const now = new Date();
-  //   if (
-  //     (promotion.start_time && now < promotion.start_time) ||
-  //     (promotion.end_time && now > promotion.end_time)
-  //   ) {
-  //     throw new BadRequestException('Promotion is not active during this period');
-  //   }
+    const promotion = await this.promotionRepository.findOne({
+      where: { id: body.id, is_active: true },
+    });
+    if (!promotion)
+      throw new NotFoundException('Promotion not found or inactive');
 
-  //   if (userData.member.score < body.exchange) {
-  //     throw new BadRequestException('Not enough exchange points');
-  //   }
+    const now = new Date();
+    if (
+      (promotion.start_time && now < promotion.start_time) ||
+      (promotion.end_time && now > promotion.end_time)
+    ) {
+      throw new BadRequestException(
+        'Promotion is not active during this period',
+      );
+    }
 
-  //   userData.member.score -= body.exchange;
-  //   await this.memberRepository.update(userData.member.id, {
-  //     score: userData.member.score,
-  //   });
+    if (!userData.member) {
+      throw new BadRequestException('User does not have a member account');
+    }
+    if (Number(userData.member.score) < Number(promotion.exchange)) {
+      throw new BadRequestException(
+        'Insufficient points to exchange for this promotion',
+      );
+    }
+    // Deduct points from member
+    const newScore = Number(userData.member.score) - Number(promotion.exchange);
+    userData.member.score = newScore;
+    await this.memberRepository.save(userData.member);
 
-  //   return {
-  //     msg: 'Exchange successfully',
-  //     code: promotion.code,
-  //   };
-  // }
+    return {
+      msg: 'Exchange successfully',
+    };
+  }
 }

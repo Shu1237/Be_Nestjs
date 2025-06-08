@@ -10,6 +10,7 @@ import {
   UseGuards,
   Patch,
   Req,
+  ForbiddenException,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -20,15 +21,17 @@ import {
 } from '@nestjs/swagger';
 
 import { MovieService } from './movie.service';
-import { MovieDTO } from './dtos/movie.dto';
+import { CreateMovieDto } from './dtos/createMovie.dto';
 import { Movie } from 'src/typeorm/entities/cinema/movie';
 
 import { JwtAuthGuard } from 'src/guards/jwt.guard';
 import { Role } from 'src/enum/roles.enum';
-import { JWTUserType } from 'src/utils/type';
+import { IMovie, JWTUserType } from 'src/utils/type';
+import { Gerne } from 'src/typeorm/entities/cinema/gerne';
+import { UpdateMovieDto } from './dtos/updateMovie.dto';
 
 @ApiTags('Movies')
-@ApiBearerAuth() 
+@ApiBearerAuth()
 @Controller('movies')
 export class MovieController {
   constructor(private readonly movieService: MovieService) {}
@@ -36,24 +39,30 @@ export class MovieController {
   @UseGuards(JwtAuthGuard)
   @Post()
   @ApiOperation({ summary: 'Create a new movie' })
-  @ApiResponse({ status: 201, description: 'Movie created successfully.', type: Movie })
+  @ApiResponse({
+    status: 201,
+    description: 'Movie created successfully.',
+    type: Movie,
+  })
   @ApiResponse({ status: 400, description: 'Invalid input.' })
-  @ApiBody({ type: MovieDTO })
-  createMovie(@Body() movieDto: MovieDTO,@Req() req) {
+  @ApiBody({ type: CreateMovieDto })
+  async createMovie(
+    @Body() movieDto: CreateMovieDto,
+    @Req() req,
+  ): Promise<IMovie> {
     const user = req.user as JWTUserType;
-    if(user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) { 
-      return {
-        statusCode: 403,
-        message: 'Unauthorized: Only admin or employee can create a movie.',
-      }
+    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
+      throw new ForbiddenException(
+        'Unauthorized: Only admin or employee can create a movie.',
+      );
     }
-    return this.movieService.createMovie(movieDto);
+    return await this.movieService.createMovie(movieDto);
   }
 
   @Get()
   @ApiOperation({ summary: 'Get all movies' })
   @ApiResponse({ status: 200, description: 'List of movies.', type: [Movie] })
-  getAllMovies(): Promise<Movie[]> {
+  getAllMovies(): Promise<IMovie[]> {
     return this.movieService.getAllMovies();
   }
 
@@ -64,22 +73,28 @@ export class MovieController {
   getMovieById(@Param('id', ParseIntPipe) id: number) {
     return this.movieService.getMovieById(id);
   }
-
   @UseGuards(JwtAuthGuard)
   @Put(':id')
   @ApiOperation({ summary: 'Update movie by ID (admin, employee only)' })
-  @ApiResponse({ status: 200, description: 'Movie updated successfully.', type: Movie })
+  @ApiResponse({
+    status: 200,
+    description: 'Movie updated successfully.',
+    type: Movie,
+  })
+
   @ApiResponse({ status: 404, description: 'Movie not found.' })
-  @ApiBody({ type: MovieDTO })
-  updateMovie( @Param('id', ParseIntPipe) id: number, @Body() movieDto: MovieDTO,@Req() req) {
-   const user = req.user as JWTUserType;
-    if(user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) { 
-        return {
-        statusCode: 403,
-        message: 'Unauthorized: Only admin or employee can update a movie.',
-      }
+  async updateMovie(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() movieDTO: UpdateMovieDto,
+    @Req() req,
+  ): Promise<IMovie> {
+    const user = req.user as JWTUserType;
+    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
+      throw new ForbiddenException(
+        'Unauthorized: Only admin or employee can update a movie.',
+      );
     }
-    return this.movieService.updateMovie(id, movieDto);
+    return await this.movieService.updateMovie(id, movieDTO);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -88,12 +103,12 @@ export class MovieController {
   @ApiResponse({ status: 200, description: 'Movie deleted successfully.' })
   @ApiResponse({ status: 404, description: 'Movie not found.' })
   deleteMovie(@Param('id', ParseIntPipe) id: number, @Req() req) {
-     const user = req.user as JWTUserType;
-    if(user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) { 
-       return {
+    const user = req.user as JWTUserType;
+    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
+      return {
         statusCode: 403,
         message: 'Unauthorized: Only admin or employee can delete a movie.',
-      }
+      };
     }
     return this.movieService.deleteMovie(id);
   }
@@ -105,12 +120,56 @@ export class MovieController {
   @ApiResponse({ status: 404, description: 'Movie not found.' })
   softDeleteMovie(@Param('id', ParseIntPipe) id: number, @Req() req) {
     const user = req.user as JWTUserType;
-    if(user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) { 
-        return {
+    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
+      return {
         statusCode: 403,
-        message: 'Unauthorized: Only admin or employee can soft delete a movie.',
-      }
+        message:
+          'Unauthorized: Only admin or employee can soft delete a movie.',
+      };
     }
     return this.movieService.softDeleteMovie(id);
   }
+
+
+  @UseGuards(JwtAuthGuard)
+  @Get(':movieId/actors')
+  @ApiOperation({ summary: 'Get all actors of a movie' })
+  async getActorsOfMovie(@Param('movieId', ParseIntPipe) movieId: number) {
+    return await this.movieService.getActorsOfMovie(movieId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get(':movieId/gernes')
+  @ApiOperation({ summary: 'Get all genres of a movie' })
+  @ApiResponse({ status: 200, description: 'List of genres.', type: [Gerne] })
+  async getGernesOfMovie(
+    @Param('movieId', ParseIntPipe) movieId: number,
+  ): Promise<Gerne[]> {
+    return await this.movieService.getGernesOfMovie(movieId);
+  }
+
+
+  @UseGuards(JwtAuthGuard)
+  @Get(':movieId/versions')
+  @ApiOperation({ summary: 'Get all versions of a movie' })
+  async getVersionsOfMovie(@Param('movieId', ParseIntPipe) movieId: number) {
+    return await this.movieService.getVersionsOfMovie(movieId);
+  }
+
+  // @UseGuards(JwtAuthGuard)
+  // @Patch(':movieId/remove-version/:versionId')
+  // @ApiOperation({ summary: 'Remove a version from a movie' })
+  // async removeVersionFromMovie(
+  //   @Param('movieId', ParseIntPipe) movieId: number,
+  //   @Param('versionId', ParseIntPipe) versionId: number,
+  //   @Req() req,
+  // ) {
+  //   const user = req.user as JWTUserType;
+  //   if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
+  //     throw new ForbiddenException(
+  //       'Unauthorized: Only admin or employee can remove a version from a movie.',
+  //     );
+  //   }
+  //   return await this.movieService.removeVersionFromMovie(movieId, versionId);
+  // }
 }

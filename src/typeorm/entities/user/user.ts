@@ -9,7 +9,6 @@ import {
 } from 'typeorm';
 import { Member } from './member';
 import { RefreshToken } from './refresh-token';
-import { MailOTP } from './mail-otp';
 import { Role } from './roles';
 import { Order } from '../order/order';
 
@@ -48,14 +47,15 @@ export class User {
   @Column({ type: 'boolean', default: true })
   status: boolean;
 
+  @Column({ type: 'boolean', default: false })
+  is_deleted: boolean;
+
   @ManyToOne(() => Role, (role) => role.users)
   @JoinColumn({ name: 'role_id' })
   role: Role;
 
   @OneToMany(() => RefreshToken, (refreshToken) => refreshToken.user)
   refreshTokens: RefreshToken[];
-
-
 
   @OneToMany(() => Order, (order) => order.user)
   orders: Order[];

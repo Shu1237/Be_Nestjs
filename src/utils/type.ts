@@ -1,88 +1,70 @@
-import { User } from "src/typeorm/entities/user/user";
+import { Role } from 'src/enum/roles.enum';
 
 export type CreateAccountType = {
-    address: string;
-    date_of_birth: Date;
-    email: string;
-    gender: boolean;
-    identity_card: string;
-    image?: string;
-    password: string;
-    phone_number: string;
-    username: string;
-    role_id?: number;
+  address: string;
+  date_of_birth: Date;
+  email: string;
+  gender: boolean;
+  identity_card: string;
+  image?: string;
+  password: string;
+  phone_number: string;
+  username: string;
+  role_id?: number;
 };
 
 export type LogoutType = {
-    refresh_token: string;
-}
+  refresh_token: string;
+};
 
 export type LoginType = {
-    username: string;
-    password: string;
-}
+  username: string;
+  password: string;
+};
 export type changePasswordType = {
-    newPassword: string;
-    token: string;
-}
+  newPassword: string;
+  token: string;
+};
 export type RefreshTokenType = {
-    refresh_token: string;
-}
+  refresh_token: string;
+};
 export type JWTUserType = {
-    account_id: string;
-    username: string;
-    role_id: number;
-}
+  account_id: string;
+  username: string;
+  role_id: Role;
+};
 
 export type GoogleUserType = {
-    email: string;
-    avatarUrl: string;
-    password?: string;
-}
-
-export type IMovie = {
-    name: string;
-    content: string;
-    director: string;
-    duration: number;
-    from_date: Date;
-    to_date: Date;
-    production_company: string;
-    thumbnail: string;
-    banner: string;
-    version?: string;
-}
-
-
-
+  email: string;
+  avatarUrl: string;
+  password?: string;
+};
 
 export type SeatInfo = {
-    id: string;
-    seat_row: string;
-    seat_column: string;
-    audience_type: 'adult' | 'student' | 'child';
-}
+  id: string;
+  seat_row: string;
+  seat_column: string;
+  audience_type: 'adult' | 'student' | 'child';
+};
 
 export type OrderBillType = {
-    payment_method: string;
-    booking_date: Date;
-    total_prices: string;
-    promotion_id: number;
-    schedule_id: number;
-    seats: SeatInfo[];
-}
-
-
+  payment_method_id: string;
+  booking_date: Date;
+  total_prices: string;
+  promotion_id: number;
+  schedule_id: number;
+  seats: SeatInfo[];
+};
 
 export type CreatePromotionType = {
-    title: string;
-    detail?: string;
-    discount_level: string;
-    start_time?: string;  
-    end_time?: string;
-    exchange?: string;
-    code: string;
-    is_active?: boolean;
+  title: string;
+  detail?: string;
+  discount_level: string;
+  start_time?: string;
+  end_time?: string;
+  exchange?: string;
+  code: string;
+  is_active?: boolean;
 };
 
 export type UpdatePromotionType = {
@@ -96,8 +78,83 @@ export type UpdatePromotionType = {
   is_active?: boolean;
 };
 
-
 export type ChangePromotionType = {
   id: number;
   exchange: number;
+};
+
+export type IActor = {
+  id: number;
+  name: string;
+};
+
+export type IVersion = {
+  id: number;
+  name: string;
+};
+
+export type IGerne = {
+  id: number;
+  genre_name: string;
+};
+
+export type IMovie = {
+  id: number;
+  name: string;
+  content: string;
+  director: string;
+  duration: number;
+  from_date: Date;
+  to_date: Date;
+  production_company: string;
+  thumbnail: string;
+  banner: string;
+  version?: string;
+  is_deleted: boolean;
+  actors: IActor[]; // Chỉ chứa id và name
+  gernes: IGerne[]; // Chỉ chứa id và genre_name
+  versions: IVersion[]; // Chỉ chứa id và name
+};
+
+export type ISchedule = {
+  id: number;
+  show_date: Date;
+  movie: IMovieBasic;
+  cinema_room_id: number;
+  // Chỉ chứa id và name
+};
+
+export type IMovieBasic = {
+  id: number;
+  name: string;
+};
+
+
+
+
+export type TicketSummary = {
+  id: string;
+  schedule: {
+    show_date: string;
+    movie: {
+      id: number;
+      name: string;
+      duration: number;
+      thumbnail: string;
+    };
+    cinemaRoom: {
+      id: number;
+      name: string;
+    };
+  };
+  seat: {
+    id: string;
+    row: string;
+    column: string;
+  };
+};
+
+export type HoldSeatType = {
+  seatIds: string[];
+  cinema_id: number;
 };

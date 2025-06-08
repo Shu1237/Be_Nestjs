@@ -1,15 +1,9 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../../typeorm/entities/user/user';
 import { Role } from '../../typeorm/entities/user/roles';
-import { CreateUserDto } from '../dtos/create-user.dto';
 import { UpdateUserDto } from '../dtos/update-user.dto';
-import { Role as RoleEnum } from 'src/enum/roles.enum';
 
 @Injectable()
 export class UserService {
@@ -20,34 +14,21 @@ export class UserService {
     private roleRepository: Repository<Role>,
   ) {}
 
-  async create(createUserDto: CreateUserDto): Promise<User> {
-    try {
-      const { role_id, ...userData } = createUserDto;
-      const role = role_id
-        ? await this.roleRepository.findOne({ where: { role_id } })
-        : await this.roleRepository.findOne({
-            where: { role_id: RoleEnum.USER },
-          });
-      if (!role) throw new BadRequestException('Role not found');
-      const user = this.userRepository.create({ ...userData, role });
-      return await this.userRepository.save(user);
-    } catch {
-      throw new BadRequestException(
-        'Unable to create user. Please check your information again.',
-      );
-    }
-  }
-
   async findAll(): Promise<User[]> {
-    return await this.userRepository.find({ relations: ['role'] });
+    return await this.userRepository.find({
+      where: { is_deleted: false },
+      relations: ['role'],
+    });
   }
 
   async findOne(id: string): Promise<User> {
     const user = await this.userRepository.findOne({
-      where: { id },
+      where: { id, is_deleted: false },
       relations: ['role'],
     });
-    if (!user) throw new NotFoundException(`User with ID not found ${id}`);
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
     return user;
   }
 
@@ -57,28 +38,15 @@ export class UserService {
     return await this.userRepository.save(user);
   }
 
-  async remove(id: string): Promise<void> {
+  async changeStatus(id: string): Promise<User> {
     const user = await this.findOne(id);
-    await this.userRepository.remove(user);
+    user.status = !user.status;
+    return await this.userRepository.save(user);
   }
 
-  async changePassword(id: string, newPassword: string): Promise<void> {
+  async softDelete(id: string): Promise<void> {
     const user = await this.findOne(id);
-    user.password = newPassword;
+    user.is_deleted = true;
     await this.userRepository.save(user);
-  }
-
-  async changeStatus(id: string, status: boolean): Promise<User> {
-    const user = await this.findOne(id);
-    user.status = status;
-    return await this.userRepository.save(user);
-  }
-
-  async changeRole(id: string, role_id: RoleEnum): Promise<User> {
-    const user = await this.findOne(id);
-    const role = await this.roleRepository.findOne({ where: { role_id } });
-    if (!role) throw new BadRequestException('Role not found');
-    user.role = role;
-    return await this.userRepository.save(user);
   }
 }

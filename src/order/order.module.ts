@@ -16,12 +16,33 @@ import { TicketType } from 'src/typeorm/entities/order/ticket-type';
 import { Ticket } from 'src/typeorm/entities/order/ticket';
 import { Promotion } from 'src/typeorm/entities/promotion/promotion';
 import { Member } from 'src/typeorm/entities/user/member';
-
+import { PayPalModule } from './payment-menthod/paypal/paypal.module';
+import { VisaModule } from './payment-menthod/visa/visa.module';
+import { VnpayModule } from './payment-menthod/vnpay/vnpay.module';
+import { ZalopayModule } from './payment-menthod/zalopay/zalopay.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Member,Promotion,Ticket,TicketType,Schedule,User,SeatType,Seat,Order, OrderDetail, Transaction, OrderProduct, PaymentMethod]),
-    MomoModule, 
+    TypeOrmModule.forFeature([
+      Member,
+      Promotion,
+      Ticket,
+      TicketType,
+      Schedule,
+      User,
+      SeatType,
+      Seat,
+      Order,
+      OrderDetail,
+      Transaction,
+      OrderProduct,
+      PaymentMethod,
+    ]),
+    MomoModule,
+    PayPalModule,
+    VisaModule,
+    VnpayModule,
+    ZalopayModule,
   ],
   controllers: [OrderController],
   providers: [OrderService],
