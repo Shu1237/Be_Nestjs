@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Order Confirmation</title>
+  </head>
+  <body style="font-family: Arial, sans-serif; line-height: 1.6; background-color: #f9f9f9; padding: 20px;">
+    <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 10px; padding: 30px; box-shadow: 0 0 10px rgba(0,0,0,0.05);">
+      <h2 style="color: #4CAF50;">🎟️ Đặt vé thành công!</h2>
+
+      <p>Xin chào <strong>{{user}}</strong>,</p>
+      <p>Chúng tôi xác nhận bạn đã đặt vé thành công với mã giao dịch <strong>{{transactionCode}}</strong>.</p>
+
+      <h3>📅 Thông tin đơn hàng:</h3>
+      <ul>
+        <li><strong>Ngày đặt:</strong> {{bookingDate}}</li>
+        <li><strong>Tổng tiền:</strong> {{total}} VNĐ</li>
+        <li><strong>Phương thức thanh toán:</strong> {{paymentMethod}}</li>
+        <li><strong>Điểm thưởng cộng thêm:</strong> {{addScore}}</li>
+      </ul>
+
+      <h3>🎬 Thông tin suất chiếu:</h3>
+      <ul>
+        <li><strong>Phim:</strong> {{movieName}}</li>
+        <li><strong>Ngày chiếu:</strong> {{showDate}}</li>
+        <li><strong>Phòng chiếu:</strong> {{roomName}}</li>
+      </ul>
+
+      <h3>💺 Danh sách ghế:</h3>
+      <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+        <thead>
+          <tr>
+            <th style="border-bottom: 1px solid #ddd; padding: 8px;">Hàng</th>
+            <th style="border-bottom: 1px solid #ddd; padding: 8px;">Cột</th>
+            <th style="border-bottom: 1px solid #ddd; padding: 8px;">Loại vé</th>
+            <th style="border-bottom: 1px solid #ddd; padding: 8px;">Giá</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each seats}}
+            <tr>
+              <td style="padding: 8px; text-align: center;">{{row}}</td>
+              <td style="padding: 8px; text-align: center;">{{column}}</td>
+              <td style="padding: 8px; text-align: center;">{{ticketType}}</td>
+              <td style="padding: 8px; text-align: center;">{{price}} VNĐ</td>
+            </tr>
+          {{/each}}
+        </tbody>
+      </table>
+
+      <p style="margin-top: 20px;">🎉 Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi. Hẹn gặp bạn tại rạp!</p>
+      <p style="font-size: 0.9em; color: #999;">Vui lòng không trả lời email này. Nếu có thắc mắc, hãy liên hệ bộ phận hỗ trợ.</p>
+    </div>
+  </body>
+</html>

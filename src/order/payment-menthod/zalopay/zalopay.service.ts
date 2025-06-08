@@ -1,10 +1,10 @@
-import { Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import * as crypto from "crypto";
 import axios from "axios";
 import * as moment from "moment";
 import * as dayjs from "dayjs";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { OrderBillType } from "src/utils/type";
 import { Seat } from "src/typeorm/entities/cinema/seat";
 import { Order } from "src/typeorm/entities/order/order";
@@ -14,6 +14,8 @@ import { User } from "src/typeorm/entities/user/user";
 import { Transaction } from "src/typeorm/entities/order/transaction";
 import { TicketType } from "src/typeorm/entities/order/ticket-type";
 import { Promotion } from "src/typeorm/entities/promotion/promotion";
+import { MailerService } from "@nestjs-modules/mailer";
+import { MomoService } from "../momo/momo.service";
 
 @Injectable()
 export class ZalopayService {
@@ -34,6 +36,9 @@ export class ZalopayService {
     private readonly ticketTypeRepository: Repository<TicketType>,
     @InjectRepository(Promotion)
     private readonly promotionRepository: Repository<Promotion>,
+
+    private mailerService: MailerService,
+    private momoService: MomoService
   ) { }
 
   private app_id = Number(process.env.ZALO_APP_ID);
@@ -140,27 +145,10 @@ export class ZalopayService {
     }
   }
 
-  async getTransactionByOrderId(orderId: string) {
-    const transaction = await this.transactionRepository.findOne({
-      where: { transaction_code: orderId },
-      relations: [
-        "order",
-        "order.orderDetails",
-        "order.orderDetails.ticket",
-        "order.orderDetails.ticket.seat",
-        "order.user",
-        "order.user.member",
-      ],
-    });
-
-    if (!transaction) throw new NotFoundException("Transaction not found");
-
-    return transaction;
-  }
 
   async handleReturnZaloPay(query: any) {
     const { apptransid, status } = query;
-    const transaction = await this.getTransactionByOrderId(apptransid);
+    const transaction = await this.momoService.getTransactionByOrderId(apptransid);
     const order = transaction.order;
 
     if (status === "1") {
@@ -180,6 +168,38 @@ export class ZalopayService {
           ticket.status = true;
           await this.ticketRepository.save(ticket);
         }
+      }
+      // send email notification
+      try {
+        const firstTicket = order.orderDetails[0]?.ticket;
+        await this.mailerService.sendMail({
+          to: order.user.email,
+          subject: 'Your Order Successful',
+          template: 'order-confirmation',
+          context: {
+            user: order.user.username,
+            transactionCode: transaction.transaction_code,
+            bookingDate: order.booking_date,
+            total: order.total_prices,
+            addScore: order.add_score,
+            paymentMethod: transaction.paymentMethod.name,
+
+            // Thông tin chung 1 lần
+            movieName: firstTicket?.schedule.movie.name,
+            showDate: firstTicket?.schedule.show_date,
+            roomName: firstTicket?.schedule.cinemaRoom.cinema_room_name,
+
+            // Danh sách ghế
+            seats: order.orderDetails.map(detail => ({
+              row: detail.ticket.seat.seat_row,
+              column: detail.ticket.seat.seat_column,
+              ticketType: detail.ticket.ticketType.ticket_name,
+              price: detail.total_each_ticket,
+            })),
+          },
+        });
+      } catch (error) {
+        throw new NotFoundException('Failed to send confirmation email');
       }
 
       return {

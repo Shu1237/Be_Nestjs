@@ -11,7 +11,6 @@ import { allEntities } from './typeorm';
 import { PassportModule } from '@nestjs/passport';
 import { UserModule } from './member/user.module';
 import { MovieModule } from './movie/movie.module';
-
 import { OrderModule } from './order/order.module';
 import { PromotionModule } from './promotion/promotion.module';
 import { ActorModule } from './actor/actor.module';
@@ -19,7 +18,7 @@ import { GerneModule } from './gerne/gerne.module';
 import { VersionModule } from './version/version.module';
 import { CinemaRoomModule } from './cinema-room/cinema-room.module';
 import { ScheduleModule } from './schedule/schedule.module';
-// import { SeatModule } from './seat/seat.module';
+import { TicketModule } from './ticket/ticket.module';
 
 @Module({
   imports: [
@@ -70,16 +69,14 @@ import { ScheduleModule } from './schedule/schedule.module';
     TesterModule,
     UserModule,
     MovieModule,
-
     OrderModule,
     PromotionModule,
-
     ActorModule,
     GerneModule,
     VersionModule,
     CinemaRoomModule,
     ScheduleModule,
-    // SeatModule,
+    TicketModule,
 
   ],
 })

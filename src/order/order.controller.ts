@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, Res, UseGuards, BadRequestException, InternalServerErrorException, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Res, UseGuards, BadRequestException, InternalServerErrorException, Req, Param, ParseIntPipe } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { MomoService } from './payment-menthod/momo/momo.service';
 import { PayPalService } from './payment-menthod/paypal/paypal.service';
@@ -8,6 +8,9 @@ import { CreateOrderBillDto } from './dto/order-bill.dto';
 import { ApiOperation, ApiBody, ApiResponse, ApiBearerAuth, ApiExcludeEndpoint } from '@nestjs/swagger';
 import { VnpayService } from './payment-menthod/vnpay/vnpay.service';
 import { ZalopayService } from './payment-menthod/zalopay/zalopay.service';
+import { JWTUserType } from 'src/utils/type';
+import { Method } from 'src/enum/payment-menthod.enum';
+import { Role } from 'src/enum/roles.enum';
 
 @Controller('order')
 export class OrderController {
@@ -36,7 +39,7 @@ export class OrderController {
   @ApiExcludeEndpoint()
   @Get('momo/return')
   async handleMomoReturn(@Query() query: any, @Res() res: Response) {
-    const result = await this.momoService.handleReturn(res, query);
+    const result = await this.momoService.handleReturn( query);
     return res.send(result);
   }
   @ApiExcludeEndpoint()
@@ -101,4 +104,46 @@ export class OrderController {
     const result = await this.zalopayService.handleReturnZaloPay(query);
     return res.send(result);
   }
+
+
+
+  // View All Orders
+  @UseGuards(JwtAuthGuard)
+  @Get('all')
+  @ApiOperation({ summary: 'View all orders' })
+  @ApiBearerAuth()
+  @ApiResponse({ status: 200, description: 'List of all orders' })
+  async getAllOrders(@Req() req) {
+    const user = req.user as JWTUserType;
+    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
+      throw new BadRequestException('You do not have permission to view all orders');
+    }
+    return this.orderService.getAllOrders();
+  }
+
+
+  // // Get Order by Id 
+  @UseGuards(JwtAuthGuard)
+  @Get(':id')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'View Order by ID' })
+  async getMyOrder(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    const user = req.user as JWTUserType;
+    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
+      throw new BadRequestException('You do not have permission to view this order');
+    }
+    return this.orderService.getOrderByIdEmployeeAndAdmin(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('getorderbyUserID/:id')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'View my orders' })
+  async getMyOrders(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    const user = req.user as JWTUserType;
+    return this.orderService.getMyOrders(user.account_id);
+  }
+
+  
+  
 }
