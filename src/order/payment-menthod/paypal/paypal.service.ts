@@ -188,6 +188,7 @@ export class PayPalService {
                     bookingDate: order.booking_date,
                     total: order.total_prices,
                     addScore: order.add_score,
+                    paymentMethod: transaction.paymentMethod.name,
 
                     // Thông tin chung 1 lần
                     movieName: firstTicket?.schedule.movie.name,
@@ -204,7 +205,6 @@ export class PayPalService {
                 },
             });
         } catch (error) {
-            console.error('Error sending confirmation email:', error);
             throw new NotFoundException('Failed to send confirmation email');
         }
 

@@ -145,6 +145,7 @@ export class VnpayService {
               bookingDate: order.booking_date,
               total: order.total_prices,
               addScore: order.add_score,
+              paymentMethod: transaction.paymentMethod.name,
 
               // Thông tin chung 1 lần
               movieName: firstTicket?.schedule.movie.name,
