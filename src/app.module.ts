@@ -19,6 +19,9 @@ import { VersionModule } from './version/version.module';
 import { CinemaRoomModule } from './cinema-room/cinema-room.module';
 import { ScheduleModule } from './schedule/schedule.module';
 import { TicketModule } from './ticket/ticket.module';
+import { SeatModule } from './seat/seat.module';
+import {  CacheModule } from '@nestjs/cache-manager';
+
 
 @Module({
   imports: [
@@ -27,6 +30,7 @@ import { TicketModule } from './ticket/ticket.module';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+
     TypeOrmModule.forRoot({
 
       type: 'mysql',
@@ -65,6 +69,12 @@ import { TicketModule } from './ticket/ticket.module';
         },
       },
     }),
+
+    CacheModule.register({
+      isGlobal: true,
+      ttl: 10 * 60,
+    }),
+
     AuthModule,
     TesterModule,
     UserModule,
@@ -77,7 +87,8 @@ import { TicketModule } from './ticket/ticket.module';
     CinemaRoomModule,
     ScheduleModule,
     TicketModule,
+    SeatModule
 
   ],
 })
-export class AppModule {}
+export class AppModule { }

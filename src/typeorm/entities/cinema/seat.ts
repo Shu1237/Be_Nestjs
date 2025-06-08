@@ -5,7 +5,7 @@ import { SeatType } from "./seat-type";
 
 @Entity('seat')
 export class Seat {
-  @PrimaryColumn({ type: 'varchar', length: 10 }) 
+  @PrimaryColumn({ type: 'varchar', length: 10 })
   id: string;
 
   @Column({ type: 'varchar', length: 5 })
@@ -16,6 +16,9 @@ export class Seat {
 
   @Column({ type: 'boolean', default: true })
   status: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  is_hold: boolean;
 
   @ManyToOne(() => SeatType, (seatType) => seatType.seats)
   @JoinColumn({ name: 'seat_type_id' })
