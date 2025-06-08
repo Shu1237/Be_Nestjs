@@ -18,21 +18,17 @@ import { GerneModule } from './gerne/gerne.module';
 import { VersionModule } from './version/version.module';
 import { CinemaRoomModule } from './cinema-room/cinema-room.module';
 import { ScheduleModule } from './schedule/schedule.module';
-import { TicketModule } from './ticket/ticket.module';
 import { SeatModule } from './seat/seat.module';
-import {  CacheModule } from '@nestjs/cache-manager';
-
+import { TicketModule } from './ticket/ticket.module';
+import { CacheModule } from '@nestjs/cache-manager';
 
 @Module({
   imports: [
     PassportModule,
-
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-
     TypeOrmModule.forRoot({
-
       type: 'mysql',
       host: process.env.DB_HOST,
       port: parseInt(process.env.DB_PORT || '3306', 10),
@@ -43,11 +39,9 @@ import {  CacheModule } from '@nestjs/cache-manager';
       synchronize: true,
       autoLoadEntities: true,
     }),
-
     PassportModule.register({
       defaultStrategy: 'jwt',
     }),
-
     MailerModule.forRoot({
       transport: {
         host: process.env.MAIL_HOST,
@@ -69,12 +63,10 @@ import {  CacheModule } from '@nestjs/cache-manager';
         },
       },
     }),
-
     CacheModule.register({
       isGlobal: true,
       ttl: 10 * 60,
     }),
-
     AuthModule,
     TesterModule,
     UserModule,
@@ -86,9 +78,8 @@ import {  CacheModule } from '@nestjs/cache-manager';
     VersionModule,
     CinemaRoomModule,
     ScheduleModule,
+    SeatModule,
     TicketModule,
-    SeatModule
-
   ],
 })
-export class AppModule { }
+export class AppModule {}

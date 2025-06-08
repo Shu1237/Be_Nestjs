@@ -1,15 +1,48 @@
-import { IsInt, IsString } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsBoolean, IsOptional } from 'class-validator';
 
 export class CreateSeatDto {
-  @IsInt()
-  seat_type_id: number;
+  @ApiProperty({
+    description: 'ID của ghế',
+    example: 'A1',
+  })
+  @IsString()
+  id: string;
 
-  @IsInt()
-  cinema_room_id: number;
-
+  @ApiProperty({
+    description: 'Hàng của ghế',
+    example: 'A',
+  })
   @IsString()
   seat_row: string;
 
+  @ApiProperty({
+    description: 'Cột của ghế',
+    example: '1',
+  })
   @IsString()
   seat_column: string;
+
+  @ApiProperty({
+    description: 'Trạng thái ghế',
+    example: true,
+    default: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  status?: boolean;
+
+  @ApiProperty({
+    description: 'ID loại ghế',
+    example: 1,
+  })
+  @IsString()
+  seat_type_id: string;
+
+  @ApiProperty({
+    description: 'ID phòng chiếu',
+    example: 1,
+  })
+  @IsString()
+  cinema_room_id: string;
 }
