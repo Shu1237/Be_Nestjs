@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import axios from 'axios';
 import { Repository } from 'typeorm';
@@ -14,6 +14,8 @@ import { Promotion } from 'src/typeorm/entities/promotion/promotion';
 import { TicketType } from 'src/typeorm/entities/order/ticket-type';
 import { changeVnToUSD } from 'src/utils/helper';
 import { Method } from 'src/enum/payment-menthod.enum';
+import { MailerService } from '@nestjs-modules/mailer';
+import { MomoService } from '../momo/momo.service';
 
 @Injectable()
 export class PayPalService {
@@ -31,7 +33,10 @@ export class PayPalService {
         @InjectRepository(Promotion)
         private readonly promotionRepository: Repository<Promotion>,
         @InjectRepository(TicketType)
-        private readonly ticketTypeRepository: Repository<TicketType>
+        private readonly ticketTypeRepository: Repository<TicketType>,
+
+        private mailerService: MailerService,
+        private momoService: MomoService
     ) { }
 
     async generateAccessToken() {
@@ -141,20 +146,8 @@ export class PayPalService {
         return response.data;
     }
 
-    async getTransactionByOrderId(orderId: string) {
-        if (!orderId) throw new NotFoundException('Order ID is required');
-
-        const transaction = await this.transactionRepository.findOne({
-            where: { transaction_code: orderId },
-            relations: ['paymentMethod','order', 'order.orderDetails', 'order.orderDetails.ticket', 'order.orderDetails.ticket.seat', 'order.user', 'order.user.member'],
-        });
-
-        if (!transaction) throw new NotFoundException('Transaction not found');
-        return transaction;
-    }
-
     async handleReturnSuccessPaypal(transactionCode: string) {
-        const transaction = await this.getTransactionByOrderId(transactionCode);
+        const transaction = await this.momoService.getTransactionByOrderId(transactionCode);
         if (!transaction) throw new NotFoundException('Transaction not found');
         // 1. Confirm transaction status
 
@@ -183,6 +176,37 @@ export class PayPalService {
                 await this.ticketRepository.save(ticket);
             }
         }
+        try {
+            const firstTicket = order.orderDetails[0]?.ticket;
+            await this.mailerService.sendMail({
+                to: order.user.email,
+                subject: 'Your Order Successful',
+                template: 'order-confirmation',
+                context: {
+                    user: order.user.username,
+                    transactionCode: transaction.transaction_code,
+                    bookingDate: order.booking_date,
+                    total: order.total_prices,
+                    addScore: order.add_score,
+
+                    // Thông tin chung 1 lần
+                    movieName: firstTicket?.schedule.movie.name,
+                    showDate: firstTicket?.schedule.show_date,
+                    roomName: firstTicket?.schedule.cinemaRoom.cinema_room_name,
+
+                    // Danh sách ghế
+                    seats: order.orderDetails.map(detail => ({
+                        row: detail.ticket.seat.seat_row,
+                        column: detail.ticket.seat.seat_column,
+                        ticketType: detail.ticket.ticketType.ticket_name,
+                        price: detail.total_each_ticket,
+                    })),
+                },
+            });
+        } catch (error) {
+            console.error('Error sending confirmation email:', error);
+            throw new NotFoundException('Failed to send confirmation email');
+        }
 
         return {
             msg: 'Payment successful',
@@ -192,7 +216,7 @@ export class PayPalService {
 
 
     async handleReturnCancelPaypal(transactionCode: string) {
-        const transaction = await this.getTransactionByOrderId(transactionCode);
+        const transaction = await this.momoService.getTransactionByOrderId(transactionCode);
         if (!transaction) throw new NotFoundException('Transaction not found');
         transaction.status = 'failed';
         await this.transactionRepository.save(transaction);

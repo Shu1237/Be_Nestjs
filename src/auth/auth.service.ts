@@ -42,7 +42,7 @@ export class AuthService {
     private refreshTokenRepository: Repository<RefreshToken>,
     @InjectRepository(MailOTP) private otpRepository: Repository<MailOTP>,
     private jwtService: JwtService,
-    @Inject(MailerService) private mailerService: MailerService,
+    private mailerService: MailerService,
   ) { }
 
   async validateUser(username: string, password: string) {

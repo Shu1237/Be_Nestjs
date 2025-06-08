@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import * as crypto from 'crypto';
 import * as qs from 'qs';
 import * as moment from 'moment';
@@ -8,8 +8,10 @@ import { Seat } from 'src/typeorm/entities/cinema/seat';
 import { Order } from 'src/typeorm/entities/order/order';
 import { Ticket } from 'src/typeorm/entities/order/ticket';
 import { Member } from 'src/typeorm/entities/user/member';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Transaction } from 'src/typeorm/entities/order/transaction';
+import { MailerService } from '@nestjs-modules/mailer';
+import { MomoService } from '../momo/momo.service';
 
 @Injectable()
 export class VnpayService {
@@ -24,6 +26,9 @@ export class VnpayService {
     private readonly seatRepository: Repository<Seat>,
     @InjectRepository(Member)
     private readonly memberRepository: Repository<Member>,
+
+    private mailerService: MailerService,
+    private momoService: MomoService
   ) { }
 
   async createOrderVnPay(orderItem: OrderBillType, clientIp: string) {
@@ -78,24 +83,7 @@ export class VnpayService {
     return url;
   }
 
-  async getTransactionByOrderId(orderId: string) {
-    const transaction = await this.transactionRepository.findOne({
-      where: { transaction_code: orderId },
-      relations: [
-        'order',
-        'order.orderDetails',
-        'order.orderDetails.ticket',
-        'order.orderDetails.ticket.seat',
-        'order.user',
-        'order.user.member',
-      ],
-    });
 
-    if (!transaction) {
-      throw new NotFoundException('Transaction not found');
-    }
-    return transaction;
-  }
 
   async handleReturnVnPay(query: any) {
     const receivedParams = { ...query };
@@ -124,7 +112,7 @@ export class VnpayService {
       const txnRef = receivedParams['vnp_TxnRef'];
 
       if (responseCode === '00') {
-        const transaction = await this.getTransactionByOrderId(txnRef);
+        const transaction = await this.momoService.getTransactionByOrderId(txnRef);
         transaction.status = 'success';
         await this.transactionRepository.save(transaction);
 
@@ -144,9 +132,40 @@ export class VnpayService {
           }
         }
 
+        // sned email notification
+        try {
+          const firstTicket = order.orderDetails[0]?.ticket;
+          await this.mailerService.sendMail({
+            to: order.user.email,
+            subject: 'Your Order Successful',
+            template: 'order-confirmation',
+            context: {
+              user: order.user.username,
+              transactionCode: transaction.transaction_code,
+              bookingDate: order.booking_date,
+              total: order.total_prices,
+              addScore: order.add_score,
+
+              // Thông tin chung 1 lần
+              movieName: firstTicket?.schedule.movie.name,
+              showDate: firstTicket?.schedule.show_date,
+              roomName: firstTicket?.schedule.cinemaRoom.cinema_room_name,
+
+              // Danh sách ghế
+              seats: order.orderDetails.map(detail => ({
+                row: detail.ticket.seat.seat_row,
+                column: detail.ticket.seat.seat_column,
+                ticketType: detail.ticket.ticketType.ticket_name,
+                price: detail.total_each_ticket,
+              })),
+            },
+          });
+        } catch (error) {
+          throw new NotFoundException('Failed to send confirmation email');
+        }
         return { success: true, message: 'Payment successful' };
       } else {
-        const transaction = await this.getTransactionByOrderId(txnRef);
+        const transaction = await this.momoService.getTransactionByOrderId(txnRef);
         transaction.status = 'failed';
         await this.transactionRepository.save(transaction);
         if (!transaction.order) throw new NotFoundException('Order not found');

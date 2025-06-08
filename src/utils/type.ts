@@ -146,3 +146,35 @@ export type IMovieBasic = {
   name: string;
 };
 
+
+
+export type TicketSummary = {
+  id: string;
+  schedule: {
+    show_date: string;
+    movie: {
+      id: number;
+      name: string;
+      duration: number;
+      thumbnail: string;
+    };
+    cinemaRoom: {
+      id: number;
+      name: string;
+    };
+  };
+  seat: {
+    id: string;
+    row: string;
+    column: string;
+  };
+};
+
+
+
+
+
+
+
+
+
