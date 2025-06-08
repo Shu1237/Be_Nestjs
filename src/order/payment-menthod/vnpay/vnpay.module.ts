@@ -7,10 +7,13 @@ import { Ticket } from "src/typeorm/entities/order/ticket";
 import { Member } from "src/typeorm/entities/user/member";
 import { Transaction } from "src/typeorm/entities/order/transaction";
 
+import { MailerModule, MailerService } from "@nestjs-modules/mailer";
+import { MomoModule } from "../momo/momo.module";
+
 
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Seat, Ticket, Order, Transaction, Member])],
+    imports: [TypeOrmModule.forFeature([Seat, Ticket, Order, Transaction, Member]), MomoModule, MailerModule],
     controllers: [],
     providers: [VnpayService],
     exports: [VnpayService],
