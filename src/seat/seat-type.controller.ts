@@ -8,7 +8,6 @@ import {
   Delete,
   UseGuards,
   Req,
-  ParseIntPipe,
   ForbiddenException,
 } from '@nestjs/common';
 import {
@@ -57,7 +56,7 @@ export class SeatTypeController {
     status: 404,
     description: 'Seat type not found',
   })
-  getSeatTypeById(@Param('id', ParseIntPipe) id: number) {
+  getSeatTypeById(@Param('id') id: string) {
     return this.seatTypeService.getSeatTypeById(id);
   }
 
@@ -98,7 +97,7 @@ export class SeatTypeController {
   })
   @ApiBody({ type: UpdateSeatTypeDto })
   updateSeatType(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
     @Body() updateSeatTypeDto: UpdateSeatTypeDto,
     @Req() req: RequestWithUser,
   ) {
@@ -122,13 +121,9 @@ export class SeatTypeController {
     status: 404,
     description: 'Seat type not found',
   })
-  async deleteSeatType(
-    @Param('id', ParseIntPipe) id: number,
-    @Req() req: RequestWithUser,
-  ) {
+  deleteSeatType(@Param('id') id: string, @Req() req: RequestWithUser) {
     if (req.user.role_id === Role.ADMIN) {
-      await this.seatTypeService.deleteSeatType(id);
-      return { msg: 'Delete successfully' };
+      return this.seatTypeService.deleteSeatType(id);
     }
     throw new ForbiddenException('Only admin can delete seat types');
   }

@@ -6,10 +6,11 @@ import {
   Param,
   Put,
   Delete,
+  Patch,
+
   UseGuards,
   Req,
   ForbiddenException,
-  Patch,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -25,6 +26,7 @@ import { UpdateSeatDto } from './dto/update-seat.dto';
 import { Request } from 'express';
 import { JWTUserType } from 'src/utils/type';
 import { Role } from 'src/enum/roles.enum';
+import { HoldSeatDto } from './dto/hold-seat.dto';
 
 interface RequestWithUser extends Request {
   user: JWTUserType;
@@ -132,16 +134,15 @@ export class SeatController {
     status: 404,
     description: 'Seat not found',
   })
-  async deleteSeat(@Param('id') id: string, @Req() req: RequestWithUser) {
+  deleteSeat(@Param('id') id: string, @Req() req: RequestWithUser) {
     if (req.user.role_id === Role.ADMIN) {
-      await this.seatService.deleteSeat(id);
-      return { msg: 'Delete successfully' };
+      return this.seatService.deleteSeat(id);
     }
     throw new ForbiddenException('Only admin can delete seats');
   }
 
   @Patch(':id/status')
-  @ApiOperation({ summary: 'Update seat status (admin only)' })
+  @ApiOperation({ summary: 'Update seat status by ID (admin only)' })
   @ApiResponse({
     status: 200,
     description: 'Seat status updated successfully',
@@ -154,7 +155,7 @@ export class SeatController {
     status: 404,
     description: 'Seat not found',
   })
-  async updateSeatStatus(
+  updateSeatStatus(
     @Param('id') id: string,
     @Body('status') status: boolean,
     @Req() req: RequestWithUser,
@@ -163,5 +164,21 @@ export class SeatController {
       return this.seatService.updateSeatStatus(id, status);
     }
     throw new ForbiddenException('Only admin can update seat status');
+  }
+
+  @Post('hold-seat')
+  @ApiOperation({ summary: 'Hold seats for a user' })
+  @ApiBody({ type: HoldSeatDto })
+  @ApiBearerAuth()
+  holdSeat(@Body() body: HoldSeatDto, @Req() req: RequestWithUser) {
+    return this.seatService.holdSeat(body, req);
+  }
+
+  @Patch('cancel-hold-seat')
+  @ApiOperation({ summary: 'Cancel hold on seats for a user' })
+  @ApiBody({ type: HoldSeatDto })
+  @ApiBearerAuth()
+  cancelHoldSeat(@Body() body: HoldSeatDto, @Req() req: RequestWithUser) {
+    return this.seatService.cancelHoldSeat(body, req);
   }
 }

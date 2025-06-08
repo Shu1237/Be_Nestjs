@@ -154,4 +154,7 @@ export type TicketSummary = {
   };
 };
 
-
+export type HoldSeatType = {
+  seatIds: string[];
+  cinema_id: number;
+};

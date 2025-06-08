@@ -1,28 +1,20 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNumber, IsOptional, Min } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 export class CreateSeatTypeDto {
   @ApiProperty({
-    description: 'Tên loại ghế',
-    example: 'Ghế VIP',
+    description: 'Name of the seat type',
+    example: 'VIP',
   })
+  @IsNotEmpty()
   @IsString()
   seat_type_name: string;
 
   @ApiProperty({
-    description: 'Giá loại ghế',
+    description: 'Price of the seat type',
     example: 150000,
   })
+  @IsNotEmpty()
   @IsNumber()
-  @Min(0)
   seat_type_price: number;
-
-  @ApiProperty({
-    description: 'Mô tả loại ghế',
-    example: 'Ghế VIP với không gian rộng rãi',
-    required: false,
-  })
-  @IsOptional()
-  @IsString()
-  seat_type_description?: string;
-} 
+}

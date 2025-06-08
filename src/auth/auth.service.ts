@@ -13,7 +13,7 @@ import type {
   JWTUserType,
   LogoutType,
 } from 'src/utils/type';
-import { MoreThan, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 
 import { comparePassword, hashPassword } from 'src/utils/helper';
 import { JwtService } from '@nestjs/jwt';
@@ -26,7 +26,8 @@ import { User } from 'src/typeorm/entities/user/user';
 import { Role } from 'src/typeorm/entities/user/roles';
 import { Member } from 'src/typeorm/entities/user/member';
 import { RefreshToken } from 'src/typeorm/entities/user/refresh-token';
-import { MailOTP } from 'src/typeorm/entities/user/mail-otp';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 
 
 
@@ -38,11 +39,11 @@ export class AuthService {
     @InjectRepository(User) private userRepository: Repository<User>,
     @InjectRepository(Role) private roleRepository: Repository<Role>,
     @InjectRepository(Member) private memberRepository: Repository<Member>,
-    @InjectRepository(RefreshToken)
-    private refreshTokenRepository: Repository<RefreshToken>,
-    @InjectRepository(MailOTP) private otpRepository: Repository<MailOTP>,
+    @InjectRepository(RefreshToken) private refreshTokenRepository: Repository<RefreshToken>,
+
     private jwtService: JwtService,
     private mailerService: MailerService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) { }
 
   async validateUser(username: string, password: string) {
@@ -341,42 +342,32 @@ export class AuthService {
   }
 
   async checkEmail(email: string) {
-    const user = await this.userRepository.findOne({
-      where: { email: email },
-    });
-
-    if (!user) {
-      throw new NotFoundException('Email not found');
-    }
-
     const otpCode = await this.OtpCode(email);
+    await this.cacheManager.set(`email-${email}`, otpCode, { ttl: 60 * 5 } as any);
 
-    await this.otpRepository.save({
-      otp: otpCode,
-      is_used: false,
-      expires_at: new Date(Date.now() + 5 * 60 * 1000),
-      user: user
-    });
+
+    // await this.otpRepository.save({
+    //   otp: otpCode,
+    //   is_used: false,
+    //   expires_at: new Date(Date.now() + 5 * 60 * 1000),
+    // });
 
     return { msg: 'OTP sent successfully' };
   }
 
   async verifyOtp(otp: string, email: string) {
-    const otpRecord = await this.otpRepository.findOne({
-      where: { otp: otp.toString(), is_used: false },
-    })
-    if (!otpRecord) {
+    const cachedOtp = await this.cacheManager.get(`email-${email}`);
+    if (!cachedOtp) {
+      throw new UnauthorizedException('OTP has expired or does not exist');
+    }
+    if (cachedOtp !== otp) {
       throw new UnauthorizedException('Invalid OTP');
     }
-    const currentTime = new Date();
-    if (otpRecord.expires_at < currentTime) {
-      throw new UnauthorizedException('OTP has expired');
-    }
-    if (otpRecord.is_used) {
-      throw new UnauthorizedException('OTP has already been used');
-    }
-    otpRecord.is_used = true;
-    await this.otpRepository.save(otpRecord);
+    // if (otpRecord.is_used) {
+    //   throw new UnauthorizedException('OTP has already been used');
+    // }
+    // otpRecord.is_used = true;
+    // await this.otpRepository.save(otpRecord);
     const payload = {
       sub: email,
       purpose: 'verify_otp',

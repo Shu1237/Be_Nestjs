@@ -20,11 +20,11 @@ import { CinemaRoomModule } from './cinema-room/cinema-room.module';
 import { ScheduleModule } from './schedule/schedule.module';
 import { SeatModule } from './seat/seat.module';
 import { TicketModule } from './ticket/ticket.module';
+import { CacheModule } from '@nestjs/cache-manager';
 
 @Module({
   imports: [
     PassportModule,
-
     ConfigModule.forRoot({
       isGlobal: true,
     }),
@@ -39,11 +39,9 @@ import { TicketModule } from './ticket/ticket.module';
       synchronize: true,
       autoLoadEntities: true,
     }),
-
     PassportModule.register({
       defaultStrategy: 'jwt',
     }),
-
     MailerModule.forRoot({
       transport: {
         host: process.env.MAIL_HOST,
@@ -64,6 +62,10 @@ import { TicketModule } from './ticket/ticket.module';
           strict: true,
         },
       },
+    }),
+    CacheModule.register({
+      isGlobal: true,
+      ttl: 10 * 60,
     }),
     AuthModule,
     TesterModule,
