@@ -66,10 +66,11 @@ export class PromotionService {
     }
 
     Object.assign(promotion, updatePromotionDto);
-    return this.promotionRepository.save(promotion);
+    await this.promotionRepository.save(promotion);
+    return { msg: 'Promotion updated successfully' };
   }
 
-  async deletePromotion(id: number): Promise<void> {
+  async deletePromotion(id: number): Promise<{ msg: string }> {
     const promotion = await this.promotionRepository.findOne({
       where: { id },
     });
@@ -77,6 +78,7 @@ export class PromotionService {
       throw new NotFoundException('Promotion not found');
     }
     await this.promotionRepository.remove(promotion);
+    return { msg: 'Promotion deleted successfully' };
   }
 
   async deleteSoftPromotion(id: number): Promise<void> {

@@ -17,4 +17,12 @@ export class CreateSeatTypeDto {
   @IsNotEmpty()
   @IsNumber()
   seat_type_price: number;
+
+  @ApiProperty({
+    description: 'Description of the seat type',
+    example: 'Ghế VIP với không gian rộng rãi',
+  })
+  @IsNotEmpty()
+  @IsString()
+  seat_type_description: string;
 }

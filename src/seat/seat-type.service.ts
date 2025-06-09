@@ -30,7 +30,9 @@ export class SeatTypeService {
     const seatType = new SeatType();
     seatType.seat_type_name = createSeatTypeDto.seat_type_name;
     seatType.seat_type_price = createSeatTypeDto.seat_type_price;
-    return this.seatTypeRepository.save(seatType);
+    seatType.seat_type_description = createSeatTypeDto.seat_type_description;
+    await this.seatTypeRepository.save(seatType);
+    return { msg: 'Seat type created successfully' };
   }
 
   async updateSeatType(id: string, updateSeatTypeDto: UpdateSeatTypeDto) {
@@ -41,11 +43,16 @@ export class SeatTypeService {
     if (updateSeatTypeDto.seat_type_price !== undefined) {
       seatType.seat_type_price = updateSeatTypeDto.seat_type_price;
     }
-    return this.seatTypeRepository.save(seatType);
+    if (updateSeatTypeDto.seat_type_description !== undefined) {
+      seatType.seat_type_description = updateSeatTypeDto.seat_type_description;
+    }
+    await this.seatTypeRepository.save(seatType);
+    return { msg: 'Seat type updated successfully' };
   }
 
   async deleteSeatType(id: string) {
     const seatType = await this.getSeatTypeById(id);
-    return this.seatTypeRepository.remove(seatType);
+    await this.seatTypeRepository.remove(seatType);
+    return { msg: 'Seat type deleted successfully' };
   }
 }

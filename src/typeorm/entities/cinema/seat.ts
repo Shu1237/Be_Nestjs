@@ -1,7 +1,14 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany, PrimaryColumn } from "typeorm";
-import { Ticket } from "../order/ticket";
-import { CinemaRoom } from "./cinema-room";
-import { SeatType } from "./seat-type";
+import {
+  Entity,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  OneToMany,
+  PrimaryColumn,
+} from 'typeorm';
+import { Ticket } from '../order/ticket';
+import { CinemaRoom } from './cinema-room';
+import { SeatType } from './seat-type';
 
 @Entity('seat')
 export class Seat {
@@ -19,6 +26,9 @@ export class Seat {
 
   @Column({ type: 'boolean', default: false })
   is_hold: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  is_deleted: boolean;
 
   @ManyToOne(() => SeatType, (seatType) => seatType.seats)
   @JoinColumn({ name: 'seat_type_id' })

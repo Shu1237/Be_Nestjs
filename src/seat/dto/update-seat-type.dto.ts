@@ -19,4 +19,13 @@ export class UpdateSeatTypeDto {
   @IsOptional()
   @IsNumber()
   seat_type_price?: number;
+
+  @ApiProperty({
+    description: 'Description of the seat type',
+    example: 'Ghế VIP với không gian rộng rãi',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  seat_type_description?: string;
 }
