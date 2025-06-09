@@ -25,10 +25,6 @@ import { Request } from 'express';
 import { JWTUserType } from 'src/utils/type';
 import { Role } from 'src/enum/roles.enum';
 
-interface RequestWithUser extends Request {
-  user: JWTUserType;
-}
-
 @ApiTags('Seat Types')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
@@ -65,6 +61,7 @@ export class SeatTypeController {
   @ApiResponse({
     status: 201,
     description: 'Seat type created successfully',
+    example: { msg: 'Seat type created successfully' },
   })
   @ApiResponse({
     status: 403,
@@ -73,9 +70,10 @@ export class SeatTypeController {
   @ApiBody({ type: CreateSeatTypeDto })
   createSeatType(
     @Body() createSeatTypeDto: CreateSeatTypeDto,
-    @Req() req: RequestWithUser,
+    @Req() req: Request,
   ) {
-    if (req.user.role_id === Role.ADMIN) {
+    const user = req.user as JWTUserType;
+    if (user.role_id === Role.ADMIN) {
       return this.seatTypeService.createSeatType(createSeatTypeDto);
     }
     throw new ForbiddenException('Only admin can create seat types');
@@ -86,6 +84,7 @@ export class SeatTypeController {
   @ApiResponse({
     status: 200,
     description: 'Seat type updated successfully',
+    example: { msg: 'Seat type updated successfully' },
   })
   @ApiResponse({
     status: 403,
@@ -99,9 +98,10 @@ export class SeatTypeController {
   updateSeatType(
     @Param('id') id: string,
     @Body() updateSeatTypeDto: UpdateSeatTypeDto,
-    @Req() req: RequestWithUser,
+    @Req() req: Request,
   ) {
-    if (req.user.role_id === Role.ADMIN) {
+    const user = req.user as JWTUserType;
+    if (user.role_id === Role.ADMIN) {
       return this.seatTypeService.updateSeatType(id, updateSeatTypeDto);
     }
     throw new ForbiddenException('Only admin can update seat types');
@@ -112,6 +112,7 @@ export class SeatTypeController {
   @ApiResponse({
     status: 200,
     description: 'Seat type deleted successfully',
+    example: { msg: 'Seat type deleted successfully' },
   })
   @ApiResponse({
     status: 403,
@@ -121,8 +122,9 @@ export class SeatTypeController {
     status: 404,
     description: 'Seat type not found',
   })
-  deleteSeatType(@Param('id') id: string, @Req() req: RequestWithUser) {
-    if (req.user.role_id === Role.ADMIN) {
+  deleteSeatType(@Param('id') id: string, @Req() req: Request) {
+    const user = req.user as JWTUserType;
+    if (user.role_id === Role.ADMIN) {
       return this.seatTypeService.deleteSeatType(id);
     }
     throw new ForbiddenException('Only admin can delete seat types');

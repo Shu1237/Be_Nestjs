@@ -5,12 +5,10 @@ import {
   Body,
   Param,
   Put,
-  Delete,
-  Patch,
-
   UseGuards,
   Req,
   ForbiddenException,
+  Patch,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -23,19 +21,16 @@ import { JwtAuthGuard } from 'src/guards/jwt.guard';
 import { SeatService } from './seat.service';
 import { CreateSeatDto } from './dto/create-seat.dto';
 import { UpdateSeatDto } from './dto/update-seat.dto';
+import { UpdateSeatStatusDto } from './dto/update-seat-status.dto';
 import { Request } from 'express';
 import { JWTUserType } from 'src/utils/type';
 import { Role } from 'src/enum/roles.enum';
 import { HoldSeatDto } from './dto/hold-seat.dto';
 
-interface RequestWithUser extends Request {
-  user: JWTUserType;
-}
-
 @ApiTags('Seats')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
-@Controller('seats')
+@Controller('seat')
 export class SeatController {
   constructor(private readonly seatService: SeatService) {}
 
@@ -78,20 +73,19 @@ export class SeatController {
   @ApiResponse({
     status: 201,
     description: 'Seat created successfully',
+    example: { msg: 'Seat created successfully' },
   })
   @ApiResponse({
     status: 403,
     description: 'Forbidden. Only admin can create seats',
   })
   @ApiBody({ type: CreateSeatDto })
-  createSeat(
-    @Body() createSeatDto: CreateSeatDto,
-    @Req() req: RequestWithUser,
-  ) {
-    if (req.user.role_id === Role.ADMIN) {
-      return this.seatService.createSeat(createSeatDto);
+  createSeat(@Body() createSeatDto: CreateSeatDto, @Req() req: Request) {
+    const user = req.user as JWTUserType;
+    if (user.role_id !== Role.ADMIN) {
+      throw new ForbiddenException('Only admin can create seats');
     }
-    throw new ForbiddenException('Only admin can create seats');
+    return this.seatService.createSeat(createSeatDto);
   }
 
   @Put(':id')
@@ -99,6 +93,7 @@ export class SeatController {
   @ApiResponse({
     status: 200,
     description: 'Seat updated successfully',
+    example: { msg: 'Seat updated successfully' },
   })
   @ApiResponse({
     status: 403,
@@ -112,19 +107,21 @@ export class SeatController {
   updateSeat(
     @Param('id') id: string,
     @Body() updateSeatDto: UpdateSeatDto,
-    @Req() req: RequestWithUser,
+    @Req() req: Request,
   ) {
-    if (req.user.role_id === Role.ADMIN) {
-      return this.seatService.updateSeat(id, updateSeatDto);
+    const user = req.user as JWTUserType;
+    if (user.role_id !== Role.ADMIN) {
+      throw new ForbiddenException('Only admin can update seats');
     }
-    throw new ForbiddenException('Only admin can update seats');
+    return this.seatService.updateSeat(id, updateSeatDto);
   }
 
-  @Delete(':id')
-  @ApiOperation({ summary: 'Delete seat by ID (admin only)' })
+  @Patch(':id')
+  @ApiOperation({ summary: 'Soft delete seat by ID (admin only)' })
   @ApiResponse({
     status: 200,
     description: 'Seat deleted successfully',
+    example: { msg: 'Seat deleted successfully' },
   })
   @ApiResponse({
     status: 403,
@@ -134,18 +131,20 @@ export class SeatController {
     status: 404,
     description: 'Seat not found',
   })
-  deleteSeat(@Param('id') id: string, @Req() req: RequestWithUser) {
-    if (req.user.role_id === Role.ADMIN) {
-      return this.seatService.deleteSeat(id);
+  async softDeleteSeat(@Param('id') id: string, @Req() req: Request) {
+    const user = req.user as JWTUserType;
+    if (user.role_id !== Role.ADMIN) {
+      throw new ForbiddenException('Only admin can delete seats');
     }
-    throw new ForbiddenException('Only admin can delete seats');
+    return this.seatService.deleteSeat(id);
   }
 
-  @Patch(':id/status')
-  @ApiOperation({ summary: 'Update seat status by ID (admin only)' })
+  @Put(':id/status')
+  @ApiOperation({ summary: 'Toggle seat status by ID (admin only)' })
   @ApiResponse({
     status: 200,
-    description: 'Seat status updated successfully',
+    description: 'Seat status toggled successfully',
+    example: { msg: 'Change status successfully' },
   })
   @ApiResponse({
     status: 403,
@@ -157,28 +156,34 @@ export class SeatController {
   })
   updateSeatStatus(
     @Param('id') id: string,
-    @Body('status') status: boolean,
-    @Req() req: RequestWithUser,
+    @Req() req: Request,
   ) {
-    if (req.user.role_id === Role.ADMIN) {
-      return this.seatService.updateSeatStatus(id, status);
+    const user = req.user as JWTUserType;
+    if (user.role_id !== Role.ADMIN) {
+      throw new ForbiddenException('Only admin can update seat status');
     }
-    throw new ForbiddenException('Only admin can update seat status');
+    return this.seatService.updateSeatStatus(id);
   }
 
-  @Post('hold-seat')
-  @ApiOperation({ summary: 'Hold seats for a user' })
-  @ApiBody({ type: HoldSeatDto })
-  @ApiBearerAuth()
-  holdSeat(@Body() body: HoldSeatDto, @Req() req: RequestWithUser) {
-    return this.seatService.holdSeat(body, req);
+  @Post('hold')
+  @ApiOperation({ summary: 'Hold seats' })
+  @ApiResponse({
+    status: 200,
+    description: 'Seats held successfully',
+    example: { msg: 'Seats held successfully' },
+  })
+  holdSeat(@Body() data: HoldSeatDto, @Req() req: Request) {
+    return this.seatService.holdSeat(data, req);
   }
 
-  @Patch('cancel-hold-seat')
-  @ApiOperation({ summary: 'Cancel hold on seats for a user' })
-  @ApiBody({ type: HoldSeatDto })
-  @ApiBearerAuth()
-  cancelHoldSeat(@Body() body: HoldSeatDto, @Req() req: RequestWithUser) {
-    return this.seatService.cancelHoldSeat(body, req);
+  @Post('cancel-hold')
+  @ApiOperation({ summary: 'Cancel hold seats' })
+  @ApiResponse({
+    status: 200,
+    description: 'Seats un-held successfully',
+    example: { msg: 'Seats un-held successfully' },
+  })
+  cancelHoldSeat(@Body() data: HoldSeatDto, @Req() req: Request) {
+    return this.seatService.cancelHoldSeat(data, req);
   }
 }

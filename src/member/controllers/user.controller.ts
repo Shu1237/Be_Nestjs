@@ -22,12 +22,7 @@ import { Role } from 'src/enum/roles.enum';
 import { UpdateUserDto } from '../dtos/update-user.dto';
 import { Request } from 'express';
 import { User } from 'src/typeorm/entities/user/user';
-
-interface RequestWithUser extends Request {
-  user: {
-    role_id: Role;
-  };
-}
+import { JWTUserType } from 'src/utils/type';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -52,8 +47,8 @@ export class UserController {
       message: 'Only admin or employee can search users',
     },
   })
-  findAll(@Req() req: RequestWithUser) {
-    const user = req.user;
+  findAll(@Req() req: Request) {
+    const user = req.user as JWTUserType;
     if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
       throw new ForbiddenException('Only admin or employee can search users');
     }
@@ -89,8 +84,8 @@ export class UserController {
     status: 403,
     description: 'Forbidden. Only admin or employee can view user details',
   })
-  findOne(@Param('id') id: string, @Req() req: RequestWithUser) {
-    const user = req.user;
+  findOne(@Param('id') id: string, @Req() req: Request) {
+    const user = req.user as JWTUserType;
     if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
       throw new ForbiddenException(
         'Only admin or employee can view user details',
@@ -147,9 +142,9 @@ export class UserController {
   update(
     @Param('id') id: string,
     @Body() updateUserDto: UpdateUserDto,
-    @Req() req: RequestWithUser,
+    @Req() req: Request,
   ) {
-    const user = req.user;
+    const user = req.user as JWTUserType;
     if (user.role_id !== Role.ADMIN) {
       throw new ForbiddenException('Only admin can update users');
     }
@@ -174,8 +169,8 @@ export class UserController {
     status: 403,
     description: 'Forbidden. Only admin can delete users',
   })
-  async softDelete(@Param('id') id: string, @Req() req: RequestWithUser) {
-    const user = req.user;
+  async softDelete(@Param('id') id: string, @Req() req: Request) {
+    const user = req.user as JWTUserType;
     if (user.role_id !== Role.ADMIN) {
       throw new ForbiddenException('Only admin can delete users');
     }
@@ -201,8 +196,8 @@ export class UserController {
     status: 403,
     description: 'Forbidden. Only admin can change user status',
   })
-  async changeStatus(@Param('id') id: string, @Req() req: RequestWithUser) {
-    const user = req.user;
+  async changeStatus(@Param('id') id: string, @Req() req: Request) {
+    const user = req.user as JWTUserType;
     if (user.role_id !== Role.ADMIN) {
       throw new ForbiddenException('Only admin can change user status');
     }

@@ -10,6 +10,7 @@ import {
   Put,
   UseGuards,
   Req,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PromotionService } from './promotion.service';
 import { CreatePromotionDto } from './dto/create-promotion.dto';
@@ -23,14 +24,9 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { ChangePromotionDto } from './dto/change-promotion.dto';
-import { ForbiddenException } from '@nestjs/common';
 import { Request } from 'express';
 import { JWTUserType } from 'src/utils/type';
 import { Role } from 'src/enum/roles.enum';
-
-interface RequestWithUser extends Request {
-  user: JWTUserType;
-}
 
 @ApiTags('Promotions')
 @UseGuards(JwtAuthGuard)
@@ -52,11 +48,9 @@ export class PromotionController {
   @Post('changePromotion')
   @ApiOperation({ summary: 'Đổi điểm lấy mã khuyến mãi' })
   @ApiBody({ type: ChangePromotionDto })
-  changePromotion(
-    @Body() body: ChangePromotionDto,
-    @Req() req: RequestWithUser,
-  ) {
-    return this.promotionService.changePromotion(body, req.user);
+  changePromotion(@Body() body: ChangePromotionDto, @Req() req: Request) {
+    const user = req.user as JWTUserType;
+    return this.promotionService.changePromotion(body, user);
   }
 
   @Post()
@@ -64,6 +58,7 @@ export class PromotionController {
   @ApiResponse({
     status: 201,
     description: 'Promotion created successfully',
+    example: { msg: 'Promotion created successfully' },
   })
   @ApiResponse({
     status: 403,
@@ -72,9 +67,10 @@ export class PromotionController {
   @ApiBody({ type: CreatePromotionDto })
   createPromotion(
     @Body() createPromotionDto: CreatePromotionDto,
-    @Req() req: RequestWithUser,
+    @Req() req: Request,
   ) {
-    if (req.user.role_id === Role.ADMIN) {
+    const user = req.user as JWTUserType;
+    if (user.role_id === Role.ADMIN) {
       return this.promotionService.createPromotion(createPromotionDto);
     }
     throw new ForbiddenException('Only admin can create promotions');
@@ -99,6 +95,7 @@ export class PromotionController {
   @ApiResponse({
     status: 200,
     description: 'Promotion updated successfully',
+    example: { msg: 'Promotion updated successfully' },
   })
   @ApiResponse({
     status: 403,
@@ -112,9 +109,10 @@ export class PromotionController {
   updatePromotion(
     @Param('id', ParseIntPipe) id: number,
     @Body() updatePromotionDto: UpdatePromotionDto,
-    @Req() req: RequestWithUser,
+    @Req() req: Request,
   ) {
-    if (req.user.role_id === Role.ADMIN) {
+    const user = req.user as JWTUserType;
+    if (user.role_id === Role.ADMIN) {
       return this.promotionService.updatePromotion(id, updatePromotionDto);
     }
     throw new ForbiddenException('Only admin can update promotions');
@@ -139,9 +137,9 @@ export class PromotionController {
   })
   async deletePromotion(
     @Param('id', ParseIntPipe) id: number,
-    @Req() req: RequestWithUser,
+    @Req() req: Request,
   ) {
-    const user = req.user;
+    const user = req.user as JWTUserType;
     if (user.role_id === Role.ADMIN) {
       await this.promotionService.deletePromotion(id);
       return { msg: 'Delete successfully' };
@@ -168,9 +166,9 @@ export class PromotionController {
   })
   async deleteSoftPromotion(
     @Param('id', ParseIntPipe) id: number,
-    @Req() req: RequestWithUser,
+    @Req() req: Request,
   ) {
-    const user = req.user;
+    const user = req.user as JWTUserType;
     if (user.role_id === Role.ADMIN) {
       await this.promotionService.deleteSoftPromotion(id);
       return { msg: 'Delete successfully' };

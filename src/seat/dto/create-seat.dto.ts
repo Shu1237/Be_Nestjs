@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsBoolean, IsOptional } from 'class-validator';
+import { IsString } from 'class-validator';
 
 export class CreateSeatDto {
   @ApiProperty({
@@ -22,15 +22,6 @@ export class CreateSeatDto {
   })
   @IsString()
   seat_column: string;
-
-  @ApiProperty({
-    description: 'Trạng thái ghế',
-    example: true,
-    default: true,
-  })
-  @IsOptional()
-  @IsBoolean()
-  status?: boolean;
 
   @ApiProperty({
     description: 'ID loại ghế',
