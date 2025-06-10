@@ -189,7 +189,7 @@ export class PayPalService {
                     total: order.total_prices,
                     addScore: order.add_score,
                     paymentMethod: transaction.paymentMethod.name,
-                     year: new Date().getFullYear(),
+                    year: new Date().getFullYear(),
 
                     // Thông tin chung 1 lần
                     movieName: firstTicket?.schedule.movie.name,
@@ -219,26 +219,20 @@ export class PayPalService {
     async handleReturnCancelPaypal(transactionCode: string) {
         const transaction = await this.momoService.getTransactionByOrderId(transactionCode);
         if (!transaction) throw new NotFoundException('Transaction not found');
+        const order = transaction.order;
         transaction.status = 'failed';
+        order.status = 'failed';
         await this.transactionRepository.save(transaction);
-        if (!transaction.order) throw new NotFoundException('Order not found for this transaction');
-        transaction.order.status = 'failed';
-        await this.orderRepository.save(transaction.order);
+        await this.orderRepository.save(order);
 
-        for (const orderDetail of transaction.order.orderDetails) {
-            const ticket = orderDetail.ticket;
-            if (ticket) {
-                if (ticket.seat) {
-                    ticket.seat.status = false;
-                    await this.seatRepository.save(ticket.seat);
-                }
+        // Reset trạng thái ghế nếu cần
+        for (const detail of order.orderDetails) {
+            const ticket = detail.ticket;
+            if (ticket?.seat && ticket.schedule) {
+                await this.momoService.changeStatusScheduleSeat([ticket.seat.id], ticket.schedule.id);
             }
-
         }
 
-
-        return {
-            msg: 'Payment cancelled',
-        };
+        return { message: 'Payment failed' };
     }
 }

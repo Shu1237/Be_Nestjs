@@ -1,4 +1,4 @@
-import { IsArray, IsString } from 'class-validator';
+import { IsArray, IsNumber, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class HoldSeatDto {
@@ -12,7 +12,8 @@ export class HoldSeatDto {
 
   @ApiProperty({
     type: Number,
-    description: 'Cinema ID where seats are located',
+    description: 'Schedule ID where seats are located',
   })
-  cinema_id: number;
+  @IsNumber()
+  schedule_id: number;
 }

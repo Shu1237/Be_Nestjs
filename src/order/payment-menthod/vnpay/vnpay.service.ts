@@ -167,22 +167,23 @@ export class VnpayService {
         }
         return { success: true, message: 'Payment successful' };
       } else {
+        // Giao dịch thất bại
         const transaction = await this.momoService.getTransactionByOrderId(txnRef);
+        const order = transaction.order;
         transaction.status = 'failed';
+        order.status = 'failed';
         await this.transactionRepository.save(transaction);
-        if (!transaction.order) throw new NotFoundException('Order not found');
-        transaction.order.status = 'failed';
-        await this.orderRepository.save(transaction.order);
-        for (const detail of transaction.order.orderDetails) {
+        await this.orderRepository.save(order);
+
+        // Reset trạng thái ghế nếu cần
+        for (const detail of order.orderDetails) {
           const ticket = detail.ticket;
-          if (ticket) {
-            if (ticket.seat) {
-              ticket.seat.status = false;
-              await this.seatRepository.save(ticket.seat);
-            }
+          if (ticket?.seat && ticket.schedule) {
+            await this.momoService.changeStatusScheduleSeat([ticket.seat.id], ticket.schedule.id);
           }
         }
-        return { success: false, message: 'Payment failed from VNPAY' };
+
+        return { message: 'Payment failed' };
       }
     } else {
       return { success: false, message: 'Invalid signature from VNPAY' };

@@ -9,6 +9,7 @@ import {
 import { Ticket } from '../order/ticket';
 import { CinemaRoom } from './cinema-room';
 import { SeatType } from './seat-type';
+import { ScheduleSeat } from './schedule_seat';
 
 @Entity('seat')
 export class Seat {
@@ -20,12 +21,6 @@ export class Seat {
 
   @Column({ type: 'varchar', length: 5 })
   seat_column: string;
-
-  @Column({ type: 'boolean', default: true })
-  status: boolean;
-
-  @Column({ type: 'boolean', default: false })
-  is_hold: boolean;
 
   @Column({ type: 'boolean', default: false })
   is_deleted: boolean;
@@ -40,4 +35,8 @@ export class Seat {
 
   @OneToMany(() => Ticket, (ticket) => ticket.seat)
   tickets: Ticket[];
+
+  @OneToMany(() => ScheduleSeat, (scheduleSeat) => scheduleSeat.seat)
+  scheduleSeats: ScheduleSeat[];
+
 }

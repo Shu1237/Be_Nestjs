@@ -172,8 +172,8 @@ export class SeatController {
     description: 'Seats held successfully',
     example: { msg: 'Seats held successfully' },
   })
-  holdSeat(@Body() data: HoldSeatDto, @Req() req: Request) {
-    return this.seatService.holdSeat(data, req);
+  holdSeat(@Body() data: HoldSeatDto, @Req() req) {
+    return this.seatService.holdSeat(data, req.user);
   }
 
   @Post('cancel-hold')
@@ -183,7 +183,7 @@ export class SeatController {
     description: 'Seats un-held successfully',
     example: { msg: 'Seats un-held successfully' },
   })
-  cancelHoldSeat(@Body() data: HoldSeatDto, @Req() req: Request) {
-    return this.seatService.cancelHoldSeat(data, req);
+  cancelHoldSeat(@Body() data: HoldSeatDto, @Req() req) {
+    return this.seatService.cancelHoldSeat(data, req.user);
   }
 }
