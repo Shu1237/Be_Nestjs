@@ -5,9 +5,11 @@ import {
   IsDate,
   IsNotEmpty,
   IsUrl,
+  IsEnum,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import { Gender } from 'src/utils/type';
 
 export class CreateActorDto {
   @ApiProperty({ description: 'The name of the actor', example: 'John Doe' })
@@ -24,10 +26,16 @@ export class CreateActorDto {
   @IsOptional()
   stage_name?: string;
 
-  @ApiProperty({ description: 'The gender of the actor', example: true })
-  @IsBoolean()
+   @ApiProperty({ 
+    description: 'The gender of the actor',
+    enum: Gender,
+    example: Gender.MALE,
+    examples: [Gender.MALE, Gender.FEMALE, Gender.OTHER]
+  })
+  @IsEnum(Gender)
   @IsNotEmpty()
-  gender: boolean;
+  gender: Gender;
+
 
   @ApiProperty({
     description: 'The date of birth of the actor',
