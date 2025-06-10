@@ -6,15 +6,13 @@ import { SeatController } from './seat.controller';
 import { SeatTypeController } from './seat-type.controller';
 import { SeatService } from './seat.service';
 import { SeatTypeService } from './seat-type.service';
-import { CacheModule } from '@nestjs/cache-manager';
 import { CinemaRoom } from 'src/typeorm/entities/cinema/cinema-room';
+import { Schedule } from 'src/typeorm/entities/cinema/schedule';
+import { ScheduleSeat } from 'src/typeorm/entities/cinema/schedule_seat';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Seat, SeatType, CinemaRoom]),
-    CacheModule.register({
-      ttl: 10 * 60,
-    }),
+    TypeOrmModule.forFeature([Seat, SeatType, CinemaRoom, Schedule, ScheduleSeat]),
   ],
   controllers: [SeatController, SeatTypeController],
   providers: [SeatService, SeatTypeService],

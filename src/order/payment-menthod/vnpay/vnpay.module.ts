@@ -7,8 +7,9 @@ import { Ticket } from "src/typeorm/entities/order/ticket";
 import { Member } from "src/typeorm/entities/user/member";
 import { Transaction } from "src/typeorm/entities/order/transaction";
 
-import { MailerModule, MailerService } from "@nestjs-modules/mailer";
+import { MailerModule } from "@nestjs-modules/mailer";
 import { MomoModule } from "../momo/momo.module";
+
 
 
 

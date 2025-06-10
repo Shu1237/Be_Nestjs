@@ -20,6 +20,8 @@ import { PayPalModule } from './payment-menthod/paypal/paypal.module';
 import { VisaModule } from './payment-menthod/visa/visa.module';
 import { VnpayModule } from './payment-menthod/vnpay/vnpay.module';
 import { ZalopayModule } from './payment-menthod/zalopay/zalopay.module';
+import { ScheduleSeat } from 'src/typeorm/entities/cinema/schedule_seat';
+import { SeatModule } from 'src/seat/seat.module';
 
 @Module({
   imports: [
@@ -37,12 +39,15 @@ import { ZalopayModule } from './payment-menthod/zalopay/zalopay.module';
       Transaction,
       OrderProduct,
       PaymentMethod,
+      ScheduleSeat
     ]),
     MomoModule,
     PayPalModule,
     VisaModule,
     VnpayModule,
     ZalopayModule,
+    SeatModule,
+    
   ],
   controllers: [OrderController],
   providers: [OrderService],

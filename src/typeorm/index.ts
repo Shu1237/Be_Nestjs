@@ -5,6 +5,7 @@ import { Gerne } from './entities/cinema/gerne';
 
 import { Movie } from './entities/cinema/movie';
 import { Schedule } from './entities/cinema/schedule';
+import { ScheduleSeat } from './entities/cinema/schedule_seat';
 import { Seat } from './entities/cinema/seat';
 import { SeatType } from './entities/cinema/seat-type';
 import { Order } from './entities/order/order';
@@ -50,4 +51,5 @@ export const allEntities = [
   Schedule,
   Seat,
   SeatType,
+  ScheduleSeat
 ];

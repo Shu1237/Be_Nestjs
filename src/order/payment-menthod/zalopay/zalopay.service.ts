@@ -185,6 +185,7 @@ export class ZalopayService {
             paymentMethod: transaction.paymentMethod.name,
             year: new Date().getFullYear(),
 
+
             // Thông tin chung 1 lần
             movieName: firstTicket?.schedule.movie.name,
             showDate: firstTicket?.schedule.show_date,
@@ -208,20 +209,22 @@ export class ZalopayService {
         order: savedOrder,
       };
     } else {
-      transaction.status = "failed";
-      order.status = "failed";
+      const transaction = await this.momoService.getTransactionByOrderId(apptransid);
+      const order = transaction.order;
+      transaction.status = 'failed';
+      order.status = 'failed';
       await this.transactionRepository.save(transaction);
       await this.orderRepository.save(order);
 
+      // Reset trạng thái ghế nếu cần
       for (const detail of order.orderDetails) {
         const ticket = detail.ticket;
-        if (ticket?.seat) {
-          ticket.seat.status = false;
-          await this.seatRepository.save(ticket.seat);
+        if (ticket?.seat && ticket.schedule) {
+          await this.momoService.changeStatusScheduleSeat([ticket.seat.id], ticket.schedule.id);
         }
       }
 
-      return { message: "Payment failed" };
+      return { message: 'Payment failed' };
     }
   }
 }
