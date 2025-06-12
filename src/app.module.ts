@@ -21,7 +21,6 @@ import { ScheduleModule } from './schedule/schedule.module';
 import { SeatModule } from './seat/seat.module';
 import { TicketModule } from './ticket/ticket.module';
 import { CacheModule } from '@nestjs/cache-manager';
-import * as redisStore from 'cache-manager-ioredis';
 @Module({
   imports: [
     PassportModule,
@@ -68,11 +67,16 @@ import * as redisStore from 'cache-manager-ioredis';
         },
       },
     }),
-    CacheModule.register({
+    CacheModule.registerAsync({
       isGlobal: true,
-      store: redisStore,
-      url: process.env.REDIS_URL,
-      ttl: 600,
+      useFactory: () => ({
+        store: 'ioredis',
+        host: process.env.REDIS_HOST,
+        port: parseInt(process.env.REDIS_PORT || '6379', 10),
+        username: process.env.REDIS_USERNAME,
+        password: process.env.REDIS_PASSWORD,
+        ttl: 600,
+      }),
     }),
     AuthModule,
     TesterModule,
