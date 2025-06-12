@@ -122,7 +122,7 @@ export class SeatService {
     return { msg: 'Change status successfully' };
   }
 
-  async holdSeat(data: HoldSeatType, req: Request) {
+  async holdSeat(data: HoldSeatType, req: any) {
     const { seatIds, cinema_id } = data;
     const user = req.user as JWTUserType;
 
@@ -172,7 +172,7 @@ export class SeatService {
     };
   }
 
-  async cancelHoldSeat(data: HoldSeatType, req: Request) {
+  async cancelHoldSeat(data: HoldSeatType, req: any) {
     const user = req.user as JWTUserType;
     const { seatIds, cinema_id } = data;
     if (seatIds.length === 0) {
