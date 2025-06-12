@@ -6,6 +6,7 @@ import {
   OneToMany,
   JoinColumn,
   OneToOne,
+  PrimaryColumn,
 } from 'typeorm';
 import { Member } from './member';
 import { RefreshToken } from './refresh-token';
@@ -14,35 +15,17 @@ import { Order } from '../order/order';
 
 @Entity('user')
 export class User {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryColumn({ type: 'varchar', length: 36 })
   id: string;
 
   @Column({ type: 'varchar', length: 255 })
   username: string;
 
-  @Column({ type: 'varchar', length: 255 })
-  password: string;
-
   @Column({ type: 'varchar', length: 255, unique: true })
   email: string;
 
   @Column({ type: 'varchar', length: 500, nullable: true })
-  address?: string;
-
-  @Column({ type: 'date', nullable: true })
-  date_of_birth?: Date;
-
-  @Column({ type: 'boolean', nullable: true })
-  gender?: boolean;
-
-  @Column({ type: 'varchar', length: 20, nullable: true })
-  identity_card?: string;
-
-  @Column({ type: 'varchar', length: 500, nullable: true })
-  image?: string;
-
-  @Column({ type: 'varchar', length: 15, nullable: true })
-  phone_number?: string;
+  avatar?: string;
 
   @Column({ type: 'boolean', default: true })
   status: boolean;
