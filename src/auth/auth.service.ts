@@ -193,9 +193,9 @@ export class AuthService {
 
   async loginAzure(body: LoginAzureType) {
     const { sub, name, email, picture } = body;
-    const roleId = 1;
+    const roleId = body.role_id ?? 1; 
     const user = await this.userRepository.findOne({
-      where: { id: sub },
+      where: { email: email },
       relations: ['role'],
     });
     let payload: JWTUserType;
@@ -219,10 +219,14 @@ export class AuthService {
       payload = {
         account_id: sub,
         username: name,
+        
         role_id: role.role_id,
       };
     }
     else {
+      if(!user.status){
+        throw new UnauthorizedException('Account is disabled');
+      }
       payload = {
         account_id: user.id,
         username: user.username,
