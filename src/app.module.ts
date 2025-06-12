@@ -71,11 +71,8 @@ import * as redisStore from 'cache-manager-ioredis';
     CacheModule.register({
       isGlobal: true,
       store: redisStore,
-      host: process.env.REDIS_HOST,
-      port: parseInt(process.env.REDIS_PORT || '6379', 10),
-      username: process.env.REDIS_USERNAME,
-      password: process.env.REDIS_PASSWORD,
-      ttl: 600, // 10 phút
+      url: process.env.REDIS_URL,
+      ttl: 600,
     }),
     AuthModule,
     TesterModule,
