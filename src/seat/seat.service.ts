@@ -187,7 +187,7 @@ export class SeatService {
         seatIds: seatIds,
         schedule_id: schedule_id,
       },
-      600
+      { ttl: 600 } as any
     );
 
     return { msg: 'Seats held successfully' };
