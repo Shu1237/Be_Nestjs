@@ -161,7 +161,7 @@ export class OrderService {
       // Kiểm tra cache và hủy hold seats nếu cần
       // console.log('Checking cache for key:', cacheKey);
       const cacheHoldSeats = await this.cacheManager.get<HoldSeatType>(`seat-hold-${user.id}`);
-      console.log('Cache result:', cacheHoldSeats);
+      // console.log('Cache result:', cacheHoldSeats);
 
       if (cacheHoldSeats?.schedule_id === schedule.id && cacheHoldSeats?.seatIds?.length > 0) {
         // console.log('Cancelling hold seats...');
