@@ -20,12 +20,7 @@ export class ProfileService {
         id: true,
         username: true,
         email: true,
-        address: true,
-        date_of_birth: true,
-        gender: true,
-        identity_card: true,
-        image: true,
-        phone_number: true,
+        avatar: true,
         ...(userRole === Role.USER
           ? {
               member: {

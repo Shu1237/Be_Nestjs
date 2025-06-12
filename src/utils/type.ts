@@ -163,3 +163,11 @@ export type HoldSeatType = {
   seatIds: string[];
   schedule_id: number;
 };
+
+export type LoginAzureType = {
+  sub:string;
+  email: string;
+  picture?:string;
+  name: string;
+  role_id?: number;
+}
