@@ -41,7 +41,7 @@ import { CacheModule } from '@nestjs/cache-manager';
       ssl: {
         rejectUnauthorized: false
       },
-    
+
     }),
     PassportModule.register({
       defaultStrategy: 'jwt',
@@ -69,13 +69,12 @@ import { CacheModule } from '@nestjs/cache-manager';
     }),
     CacheModule.registerAsync({
       isGlobal: true,
-      useFactory: () => ({
-        store: 'ioredis',
+      useFactory: async () => ({
+        store: 'redis',
         host: process.env.REDIS_HOST,
         port: parseInt(process.env.REDIS_PORT || '6379', 10),
         username: process.env.REDIS_USERNAME,
         password: process.env.REDIS_PASSWORD,
-        url: process.env.REDIS_URL,
         ttl: 600,
       }),
     }),
