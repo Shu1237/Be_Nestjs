@@ -75,6 +75,7 @@ import { CacheModule } from '@nestjs/cache-manager';
         port: parseInt(process.env.REDIS_PORT || '6379', 10),
         username: process.env.REDIS_USERNAME,
         password: process.env.REDIS_PASSWORD,
+        url: process.env.REDIS_URL,
         ttl: 600,
       }),
     }),
