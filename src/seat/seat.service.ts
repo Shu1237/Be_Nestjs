@@ -20,6 +20,7 @@ import { StatusSeat } from 'src/enum/status_seat.enum';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 
 
+
 @Injectable()
 export class SeatService {
   constructor(
@@ -34,7 +35,7 @@ export class SeatService {
     private scheduleSeatRepository: Repository<ScheduleSeat>,
 
 
-   @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) { }
 
   async getAllSeats() {
@@ -133,7 +134,7 @@ export class SeatService {
   }
 
   async holdSeat(data: HoldSeatType, req: JWTUserType) {
-  
+
     const { seatIds, schedule_id } = data;
     const user = req;
     // console.log(`seat-hold-${user.account_id}`);
@@ -189,7 +190,9 @@ export class SeatService {
       },
       { ttl: 600 } as any
     );
-
+    console.log(process.env.REDIS_URL);
+    console.log('Cache store:', this.cacheManager.stores);
+    console.log('Cache store type:', this.cacheManager.stores?.constructor?.name);
     return { msg: 'Seats held successfully' };
   }
   async cancelHoldSeat(data: HoldSeatType, req: JWTUserType) {
@@ -201,9 +204,9 @@ export class SeatService {
     if (!seatIds || seatIds.length === 0) {
       throw new BadRequestException('No seats selected');
     }
-    console.log(`seat-hold-${user.account_id}`);
+    // console.log(`seat-hold-${user.account_id}`);
     const cachedHold = await this.cacheManager.get<HoldSeatType>(`seat-hold-${user.account_id}`);
-      // console.log('Cached Hold:', cachedHold);
+    // console.log('Cached Hold:', cachedHold);
     if (!cachedHold) {
       throw new NotFoundException('No held seats found for this user');
     }

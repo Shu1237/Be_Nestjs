@@ -29,6 +29,7 @@ import { Member } from 'src/typeorm/entities/user/member';
 import { RefreshToken } from 'src/typeorm/entities/user/refresh-token';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
+import { Role as RoleEnum } from 'src/enum/roles.enum';
 
 
 
@@ -191,9 +192,9 @@ export class AuthService {
   //   return { msg: 'Account created successfully' };
   // }
 
-  async loginAzure(body: LoginAzureType) {
+  async loginAzureAndGoogle(body: LoginAzureType) {
     const { sub, name, email, picture } = body;
-    const roleId = body.role_id ?? 1; 
+    const roleId = body.role_id ?? 1;
     const user = await this.userRepository.findOne({
       where: { email: email },
       relations: ['role'],
@@ -212,19 +213,21 @@ export class AuthService {
         avatar: picture,
         role: role,
       });
-      await this.memberRepository.save({
-        score: 0,
-        user: newUser,
-      });
+      if (roleId === RoleEnum.USER) {
+        await this.memberRepository.save({
+          score: 0,
+          user: newUser,
+        });
+      }
       payload = {
         account_id: sub,
         username: name,
-        
+
         role_id: role.role_id,
       };
     }
     else {
-      if(!user.status){
+      if (!user.status) {
         throw new UnauthorizedException('Account is disabled');
       }
       payload = {

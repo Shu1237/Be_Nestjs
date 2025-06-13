@@ -13,6 +13,7 @@ import { User } from 'src/typeorm/entities/user/user';
 import { MailerService } from '@nestjs-modules/mailer';
 import { ScheduleSeat, SeatStatus } from 'src/typeorm/entities/cinema/schedule_seat';
 import { StatusSeat } from 'src/enum/status_seat.enum';
+import { Role } from 'src/enum/roles.enum';
 
 @Injectable()
 export class MomoService {
@@ -138,6 +139,9 @@ export class MomoService {
     const { orderId, resultCode } = query;
 
     const transaction = await this.getTransactionByOrderId(orderId);
+    if (transaction.status !== 'pending') {
+      throw new NotFoundException('Transaction is not in pending state');
+    }
     const order = transaction.order;
 
     if (Number(resultCode) === 0) {
@@ -149,8 +153,10 @@ export class MomoService {
       const savedOrder = await this.orderRepository.save(order);
 
       // Cộng điểm cho người dùng
-      order.user.member.score += order.add_score;
-      await this.memberRepository.save(order.user.member);
+      if ((order.user?.member && order.user.role.role_id === Role.USER)) {
+        order.user.member.score += order.add_score;
+        await this.memberRepository.save(order.user.member);
+      }
 
       // Đánh dấu ticket đã sử dụng
       for (const detail of order.orderDetails) {
