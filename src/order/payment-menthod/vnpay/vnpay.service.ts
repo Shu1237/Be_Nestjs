@@ -12,6 +12,7 @@ import { In, Repository } from 'typeorm';
 import { Transaction } from 'src/typeorm/entities/order/transaction';
 import { MailerService } from '@nestjs-modules/mailer';
 import { MomoService } from '../momo/momo.service';
+import { Role } from 'src/enum/roles.enum';
 
 @Injectable()
 export class VnpayService {
@@ -113,6 +114,9 @@ export class VnpayService {
 
       if (responseCode === '00') {
         const transaction = await this.momoService.getTransactionByOrderId(txnRef);
+        if (transaction.status !== 'pending') {
+          throw new NotFoundException('Transaction is not in pending state');
+        }
         transaction.status = 'success';
         await this.transactionRepository.save(transaction);
 
@@ -121,8 +125,10 @@ export class VnpayService {
         await this.orderRepository.save(transaction.order);
 
         const order = transaction.order;
-        order.user.member.score += order.add_score;
-        await this.memberRepository.save(order.user.member);
+        if ((order.user?.member && order.user.role.role_id === Role.USER)) {
+          order.user.member.score += order.add_score;
+          await this.memberRepository.save(order.user.member);
+        }
 
         for (const detail of order.orderDetails) {
           const ticket = detail.ticket;

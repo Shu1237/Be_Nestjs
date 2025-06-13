@@ -16,6 +16,7 @@ import { changeVnToUSD } from 'src/utils/helper';
 import { Method } from 'src/enum/payment-menthod.enum';
 import { MailerService } from '@nestjs-modules/mailer';
 import { MomoService } from '../momo/momo.service';
+import { Role } from 'src/enum/roles.enum';
 
 @Injectable()
 export class PayPalService {
@@ -148,9 +149,9 @@ export class PayPalService {
 
     async handleReturnSuccessPaypal(transactionCode: string) {
         const transaction = await this.momoService.getTransactionByOrderId(transactionCode);
-        if (!transaction) throw new NotFoundException('Transaction not found');
-        // 1. Confirm transaction status
-
+        if (transaction.status !== 'pending') {
+            throw new NotFoundException('Transaction is not in pending state');
+        }
         if (transaction.paymentMethod.id === Method.PAYPAL) {
             const captureResult = await this.captureOrderPaypal(transaction.transaction_code);
             if (captureResult.status !== 'COMPLETED') {
@@ -166,8 +167,10 @@ export class PayPalService {
         await this.orderRepository.save(transaction.order);
         const order = transaction.order;
 
-        order.user.member.score += order.add_score;
-        await this.memberRepository.save(order.user.member);
+        if ((order.user?.member && order.user.role.role_id === Role.USER)) {
+            order.user.member.score += order.add_score;
+            await this.memberRepository.save(order.user.member);
+        }
 
         for (const orderDetail of order.orderDetails) {
             const ticket = orderDetail.ticket;
@@ -218,7 +221,10 @@ export class PayPalService {
 
     async handleReturnCancelPaypal(transactionCode: string) {
         const transaction = await this.momoService.getTransactionByOrderId(transactionCode);
-        if (!transaction) throw new NotFoundException('Transaction not found');
+        if (transaction.status !== 'pending') {
+            throw new NotFoundException('Transaction is not in pending state');
+        }
+
         const order = transaction.order;
         transaction.status = 'failed';
         order.status = 'failed';

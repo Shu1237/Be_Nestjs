@@ -16,6 +16,7 @@ import { TicketType } from "src/typeorm/entities/order/ticket-type";
 import { Promotion } from "src/typeorm/entities/promotion/promotion";
 import { MailerService } from "@nestjs-modules/mailer";
 import { MomoService } from "../momo/momo.service";
+import { Role } from "src/enum/roles.enum";
 
 @Injectable()
 export class ZalopayService {
@@ -149,6 +150,9 @@ export class ZalopayService {
   async handleReturnZaloPay(query: any) {
     const { apptransid, status } = query;
     const transaction = await this.momoService.getTransactionByOrderId(apptransid);
+    if (transaction.status !== 'pending') {
+      throw new NotFoundException('Transaction is not in pending state');
+    }
     const order = transaction.order;
 
     if (status === "1") {
@@ -157,8 +161,8 @@ export class ZalopayService {
       await this.transactionRepository.save(transaction);
       const savedOrder = await this.orderRepository.save(order);
 
-      if (order.user?.member) {
-        order.user.member.score += order.add_score || 0;
+      if ((order.user?.member && order.user.role.role_id === Role.USER)) {
+        order.user.member.score += order.add_score;
         await this.memberRepository.save(order.user.member);
       }
 
