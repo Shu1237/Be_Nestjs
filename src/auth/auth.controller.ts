@@ -71,7 +71,7 @@ export class AuthController {
   @ApiBody({ type: LoginAzureDto })
   @Post('login/azure')
   loginAzure(@Body() body: LoginAzureDto) {   
-    return this.authService.loginAzure(body);
+    return this.authService.loginAzureAndGoogle(body);
   }
 
   // @UseGuards(JwtAuthGuard)
