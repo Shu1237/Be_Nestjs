@@ -19,7 +19,7 @@ export class ActorService {
     private readonly movieRepository: Repository<Movie>,
   ) {}
 
-  async createActor(createActorDto: CreateActorDto): Promise<Actor> {
+  async createActor(createActorDto: CreateActorDto): Promise<{ msg: string }> {
     const existingActor = await this.actorRepository.findOneBy({
       name: createActorDto.name,
     });
@@ -28,8 +28,10 @@ export class ActorService {
         `Actor with name "${createActorDto.name}" already exists`,
       );
     }
-    const actor = this.actorRepository.create(createActorDto);
-    return await this.actorRepository.save(actor);
+    await this.actorRepository.create(createActorDto);
+    return {
+      msg: 'Actor created successfully',
+    };
   }
 
   async findAllActors(): Promise<Actor[]> {
@@ -48,22 +50,21 @@ export class ActorService {
 
   async findActorByName(name: string): Promise<Actor[]> {
     const actors = await this.actorRepository.find({
-      where: { 
-        name: Like(`%${name}%`)
+      where: {
+        name: Like(`%${name}%`),
       },
-      select: ['id', 'name'], 
+      select: ['id', 'name'],
     });
     if (!actors) {
       throw new NotFoundException(`Actor with Name ${name} not found`);
     }
     return actors;
-
   }
 
   async updateActor(
     id: number,
     updateActorDto: UpdateActorDto,
-  ): Promise<Actor> {
+  ): Promise<{ msg: string }> {
     const existingActor = await this.findActorById(id);
 
     // Check for duplicate name
@@ -77,10 +78,11 @@ export class ActorService {
     }
 
     Object.assign(existingActor, updateActorDto);
-    return await this.actorRepository.save(existingActor);
+    await this.actorRepository.save(existingActor);
+    return { msg: 'Actor updated successfully' };
   }
 
-  async softDeleteActor(id: number): Promise<void> {
+  async softDeleteActor(id: number): Promise<{ msg: string }> {
     const actor = await this.findActorById(id);
     if (actor.is_deleted) {
       throw new BadRequestException(
@@ -89,17 +91,7 @@ export class ActorService {
     }
     actor.is_deleted = true;
     await this.actorRepository.save(actor);
-  }
-
-  async restoreActor(id: number): Promise<void> {
-    const actor = await this.actorRepository.findOne({
-      where: { id, is_deleted: true },
-    });
-    if (!actor) {
-      throw new BadRequestException(`Actor with ID ${id} is not soft-deleted`);
-    }
-    actor.is_deleted = false;
-    await this.actorRepository.save(actor);
+    return { msg: 'Actor soft deleted successfully' };
   }
 
   async removeActor(id: number): Promise<void> {
@@ -108,45 +100,5 @@ export class ActorService {
       throw new NotFoundException(`Actor with ID ${id} not found`);
     }
     await this.actorRepository.remove(actor);
-  }
-
- 
-
-  async getMoviesOfActor(
-    actorId: number,
-  ): Promise<{ id: number; name: string }[]> {
-    const actor = await this.actorRepository.findOne({
-      where: { id: actorId },
-      relations: ['movies'],
-    });
-
-    if (!actor) {
-      throw new NotFoundException(`Actor with ID ${actorId} not found`);
-    }
-
-    // Chỉ lấy `id` và `name` của các Movie
-    return actor.movies.map((movie) => ({ id: movie.id, name: movie.name }));
-  }
-
-  async removeMovieFromActor(actorId: number, movieId: number): Promise<Actor> {
-    const actor = await this.actorRepository.findOne({
-      where: { id: actorId },
-      relations: ['movies'],
-    });
-
-    if (!actor) {
-      throw new NotFoundException(`Actor with ID ${actorId} not found`);
-    }
-
-    const movie = await this.movieRepository.findOne({
-      where: { id: movieId },
-    });
-
-    if (!movie) {
-      throw new NotFoundException(`Movie with ID ${movieId} not found`);
-    }
-
-    actor.movies = actor.movies.filter((m) => m.id !== movieId);
-    return await this.actorRepository.save(actor);
   }
 }

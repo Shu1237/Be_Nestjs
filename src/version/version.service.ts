@@ -16,7 +16,9 @@ export class VersionService {
     private readonly versionRepository: Repository<Version>,
   ) {}
 
-  async create(createVersionDto: CreateVersionDto): Promise<Version> {
+  async create(
+    createVersionDto: CreateVersionDto,
+  ): Promise<{ message: string }> {
     // Kiểm tra nếu `name` đã tồn tại
     const existingVersion = await this.versionRepository.findOne({
       where: { name: createVersionDto.name },
@@ -28,7 +30,8 @@ export class VersionService {
     }
 
     const version = this.versionRepository.create(createVersionDto);
-    return await this.versionRepository.save(version);
+    await this.versionRepository.save(version);
+    return { message: 'Version created successfully' };
   }
   async findAll(): Promise<Version[]> {
     return await this.versionRepository.find();
@@ -45,7 +48,7 @@ export class VersionService {
   async update(
     id: number,
     updateVersionDto: UpdateVersionDto,
-  ): Promise<Version> {
+  ): Promise<{ message: string }> {
     const version = await this.findOne(id);
 
     // Kiểm tra nếu `name` đã tồn tại (trừ chính bản ghi hiện tại)
@@ -61,7 +64,8 @@ export class VersionService {
     }
 
     Object.assign(version, updateVersionDto);
-    return await this.versionRepository.save(version);
+    await this.versionRepository.save(version);
+    return { message: 'Version updated successfully' };
   }
   async softDeleteVersion(
     id: number,

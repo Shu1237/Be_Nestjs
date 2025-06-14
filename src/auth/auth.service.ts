@@ -11,6 +11,7 @@ import type {
   CreateAccountType,
   GoogleUserType,
   JWTUserType,
+  LoginAzureType,
   LogoutType,
 } from 'src/utils/type';
 import { Repository } from 'typeorm';
@@ -23,11 +24,13 @@ import { MailerService } from '@nestjs-modules/mailer';
 import { randomInt } from 'crypto';
 
 import { User } from 'src/typeorm/entities/user/user';
-import { Role } from 'src/typeorm/entities/user/roles';
+
 import { Member } from 'src/typeorm/entities/user/member';
 import { RefreshToken } from 'src/typeorm/entities/user/refresh-token';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
+import { Role } from 'src/typeorm/entities/user/roles';
+import { Role as RoleEnum } from 'src/enum/roles.enum';
 
 
 
@@ -43,33 +46,33 @@ export class AuthService {
 
     private jwtService: JwtService,
     private mailerService: MailerService,
-    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    // @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) { }
 
-  async validateUser(username: string, password: string) {
-    const user = await this.userRepository.findOne({
-      where: { username: username },
-      relations: ['role'],
-    });
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-    const isPasswordValid = await comparePassword(password, user.password);
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('Wrong password');
-    }
-    if (!user.status) {
-      throw new UnauthorizedException('Account is disabled');
-    }
-    //   console.log('User found:', user);
+  // async validateUser(username: string, password: string) {
+  //   const user = await this.userRepository.findOne({
+  //     where: { username: username },
+  //     relations: ['role'],
+  //   });
+  //   if (!user) {
+  //     throw new NotFoundException('User not found');
+  //   }
+  //   const isPasswordValid = await comparePassword(password, user.password);
+  //   if (!isPasswordValid) {
+  //     throw new UnauthorizedException('Wrong password');
+  //   }
+  //   if (!user.status) {
+  //     throw new UnauthorizedException('Account is disabled');
+  //   }
+  //   //   console.log('User found:', user);
 
-    const result: JWTUserType = {
-      account_id: user.id,
-      username: user.username,
-      role_id: user.role.role_id,
-    };
-    return result;
-  }
+  //   const result: JWTUserType = {
+  //     account_id: user.id,
+  //     username: user.username,
+  //     role_id: user.role.role_id,
+  //   };
+  //   return result;
+  // }
   async validateRefreshToken(token: string) {
     const record = await this.refreshTokenRepository.findOne({
       where: { refresh_token: token, revoked: false },
@@ -91,141 +94,154 @@ export class AuthService {
 
     return payload;
   }
-  async validateGoogleUser(data: GoogleUserType) {
-    const existingAccount = await this.userRepository.findOne({
-      where: { email: data.email },
-      relations: ['role'],
-    });
-
-    if (existingAccount) {
-      if (!existingAccount.role) {
-        throw new Error('User does not have a role assigned');
-      }
-
-      const payload: JWTUserType = {
-        account_id: existingAccount.id,
-        username: existingAccount.username,
-        role_id: existingAccount.role.role_id,
-      };
-      return payload;
-    } else {
-      const role = await this.roleRepository.findOneBy({ role_id: 1 });
-      console.log('Role:', role);
-      if (!role) {
-        throw new NotFoundException('Default role not found');
-      }
-
-      const newAccount = this.userRepository.create({
-        username: data.email,
-        email: data.email,
-        password: '',
-        image: data.avatarUrl,
-        role: role,
-      });
-      const savedAccount = await this.userRepository.save(newAccount);
-
-      const payload: JWTUserType = {
-        account_id: savedAccount.id,
-        username: savedAccount.username,
-        role_id: savedAccount.role.role_id,
-      };
-
-      const newMember = this.memberRepository.create({
-        score: 0,
-        account: savedAccount,
-      });
-      await this.memberRepository.save(newMember);
-
-      return payload;
-    }
-  }
-
-  async createAccount(data: CreateAccountType) {
-    const roleId = data.role_id ?? 1;
-    if (roleId > 3 || roleId < 1) {
-      throw new Error('ROLE_ID must be between 1 and 3');
-    }
-
-    const role = await this.roleRepository.findOneBy({ role_id: roleId });
-    if (!role) {
-      throw new NotFoundException(`Role with ID ${roleId} not found`);
-    }
-    const existingAccount = await this.userRepository.findOneBy({
-      email: data.email,
-    });
-    if (existingAccount) {
-      throw new UnauthorizedException('Email already exists');
-    }
-    const existingUsername = await this.userRepository.findOneBy({
-      username: data.username,
-    });
-    if (existingUsername) {
-      throw new UnauthorizedException('Username already exists');
-    }
-    const hashedPassword = await hashPassword(data.password);
-    const { role_id, ...accountData } = data;
-    // console.log('Account Data:', accountData);
-
-    const newAccount = this.userRepository.create({
-      ...accountData,
-      password: hashedPassword,
-      status: true,
-      role: role,
-    });
-    // console.log('New Account:', newAccount);
-
-    // // Save account first
-    const savedAccount = await this.userRepository.save(newAccount);
-
-    // role = 1  , create new member
-    if (roleId === 1) {
-      const newMember = this.memberRepository.create({
-        score: 0,
-        account: savedAccount,
-      });
-
-      await this.memberRepository.save(newMember);
-    }
-
-    return { msg: 'Account created successfully' };
-  }
-
-  // async loginAzure(body: any) {
-  //   const { sub, role_id, username, email } = body;
-  //   const user = await this.userRepository.findOne({
-  //     where: { id: sub }
+  // async validateGoogleUser(data: GoogleUserType) {
+  //   const existingAccount = await this.userRepository.findOne({
+  //     where: { email: data.email },
+  //     relations: ['role'],
   //   });
-  //   let payload: JWTUserType;
-  //   if (!user) {
-  //     //register new user 
-  //     const role = await this.roleRepository.findOneBy({ role_id: role_id });
+
+  //   if (existingAccount) {
+  //     if (!existingAccount.role) {
+  //       throw new Error('User does not have a role assigned');
+  //     }
+
+  //     const payload: JWTUserType = {
+  //       account_id: existingAccount.id,
+  //       username: existingAccount.username,
+  //       role_id: existingAccount.role.role_id,
+  //     };
+  //     return payload;
+  //   } else {
+  //     const role = await this.roleRepository.findOneBy({ role_id: 1 });
+  //     console.log('Role:', role);
   //     if (!role) {
   //       throw new NotFoundException('Default role not found');
   //     }
-  //     const newAccount = this.userRepository.save({
-  //       id: sub,
-  //       username: username,
-  //       email: email,
+
+  //     const newAccount = this.userRepository.create({
+  //       username: data.email,
+  //       email: data.email,
+  //       password: '',
+  //       image: data.avatarUrl,
   //       role: role,
   //     });
-  //     payload = {
-  //       account_id: sub,
-  //       username: username,
-  //       role_id: role.role_id,
+  //     const savedAccount = await this.userRepository.save(newAccount);
+
+  //     const payload: JWTUserType = {
+  //       account_id: savedAccount.id,
+  //       username: savedAccount.username,
+  //       role_id: savedAccount.role.role_id,
   //     };
+
+  //     const newMember = this.memberRepository.create({
+  //       score: 0,
+  //       account: savedAccount,
+  //     });
+  //     await this.memberRepository.save(newMember);
+
+  //     return payload;
   //   }
-  //   else {
-  //     payload = {
-  //       account_id: user.id,
-  //       username: user.username,
-  //       role_id: user.role.role_id,
-  //     };
-  //   }
-  //   return {
-  //     msg: 'Login successful',
-  //     token: await this.generateToken(payload),
-  //   };
   // }
+
+  // async createAccount(data: CreateAccountType) {
+  //   const roleId = data.role_id ?? 1;
+  //   if (roleId > 3 || roleId < 1) {
+  //     throw new Error('ROLE_ID must be between 1 and 3');
+  //   }
+
+  //   const role = await this.roleRepository.findOneBy({ role_id: roleId });
+  //   if (!role) {
+  //     throw new NotFoundException(`Role with ID ${roleId} not found`);
+  //   }
+  //   const existingAccount = await this.userRepository.findOneBy({
+  //     email: data.email,
+  //   });
+  //   if (existingAccount) {
+  //     throw new UnauthorizedException('Email already exists');
+  //   }
+  //   const existingUsername = await this.userRepository.findOneBy({
+  //     username: data.username,
+  //   });
+  //   if (existingUsername) {
+  //     throw new UnauthorizedException('Username already exists');
+  //   }
+  //   const hashedPassword = await hashPassword(data.password);
+  //   const { role_id, ...accountData } = data;
+  //   // console.log('Account Data:', accountData);
+
+  //   const newAccount = this.userRepository.create({
+  //     ...accountData,
+  //     password: hashedPassword,
+  //     status: true,
+  //     role: role,
+  //   });
+  //   // console.log('New Account:', newAccount);
+
+  //   // // Save account first
+  //   const savedAccount = await this.userRepository.save(newAccount);
+
+  //   // role = 1  , create new member
+  //   if (roleId === 1) {
+  //     const newMember = this.memberRepository.create({
+  //       score: 0,
+  //       account: savedAccount,
+  //     });
+
+  //     await this.memberRepository.save(newMember);
+  //   }
+
+  //   return { msg: 'Account created successfully' };
+  // }
+
+  async loginAzureAndGoogle(body: LoginAzureType) {
+    const { sub, name, email, picture } = body;
+    const roleId = body.role_id ?? 1;
+    const user = await this.userRepository.findOne({
+      where: { email: email },
+      relations: ['role'],
+    });
+    let payload: JWTUserType;
+    if (!user) {
+      //register new user
+      const role = await this.roleRepository.findOneBy({ role_id: roleId });
+      if (!role) {
+        throw new NotFoundException('Default role not found');
+      }
+      const newUser = await this.userRepository.save({
+        id: sub,
+        username: name,
+        email: email,
+        avatar: picture,
+        role: role,
+      });
+      if (roleId === RoleEnum.USER) {
+        await this.memberRepository.save({
+          score: 0,
+          user: newUser,
+        });
+      }
+      payload = {
+        account_id: sub,
+        username: name,
+
+        role_id: role.role_id,
+      };
+    }
+    else {
+      if (!user.status) {
+        throw new UnauthorizedException('Account is disabled');
+      }
+      payload = {
+        account_id: user.id,
+        username: user.username,
+        role_id: user.role.role_id,
+      };
+    }
+    return {
+      msg: 'Login successful',
+      token: await this.generateToken(payload),
+    };
+  }
 
   async login(user: JWTUserType) {
     // console.log('User:', user);
@@ -346,80 +362,80 @@ export class AuthService {
   }
 
   async checkEmail(email: string) {
-    const otpCode = await this.OtpCode(email);
-    await this.cacheManager.set(`email-${email}`, otpCode, { ttl: 60 * 5 } as any);
+    // const otpCode = await this.OtpCode(email);
+    // await this.cacheManager.set(`email-${email}`, otpCode, { ttl: 60 * 5 } as any);
 
 
-    // await this.otpRepository.save({
-    //   otp: otpCode,
-    //   is_used: false,
-    //   expires_at: new Date(Date.now() + 5 * 60 * 1000),
-    // });
+    // // await this.otpRepository.save({
+    // //   otp: otpCode,
+    // //   is_used: false,
+    // //   expires_at: new Date(Date.now() + 5 * 60 * 1000),
+    // // });
 
-    return { msg: 'OTP sent successfully' };
+    // return { msg: 'OTP sent successfully' };
   }
 
   async verifyOtp(otp: string, email: string) {
-    const cachedOtp = await this.cacheManager.get(`email-${email}`);
-    if (!cachedOtp) {
-      throw new UnauthorizedException('OTP has expired or does not exist');
-    }
-    if (cachedOtp !== otp) {
-      throw new UnauthorizedException('Invalid OTP');
-    }
-    // if (otpRecord.is_used) {
-    //   throw new UnauthorizedException('OTP has already been used');
+    // const cachedOtp = await this.cacheManager.get(`email-${email}`);
+    // if (!cachedOtp) {
+    //   throw new UnauthorizedException('OTP has expired or does not exist');
     // }
-    // otpRecord.is_used = true;
-    // await this.otpRepository.save(otpRecord);
-    const payload = {
-      sub: email,
-      purpose: 'verify_otp',
-    };
-    const tempToken = this.jwtService.sign(payload, {
-      secret: process.env.TMP_TOKEN_SECRET,
-      expiresIn: process.env.TMP_EXPIRES_IN,
-    });
-    // await this.otpRepository.delete(otpRecord.id);
-    return { msg: 'OTP verified successfully', token: tempToken };
+    // if (cachedOtp !== otp) {
+    //   throw new UnauthorizedException('Invalid OTP');
+    // }
+    // // if (otpRecord.is_used) {
+    // //   throw new UnauthorizedException('OTP has already been used');
+    // // }
+    // // otpRecord.is_used = true;
+    // // await this.otpRepository.save(otpRecord);
+    // const payload = {
+    //   sub: email,
+    //   purpose: 'verify_otp',
+    // };
+    // const tempToken = this.jwtService.sign(payload, {
+    //   secret: process.env.TMP_TOKEN_SECRET,
+    //   expiresIn: process.env.TMP_EXPIRES_IN,
+    // });
+    // // await this.otpRepository.delete(otpRecord.id);
+    // return { msg: 'OTP verified successfully', token: tempToken };
   }
 
-  async changePassword(newPassword: string, tmptoken: string) {
-    const decoded = this.jwtService.verify(tmptoken, {
-      secret: process.env.TMP_TOKEN_SECRET,
-    });
-    if (!decoded || !decoded.sub) {
-      throw new UnauthorizedException('Invalid token');
-    }
-    const email = decoded.sub;
-    const user = await this.userRepository.findOne({ where: { email: email } });
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-    const checkNewPassword = await comparePassword(newPassword, user.password);
-    if (checkNewPassword) {
-      throw new BadRequestException('New password cannot be the same as the old password');
-    }
-    user.password = await hashPassword(newPassword);
-    await this.userRepository.save(user);
-    return { msg: 'Password changed successfully' };
-  }
+  // async changePassword(newPassword: string, tmptoken: string) {
+  //   const decoded = this.jwtService.verify(tmptoken, {
+  //     secret: process.env.TMP_TOKEN_SECRET,
+  //   });
+  //   if (!decoded || !decoded.sub) {
+  //     throw new UnauthorizedException('Invalid token');
+  //   }
+  //   const email = decoded.sub;
+  //   const user = await this.userRepository.findOne({ where: { email: email } });
+  //   if (!user) {
+  //     throw new NotFoundException('User not found');
+  //   }
+  //   const checkNewPassword = await comparePassword(newPassword, user.password);
+  //   if (checkNewPassword) {
+  //     throw new BadRequestException('New password cannot be the same as the old password');
+  //   }
+  //   user.password = await hashPassword(newPassword);
+  //   await this.userRepository.save(user);
+  //   return { msg: 'Password changed successfully' };
+  // }
 
-  async changePasswordWasLogin(newPassword: string, userData: JWTUserType) {
-    const user = await this.userRepository.findOne({
-      where: { id: userData.account_id },
-    });
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-    const checkNewPassword = await comparePassword(newPassword, user.password);
-    if (checkNewPassword) {
-      throw new BadRequestException(
-        'New password cannot be the same as the old password',
-      );
-    }
-    user.password = await hashPassword(newPassword);
-    await this.userRepository.save(user);
-    return { msg: 'Password changed successfully' };
-  }
+  // async changePasswordWasLogin(newPassword: string, userData: JWTUserType) {
+  //   const user = await this.userRepository.findOne({
+  //     where: { id: userData.account_id },
+  //   });
+  //   if (!user) {
+  //     throw new NotFoundException('User not found');
+  //   }
+  //   const checkNewPassword = await comparePassword(newPassword, user.password);
+  //   if (checkNewPassword) {
+  //     throw new BadRequestException(
+  //       'New password cannot be the same as the old password',
+  //     );
+  //   }
+  //   user.password = await hashPassword(newPassword);
+  //   await this.userRepository.save(user);
+  //   return { msg: 'Password changed successfully' };
+  // }
 }

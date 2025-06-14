@@ -25,6 +25,7 @@ import { SeatService } from 'src/seat/seat.service';
 import { Cache } from 'cache-manager';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Seat } from 'src/typeorm/entities/cinema/seat';
+import Redis from 'ioredis';
 
 
 
@@ -60,7 +61,10 @@ export class OrderService {
     private readonly vnpayService: VnpayService,
     private readonly zalopayService: ZalopayService,
     private readonly seatService: SeatService,
-    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    // @Inject(CACHE_MANAGER) private cacheManager: Cache,
+
+
+    @Inject('REDIS_CLIENT') private readonly redisClient: Redis,
 
 
   ) { }
@@ -157,37 +161,46 @@ export class OrderService {
           `Some seats are already booked: ${bookedSeats.map(s => s.seat.id).join(', ')}`,
         );
       }
+      // Kiểm tra cache 
+      const cacheKey = `seat-hold-${user.id}`;
+      const redisRaw = await this.redisClient.get(cacheKey);
 
-      // Kiểm tra cache và hủy hold seats nếu cần
-      // console.log('Checking cache for key:', cacheKey);
-      const cacheHoldSeats = await this.cacheManager.get<HoldSeatType>(`seat-hold-${user.id}`);
-      // console.log('Cache result:', cacheHoldSeats);
+      if (redisRaw) {
+        let cacheHoldSeats: HoldSeatType;
 
-      if (cacheHoldSeats?.schedule_id === schedule.id && cacheHoldSeats?.seatIds?.length > 0) {
-        // console.log('Cancelling hold seats...');
-        await this.seatService.cancelHoldSeat(
-          {
-            seatIds: cacheHoldSeats.seatIds,
-            schedule_id: cacheHoldSeats.schedule_id,
-          },
-          {
-            account_id: user.id,
-            username: user.username,
-            role_id: user.role.role_id
-          },
-        );
-        // console.log('Hold seats cancelled');
+        try {
+          cacheHoldSeats = JSON.parse(redisRaw);
+        } catch (error) {
+          throw new BadRequestException('Dữ liệu cache không hợp lệ');
+        }
 
-        // Lấy lại scheduleSeats để phản ánh trạng thái mới
-        scheduleSeats = await this.scheduleSeatRepository.find({
-          where: {
-            seat: { id: In(seatIds) },
-            schedule: { id: schedule.id },
-          },
-          relations: ['seat', 'seat.seatType'],
-        });
+        if (
+          cacheHoldSeats.schedule_id === schedule.id &&
+          Array.isArray(cacheHoldSeats.seatIds) &&
+          cacheHoldSeats.seatIds.length > 0
+        ) {
+          await this.seatService.cancelHoldSeat(
+            {
+              seatIds: cacheHoldSeats.seatIds,
+              schedule_id: cacheHoldSeats.schedule_id,
+            },
+            {
+              account_id: user.id,
+              username: user.username,
+              role_id: user.role.role_id,
+            },
+          );
+
+          // Lấy lại scheduleSeats để phản ánh trạng thái mới
+          scheduleSeats = await this.scheduleSeatRepository.find({
+            where: {
+              seat: { id: In(seatIds) },
+              schedule: { id: schedule.id },
+            },
+            relations: ['seat', 'seat.seatType'],
+          });
+        }
       }
-
       // Kiểm tra unavailable seats SAU KHI cancelHoldSeat
       const unavailableSeats = scheduleSeats.filter(
         seat => seat.status === StatusSeat.BOOKED || seat.status === StatusSeat.HELD,

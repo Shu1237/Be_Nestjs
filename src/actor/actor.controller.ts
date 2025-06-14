@@ -36,11 +36,6 @@ export class ActorController {
   @UseGuards(JwtAuthGuard)
   @Post()
   @ApiOperation({ summary: 'Create a new actor' })
-  @ApiResponse({
-    status: 201,
-    description: 'Actor created successfully.',
-    type: Actor,
-  })
   async createActor(@Req() req, @Body() createActorDto: CreateActorDto) {
     const user = req.user as JWTUserType;
     if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
@@ -54,23 +49,18 @@ export class ActorController {
 
   @Get()
   @ApiOperation({ summary: 'Get all actors' })
-  @ApiResponse({ status: 200, description: 'List of Actors.', type: [Actor] })
   async findAllActors() {
     return await this.actorService.findAllActors();
   }
 
   @Get('search')
   @ApiOperation({ summary: 'Get actor by name' })
-  @ApiResponse({ status: 200, description: 'Actor found.', type: Actor })
-  @ApiResponse({ status: 404, description: 'Actor not found.' })
   async search(@Query('name') name: string) {
     return await this.actorService.findActorByName(name);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get actor by ID' })
-  @ApiResponse({ status: 200, description: 'Actor found.', type: Actor })
-  @ApiResponse({ status: 404, description: 'Actor not found.' })
   async findActorById(@Param('id') id: string) {
     return await this.actorService.findActorById(+id);
   }
@@ -78,11 +68,6 @@ export class ActorController {
   @UseGuards(JwtAuthGuard)
   @Put(':id')
   @ApiOperation({ summary: 'Update actor details' })
-  @ApiResponse({
-    status: 200,
-    description: 'Actor updated successfully.',
-    type: Actor,
-  })
   async updateActor(
     @Req() req,
     @Param('id') id: string,
@@ -101,8 +86,6 @@ export class ActorController {
   @UseGuards(JwtAuthGuard)
   @Patch(':id/soft-delete')
   @ApiOperation({ summary: 'Soft delete an actor (admin, employee only)' })
-  @ApiResponse({ status: 200, description: 'Actor soft-deleted successfully.' })
-  @ApiResponse({ status: 403, description: 'Unauthorized.' })
   async softDeleteActor(@Param('id', ParseIntPipe) id: number, @Req() req) {
     const user = req.user as JWTUserType;
     if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
@@ -116,7 +99,6 @@ export class ActorController {
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
   @ApiOperation({ summary: 'Permanently delete an actor' })
-  @ApiResponse({ status: 200, description: 'Actor permanently deleted.' })
   async removeActor(@Req() req, @Param('id') id: string) {
     const user = req.user as JWTUserType;
     if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
@@ -128,11 +110,7 @@ export class ActorController {
     return await this.actorService.removeActor(+id);
   }
 
-  @Get(':actorId/movies')
-  @ApiOperation({ summary: 'Get all movies of an actor' })
-  async getMoviesOfActor(@Param('actorId', ParseIntPipe) actorId: number) {
-    return await this.actorService.getMoviesOfActor(actorId);
-  }
+  
 
   // @UseGuards(JwtAuthGuard)
   // @Patch(':actorId/remove-movie/:movieId')

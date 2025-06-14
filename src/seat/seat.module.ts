@@ -9,10 +9,12 @@ import { SeatTypeService } from './seat-type.service';
 import { CinemaRoom } from 'src/typeorm/entities/cinema/cinema-room';
 import { Schedule } from 'src/typeorm/entities/cinema/schedule';
 import { ScheduleSeat } from 'src/typeorm/entities/cinema/schedule_seat';
+import { RedisModule } from 'src/redis/redis.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Seat, SeatType, CinemaRoom, Schedule, ScheduleSeat]),
+    RedisModule
   ],
   controllers: [SeatController, SeatTypeController],
   providers: [SeatService, SeatTypeService],

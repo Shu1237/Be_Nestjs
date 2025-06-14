@@ -4,6 +4,7 @@ import { JwtAuthGuard } from 'src/guards/jwt.guard';
 import { JWTUserType } from 'src/utils/type';
 import { Role } from 'src/enum/roles.enum';
 import { ApiBearerAuth, ApiBody, ApiOperation } from '@nestjs/swagger';
+import { TicketMarkUsedDto } from './dto/ticket-mark-used.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('ticket')
@@ -43,12 +44,12 @@ export class TicketController {
   @Patch('tickets/mark-used')
   @ApiOperation({ summary: 'Mark tickets as used' })
   @ApiBearerAuth()
-  @ApiBody({ type: [String],  examples: { ticketIds: { value: ['ticketId1', 'ticketId2'] } } })
-  markTicketsAsUsed(@Body() ticketIds: string[], @Req() req) {
+  @ApiBody({ type: TicketMarkUsedDto })
+  markTicketsAsUsed(@Body() body: TicketMarkUsedDto, @Req() req) {
     const user = req.user as JWTUserType;
     if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
       throw new Error('Only admin or employee can mark tickets as used');
     }
-    return this.ticketService.markTicketsAsUsed(ticketIds);
+    return this.ticketService.markTicketsAsUsed(body.seatIds);
   }
 }
