@@ -8,6 +8,8 @@ export const RedisProvider: Provider = {
     if (!redisUrl) {
       throw new Error('REDIS_URL environment variable is not defined');
     }
-    return new Redis(redisUrl);
+    return new Redis(redisUrl, {
+      tls: {}, 
+    });
   },
 };

@@ -69,7 +69,7 @@ export class AuthTesterController {
     @ApiOperation({ summary: 'Test cache functionality' })
     async getCacheTest() {
         // test redis
-        console.log(process.env.REDIS_URL);
+
         await this.redisClient.set('testKey', 'testValue', 'EX', 60);
         return {
             message: 'Cache test successful',
@@ -84,6 +84,14 @@ export class AuthTesterController {
         return {
             message: 'Retrieved cached value',
             value: value,
+        };
+    }
+    @Get('test/cache/clear')
+    @ApiOperation({ summary: 'Clear cached value' })
+    async clearCachedValue() {
+        await this.redisClient.del('testKey');
+        return {
+            message: 'Cache cleared successfully',
         };
     }
 }
