@@ -1,14 +1,12 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import axios from 'axios';
 import { Repository } from 'typeorm';
-
 import { Transaction } from 'src/typeorm/entities/order/transaction';
 import { Order } from 'src/typeorm/entities/order/order';
 import { Ticket } from 'src/typeorm/entities/order/ticket';
 import { Seat } from 'src/typeorm/entities/cinema/seat';
 import { Member } from 'src/typeorm/entities/user/member';
-import { User } from 'src/typeorm/entities/user/user';
 import { OrderBillType } from 'src/utils/type';
 import { Promotion } from 'src/typeorm/entities/promotion/promotion';
 import { TicketType } from 'src/typeorm/entities/order/ticket-type';
@@ -17,6 +15,7 @@ import { Method } from 'src/enum/payment-menthod.enum';
 import { MailerService } from '@nestjs-modules/mailer';
 import { MomoService } from '../momo/momo.service';
 import { Role } from 'src/enum/roles.enum';
+import { StatusOrder } from 'src/enum/status-order.enum';
 
 @Injectable()
 export class PayPalService {
@@ -149,7 +148,7 @@ export class PayPalService {
 
     async handleReturnSuccessPaypal(transactionCode: string) {
         const transaction = await this.momoService.getTransactionByOrderId(transactionCode);
-        if (transaction.status !== 'pending') {
+        if (transaction.status !== StatusOrder.PENDING) {
             throw new NotFoundException('Transaction is not in pending state');
         }
         if (transaction.paymentMethod.id === Method.PAYPAL) {
@@ -158,7 +157,7 @@ export class PayPalService {
                 throw new Error('Payment not completed on PayPal');
             }
         }
-        transaction.status = 'success';
+        transaction.status = StatusOrder.SUCCESS;
         await this.transactionRepository.save(transaction);
 
         if (!transaction.order) throw new NotFoundException('Order not found for this transaction');
@@ -221,13 +220,13 @@ export class PayPalService {
 
     async handleReturnCancelPaypal(transactionCode: string) {
         const transaction = await this.momoService.getTransactionByOrderId(transactionCode);
-        if (transaction.status !== 'pending') {
+        if (transaction.status !== StatusOrder.PENDING) {
             throw new NotFoundException('Transaction is not in pending state');
         }
 
         const order = transaction.order;
-        transaction.status = 'failed';
-        order.status = 'failed';
+        transaction.status = StatusOrder.FAILED;
+        order.status = StatusOrder.FAILED;
         await this.transactionRepository.save(transaction);
         await this.orderRepository.save(order);
 

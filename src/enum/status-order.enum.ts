@@ -1,5 +1,5 @@
 export enum StatusOrder {
-    SUCCCESS = 'success',
+    SUCCESS = 'success',
     FAILED = 'failed',
     PENDING = 'pending',
 }

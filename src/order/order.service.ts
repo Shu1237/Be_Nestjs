@@ -26,6 +26,7 @@ import { Cache } from 'cache-manager';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Seat } from 'src/typeorm/entities/cinema/seat';
 import Redis from 'ioredis';
+import { StatusOrder } from 'src/enum/status-order.enum';
 
 
 
@@ -284,7 +285,7 @@ export class OrderService {
         booking_date: orderBill.booking_date,
         add_score: orderScore,
         total_prices: orderBill.total_prices,
-        status: Number(orderBill.payment_method_id) === Method.CASH ? 'success' : 'pending',
+        status: Number(orderBill.payment_method_id) === Method.CASH ? StatusOrder.SUCCESS : StatusOrder.PENDING,
         user,
         promotion,
       });
@@ -293,7 +294,7 @@ export class OrderService {
         transaction_code: paymentCode.orderId,
         transaction_date: new Date(),
         prices: orderBill.total_prices,
-        status: Number(orderBill.payment_method_id) === Method.CASH ? 'success' : 'pending',
+        status: Number(orderBill.payment_method_id) === Method.CASH ? StatusOrder.SUCCESS : StatusOrder.PENDING,
         paymentMethod,
       });
 
