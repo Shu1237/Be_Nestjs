@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Gerne } from 'src/typeorm/entities/cinema/gerne';
 import { Repository } from 'typeorm';
@@ -15,9 +19,20 @@ export class GerneService {
     private readonly movieRepository: Repository<Movie>,
   ) {}
 
-  async createGerne(createGerneDto: CreateGerneDto): Promise<Gerne> {
-    const gerne = this.gerneRepository.create(createGerneDto);
-    return await this.gerneRepository.save(gerne);
+  async createGerne(createGerneDto: CreateGerneDto): Promise<{ msg: string }> {
+    const existing = await this.gerneRepository.findOne({
+      where: { genre_name: createGerneDto.genre_name },
+    });
+
+    if (existing) {
+      throw new BadRequestException(
+        `Movie with name "${createGerneDto.genre_name}" already exists.`,
+      );
+    }
+
+    await this.gerneRepository.create(createGerneDto);
+    await this.gerneRepository.save(createGerneDto);
+    return { msg: 'Gerne created successfully' };
   }
 
   async findAllGernes(): Promise<Gerne[]> {
@@ -35,10 +50,26 @@ export class GerneService {
   async updateGerne(
     id: number,
     updateGerneDto: UpdateGerneDto,
-  ): Promise<Gerne> {
+  ): Promise<{ msg: string }> {
     const gerne = await this.findGerneById(id);
+
+    // Nếu người dùng muốn đổi tên thì kiểm tra tên mới có trùng với cái khác không
+    if (
+      updateGerneDto.genre_name &&
+      updateGerneDto.genre_name !== gerne.genre_name
+    ) {
+      const existing = await this.gerneRepository.findOne({
+        where: { genre_name: updateGerneDto.genre_name },
+      });
+
+      if (existing) {
+        throw new Error(`Gerne "${updateGerneDto.genre_name}" already exists`);
+      }
+    }
+
     Object.assign(gerne, updateGerneDto);
-    return await this.gerneRepository.save(gerne);
+    await this.gerneRepository.save(gerne);
+    return { msg: 'Gerne updated successfully' };
   }
 
   async deleteGerne(id: number): Promise<void> {
