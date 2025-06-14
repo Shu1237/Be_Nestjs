@@ -1,19 +1,17 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {  Injectable, NotFoundException } from '@nestjs/common';
 import * as crypto from 'crypto';
 import axios from 'axios';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
-
 import { Transaction } from 'src/typeorm/entities/order/transaction';
 import { Order } from 'src/typeorm/entities/order/order';
 import { Ticket } from 'src/typeorm/entities/order/ticket';
 import { Seat } from 'src/typeorm/entities/cinema/seat';
 import { Member } from 'src/typeorm/entities/user/member';
-import { User } from 'src/typeorm/entities/user/user';
 import { MailerService } from '@nestjs-modules/mailer';
 import { ScheduleSeat, SeatStatus } from 'src/typeorm/entities/cinema/schedule_seat';
-import { StatusSeat } from 'src/enum/status_seat.enum';
 import { Role } from 'src/enum/roles.enum';
+import { StatusOrder } from 'src/enum/status-order.enum';
 
 @Injectable()
 export class MomoService {
@@ -102,6 +100,7 @@ export class MomoService {
         'order.orderDetails.ticket.schedule.cinemaRoom',
         'order.user',
         'order.user.member',
+        'order.user.role',
         'paymentMethod',
       ],
     });
@@ -139,15 +138,15 @@ export class MomoService {
     const { orderId, resultCode } = query;
 
     const transaction = await this.getTransactionByOrderId(orderId);
-    if (transaction.status !== 'pending') {
+    if (transaction.status !==  StatusOrder.PENDING) {
       throw new NotFoundException('Transaction is not in pending state');
     }
     const order = transaction.order;
 
     if (Number(resultCode) === 0) {
       // Giao dịch thành công
-      transaction.status = 'success';
-      order.status = 'success';
+      transaction.status = StatusOrder.SUCCESS;
+      order.status = StatusOrder.SUCCESS;
 
       await this.transactionRepository.save(transaction);
       const savedOrder = await this.orderRepository.save(order);
@@ -203,8 +202,8 @@ export class MomoService {
       };
     } else {
       // Giao dịch thất bại
-      transaction.status = 'failed';
-      order.status = 'failed';
+      transaction.status = StatusOrder.FAILED;
+      order.status = StatusOrder.FAILED;
       await this.transactionRepository.save(transaction);
       await this.orderRepository.save(order);
 

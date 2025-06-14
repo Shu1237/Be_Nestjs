@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {  Injectable, NotFoundException } from '@nestjs/common';
 import * as crypto from 'crypto';
 import * as qs from 'qs';
 import * as moment from 'moment';
@@ -8,11 +8,12 @@ import { Seat } from 'src/typeorm/entities/cinema/seat';
 import { Order } from 'src/typeorm/entities/order/order';
 import { Ticket } from 'src/typeorm/entities/order/ticket';
 import { Member } from 'src/typeorm/entities/user/member';
-import { In, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Transaction } from 'src/typeorm/entities/order/transaction';
 import { MailerService } from '@nestjs-modules/mailer';
 import { MomoService } from '../momo/momo.service';
 import { Role } from 'src/enum/roles.enum';
+import { StatusOrder } from 'src/enum/status-order.enum';
 
 @Injectable()
 export class VnpayService {
@@ -114,14 +115,14 @@ export class VnpayService {
 
       if (responseCode === '00') {
         const transaction = await this.momoService.getTransactionByOrderId(txnRef);
-        if (transaction.status !== 'pending') {
+        if (transaction.status !== StatusOrder.PENDING) {
           throw new NotFoundException('Transaction is not in pending state');
         }
-        transaction.status = 'success';
+        transaction.status = StatusOrder.SUCCESS;
         await this.transactionRepository.save(transaction);
 
         if (!transaction.order) throw new NotFoundException('Order not found');
-        transaction.order.status = 'success';
+        transaction.order.status = StatusOrder.SUCCESS;
         await this.orderRepository.save(transaction.order);
 
         const order = transaction.order;
@@ -176,8 +177,8 @@ export class VnpayService {
         // Giao dịch thất bại
         const transaction = await this.momoService.getTransactionByOrderId(txnRef);
         const order = transaction.order;
-        transaction.status = 'failed';
-        order.status = 'failed';
+        transaction.status = StatusOrder.FAILED;
+        order.status = StatusOrder.FAILED;
         await this.transactionRepository.save(transaction);
         await this.orderRepository.save(order);
 

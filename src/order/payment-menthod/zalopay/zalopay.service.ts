@@ -17,6 +17,7 @@ import { Promotion } from "src/typeorm/entities/promotion/promotion";
 import { MailerService } from "@nestjs-modules/mailer";
 import { MomoService } from "../momo/momo.service";
 import { Role } from "src/enum/roles.enum";
+import { StatusOrder } from "src/enum/status-order.enum";
 
 @Injectable()
 export class ZalopayService {
@@ -31,8 +32,6 @@ export class ZalopayService {
     private readonly seatRepository: Repository<Seat>,
     @InjectRepository(Member)
     private readonly memberRepository: Repository<Member>,
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
     @InjectRepository(TicketType)
     private readonly ticketTypeRepository: Repository<TicketType>,
     @InjectRepository(Promotion)
@@ -150,14 +149,14 @@ export class ZalopayService {
   async handleReturnZaloPay(query: any) {
     const { apptransid, status } = query;
     const transaction = await this.momoService.getTransactionByOrderId(apptransid);
-    if (transaction.status !== 'pending') {
+    if (transaction.status !== StatusOrder.PENDING) {
       throw new NotFoundException('Transaction is not in pending state');
     }
     const order = transaction.order;
 
     if (status === "1") {
-      transaction.status = "success";
-      order.status = "success";
+      transaction.status = StatusOrder.SUCCESS;
+      order.status = StatusOrder.SUCCESS;
       await this.transactionRepository.save(transaction);
       const savedOrder = await this.orderRepository.save(order);
 
@@ -215,8 +214,8 @@ export class ZalopayService {
     } else {
       const transaction = await this.momoService.getTransactionByOrderId(apptransid);
       const order = transaction.order;
-      transaction.status = 'failed';
-      order.status = 'failed';
+      transaction.status = StatusOrder.FAILED;
+      order.status = StatusOrder.FAILED;
       await this.transactionRepository.save(transaction);
       await this.orderRepository.save(order);
 
