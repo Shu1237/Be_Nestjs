@@ -13,8 +13,14 @@ import { RedisModule } from 'src/redis/redis.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Seat, SeatType, CinemaRoom, Schedule, ScheduleSeat]),
-    RedisModule
+    TypeOrmModule.forFeature([
+      Seat,
+      SeatType,
+      CinemaRoom,
+      Schedule,
+      ScheduleSeat,
+    ]),
+    RedisModule,
   ],
   controllers: [SeatController, SeatTypeController],
   providers: [SeatService, SeatTypeService],

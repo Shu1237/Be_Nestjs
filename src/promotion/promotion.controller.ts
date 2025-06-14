@@ -16,13 +16,7 @@ import { PromotionService } from './promotion.service';
 import { CreatePromotionDto } from './dto/create-promotion.dto';
 import { UpdatePromotionDto } from './dto/update-promotion.dto';
 import { JwtAuthGuard } from 'src/guards/jwt.guard';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiBody,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiBody, ApiTags } from '@nestjs/swagger';
 import { ChangePromotionDto } from './dto/change-promotion.dto';
 import { Request } from 'express';
 import { JWTUserType } from 'src/utils/type';
@@ -37,10 +31,6 @@ export class PromotionController {
 
   @Get()
   @ApiOperation({ summary: 'Get all promotions' })
-  @ApiResponse({
-    status: 200,
-    description: 'List of all promotions',
-  })
   getAllPromotions() {
     return this.promotionService.getAllPromotions();
   }
@@ -55,15 +45,6 @@ export class PromotionController {
 
   @Post()
   @ApiOperation({ summary: 'Create new promotion (admin only)' })
-  @ApiResponse({
-    status: 201,
-    description: 'Promotion created successfully',
-    example: { msg: 'Promotion created successfully' },
-  })
-  @ApiResponse({
-    status: 403,
-    description: 'Forbidden. Only admin can create promotions',
-  })
   @ApiBody({ type: CreatePromotionDto })
   createPromotion(
     @Body() createPromotionDto: CreatePromotionDto,
@@ -75,36 +56,14 @@ export class PromotionController {
     }
     throw new ForbiddenException('Only admin can create promotions');
   }
-
   @Get(':id')
   @ApiOperation({ summary: 'Get promotion by ID' })
-  @ApiResponse({
-    status: 200,
-    description: 'Promotion found',
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Promotion not found',
-  })
   getPromotionById(@Param('id', ParseIntPipe) id: number) {
     return this.promotionService.getPromotionById(id);
   }
 
   @Put(':id')
   @ApiOperation({ summary: 'Update promotion by ID (admin only)' })
-  @ApiResponse({
-    status: 200,
-    description: 'Promotion updated successfully',
-    example: { msg: 'Promotion updated successfully' },
-  })
-  @ApiResponse({
-    status: 403,
-    description: 'Forbidden. Only admin can update promotions',
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Promotion not found',
-  })
   @ApiBody({ type: UpdatePromotionDto })
   updatePromotion(
     @Param('id', ParseIntPipe) id: number,
@@ -120,58 +79,26 @@ export class PromotionController {
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete promotion by ID (admin only)' })
-  @ApiResponse({
-    status: 200,
-    description: 'Promotion deleted successfully.',
-    example: {
-      msg: 'Delete successfully',
-    },
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Promotion not found.',
-  })
-  @ApiResponse({
-    status: 403,
-    description: 'Forbidden. Only admin can delete promotions',
-  })
   async deletePromotion(
     @Param('id', ParseIntPipe) id: number,
     @Req() req: Request,
   ) {
     const user = req.user as JWTUserType;
     if (user.role_id === Role.ADMIN) {
-      await this.promotionService.deletePromotion(id);
-      return { msg: 'Delete successfully' };
+      return this.promotionService.deletePromotion(id);
     }
     throw new ForbiddenException('Only admin can delete promotions');
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Soft delete promotion by ID (admin only)' })
-  @ApiResponse({
-    status: 200,
-    description: 'Promotion soft deleted successfully.',
-    example: {
-      msg: 'Delete successfully',
-    },
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Promotion not found.',
-  })
-  @ApiResponse({
-    status: 403,
-    description: 'Forbidden. Only admin can delete promotions',
-  })
   async deleteSoftPromotion(
     @Param('id', ParseIntPipe) id: number,
     @Req() req: Request,
   ) {
     const user = req.user as JWTUserType;
     if (user.role_id === Role.ADMIN) {
-      await this.promotionService.deleteSoftPromotion(id);
-      return { msg: 'Delete successfully' };
+      return this.promotionService.deleteSoftPromotion(id);
     }
     throw new ForbiddenException('Only admin can delete promotions');
   }

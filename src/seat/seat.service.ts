@@ -14,10 +14,10 @@ import { UpdateSeatDto } from './dto/update-seat.dto';
 import { SeatType } from 'src/typeorm/entities/cinema/seat-type';
 import { CinemaRoom } from 'src/typeorm/entities/cinema/cinema-room';
 import { Schedule } from 'src/typeorm/entities/cinema/schedule';
-import { ScheduleSeat, SeatStatus } from 'src/typeorm/entities/cinema/schedule_seat';
+import { ScheduleSeat } from 'src/typeorm/entities/cinema/schedule_seat';
+import { StatusSeat } from 'src/enum/status_seat.enum';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import Redis from 'ioredis/built/Redis';
-
 
 @Injectable()
 export class SeatService {
@@ -32,14 +32,8 @@ export class SeatService {
     @InjectRepository(ScheduleSeat)
     private scheduleSeatRepository: Repository<ScheduleSeat>,
 
-<<<<<<< HEAD
-    @Inject(CACHE_MANAGER) private cacheManager: Cache,
-  ) {}
-=======
-
     @Inject('REDIS_CLIENT') private readonly redisClient: Redis,
-  ) { }
->>>>>>> 81cda9621ad2d6e7a4c4a76189dbc04df29be7e9
+  ) {}
 
   async getAllSeats() {
     return this.seatRepository.find({
@@ -67,7 +61,7 @@ export class SeatService {
   }
 
   async createSeat(createSeatDto: CreateSeatDto) {
-    const { seat_type_id, cinema_room_id } = createSeatDto;
+    const { seat_type_id, cinema_room_id, ...seatDetails } = createSeatDto;
 
     const seatType = await this.seatTypeRepository.findOne({
       where: { id: parseInt(seat_type_id) },
@@ -83,6 +77,14 @@ export class SeatService {
       throw new NotFoundException('Cinema room not found');
     }
 
+    // const seat = this.seatRepository.create({
+    //   ...seatDetails,
+    //   status: true,
+    //   is_hold: false,
+    //   seatType: seatType,
+    //   cinemaRoom: cinemaRoom,
+    // });
+    // await this.seatRepository.save(seat);
     return { msg: 'Seat created successfully' };
   }
 
@@ -95,6 +97,9 @@ export class SeatService {
 
   async deleteSeat(id: string) {
     const seat = await this.getSeatById(id);
+    // if (seat.is_hold) {
+    //   throw new BadRequestException('Cannot delete a seat that is being held');
+    // }
     if (seat.is_deleted) {
       throw new BadRequestException('Seat is already deleted');
     }
@@ -112,9 +117,6 @@ export class SeatService {
       throw new NotFoundException('Seat not found');
     }
 
-<<<<<<< HEAD
-    await this.cacheManager.del(`seat-${id}`);
-=======
     // if (seat.is_hold) {
     //   throw new BadRequestException('Cannot update status of a seat that is being held');
     // }
@@ -124,27 +126,16 @@ export class SeatService {
 
     // Clear any cached data for this seat
     await this.redisClient.del(`seat-${id}`);
->>>>>>> 81cda9621ad2d6e7a4c4a76189dbc04df29be7e9
 
     return { msg: 'Change status successfully' };
   }
 
-<<<<<<< HEAD
-  async holdSeat(data: HoldSeatType, req: { user: JWTUserType }) {
-    const { seatIds, schedule_id } = data;
-    const user = req.user;
-
-    if (seatIds.length === 0) {
-      return { msg: 'No seats selected' };
-=======
   async holdSeat(data: HoldSeatType, req: JWTUserType) {
-
     const { seatIds, schedule_id } = data;
     const user = req;
     // console.log(`seat-hold-${user.account_id}`);
     if (!seatIds || seatIds.length === 0) {
       throw new BadRequestException('No seats selected');
->>>>>>> 81cda9621ad2d6e7a4c4a76189dbc04df29be7e9
     }
 
     const schedule = await this.scheduleRepository.findOne({
@@ -173,7 +164,8 @@ export class SeatService {
     }
 
     const checkBookedSeat = foundSeats.filter(
-      (seat) => seat.status === SeatStatus.BOOKED || seat.status === SeatStatus.HELD,
+      (seat) =>
+        seat.status === StatusSeat.BOOKED || seat.status === StatusSeat.HELD,
     );
     if (checkBookedSeat.length > 0) {
       throw new BadRequestException(
@@ -182,7 +174,7 @@ export class SeatService {
     }
 
     for (const seat of foundSeats) {
-      seat.status = SeatStatus.HELD;
+      seat.status = StatusSeat.HELD;
     }
 
     await this.scheduleSeatRepository.save(foundSeats);
@@ -192,37 +184,17 @@ export class SeatService {
       JSON.stringify({
         seatIds: seatIds,
         schedule_id: schedule_id,
-<<<<<<< HEAD
-      },
-      { ttl: 600 } as any
-=======
       }),
       'EX',
-      600
->>>>>>> 81cda9621ad2d6e7a4c4a76189dbc04df29be7e9
+      600,
     );
-  
 
     return { msg: 'Seats held successfully' };
   }
+  async cancelHoldSeat(data: HoldSeatType, req: JWTUserType) {
+    const user = req;
+    // console.log(user.account_id)
 
-<<<<<<< HEAD
-  async cancelHoldSeat(data: HoldSeatType, req: { user: JWTUserType }) {
-    const user = req.user;
-    const { seatIds, schedule_id } = data;
-    
-    if (seatIds.length === 0) {
-      return { msg: 'No seats selected' };
-    }
-
-    const cachedHold = await this.cacheManager.get<{
-      seatIds: string[];
-      schedule_id: number;
-    }>(`seat-hold-${user.account_id}`);
-    
-    if (!cachedHold) {
-      throw new BadRequestException('No held seats found for this user');
-=======
     const { seatIds, schedule_id } = data;
 
     if (!seatIds || seatIds.length === 0) {
@@ -232,7 +204,6 @@ export class SeatService {
     const redisRaw = await this.redisClient.get(`seat-hold-${user.account_id}`);
     if (!redisRaw) {
       throw new NotFoundException('No held seats found for this user');
->>>>>>> 81cda9621ad2d6e7a4c4a76189dbc04df29be7e9
     }
 
     let cachedHold: HoldSeatType;
@@ -256,24 +227,23 @@ export class SeatService {
       },
       relations: ['seat', 'schedule'],
     });
+    // console.log(foundSeats)
 
     if (foundSeats.length === 0) {
-      throw new NotFoundException('No seats found for the given IDs and schedule');
+      throw new NotFoundException(
+        'No seats found for the given IDs and schedule',
+      );
     }
 
     for (const seat of foundSeats) {
-      if (seat.status === SeatStatus.HELD) {
-        seat.status = SeatStatus.NOT_YET;
+      if (seat.status === StatusSeat.HELD) {
+        seat.status = StatusSeat.NOT_YET;
       }
     }
 
     await this.scheduleSeatRepository.save(foundSeats);
-<<<<<<< HEAD
-    await this.cacheManager.del(`seat-hold-${user.account_id}`);
-=======
 
     await this.redisClient.del(`seat-hold-${user.account_id}`);
->>>>>>> 81cda9621ad2d6e7a4c4a76189dbc04df29be7e9
 
     return {
       msg: 'Held seats cancelled successfully',
