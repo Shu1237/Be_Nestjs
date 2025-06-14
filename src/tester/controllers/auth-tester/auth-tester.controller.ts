@@ -1,15 +1,20 @@
-import { Controller, Get, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Inject, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/guards/jwt.guard';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
+import Redis from 'ioredis';
 
 
-@ApiTags('Auth Tester') // Nhóm hiển thị trên Swagger UI
+@ApiTags('Tester') // Nhóm hiển thị trên Swagger UI
 @ApiBearerAuth()         // Bật gửi Authorization header trong Swagger
 
 @Controller('test')
 export class AuthTesterController {
 
-    constructor(private readonly jwtAuthGuard: JwtAuthGuard) { }
+    constructor(
+        @Inject('REDIS_CLIENT') private readonly redisClient: Redis,
+    ) { }
     @UseGuards(JwtAuthGuard)
     @Get()
     @ApiOperation({ summary: 'Access protected route with JWT' })
@@ -58,4 +63,29 @@ export class AuthTesterController {
             // exp: ChangeDate() // <-- phải gọi hàm tại đây
         };
     }
+
+
+    @Get('test/cache')
+    @ApiOperation({ summary: 'Test cache functionality' })
+    async getCacheTest() {
+        // test redis
+        console.log(process.env.REDIS_URL);
+        await this.redisClient.set('testKey', 'testValue', 'EX', 60);
+        return {
+            message: 'Cache test successful',
+
+        }
+    }
+
+    @Get('test/cache/get')
+    @ApiOperation({ summary: 'Get cached value' })
+    async getCachedValue() {
+        const value = await this.redisClient.get('testKey');
+        return {
+            message: 'Retrieved cached value',
+            value: value,
+        };
+    }
 }
+
+

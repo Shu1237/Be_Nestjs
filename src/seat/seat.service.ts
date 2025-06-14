@@ -18,6 +18,7 @@ import { Schedule } from 'src/typeorm/entities/cinema/schedule';
 import { ScheduleSeat } from 'src/typeorm/entities/cinema/schedule_seat';
 import { StatusSeat } from 'src/enum/status_seat.enum';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import Redis from 'ioredis/built/Redis';
 
 
 
@@ -35,7 +36,7 @@ export class SeatService {
     private scheduleSeatRepository: Repository<ScheduleSeat>,
 
 
-    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    @Inject('REDIS_CLIENT') private readonly redisClient: Redis,
   ) { }
 
   async getAllSeats() {
@@ -128,7 +129,7 @@ export class SeatService {
     // await this.seatRepository.update(id, { status: !seat.status });
 
     // Clear any cached data for this seat
-    await this.cacheManager.del(`seat-${id}`);
+    await this.redisClient.del(`seat-${id}`);
 
     return { msg: 'Change status successfully' };
   }
@@ -182,17 +183,17 @@ export class SeatService {
 
     await this.scheduleSeatRepository.save(foundSeats);
 
-    await this.cacheManager.set(
+    await this.redisClient.set(
       `seat-hold-${user.account_id}`,
-      {
+      JSON.stringify({
         seatIds: seatIds,
         schedule_id: schedule_id,
-      },
-      { ttl: 600 } as any
+      }),
+      'EX',
+      600
     );
-    console.log(process.env.REDIS_URL);
-    console.log('Cache store:', this.cacheManager.stores);
-    console.log('Cache store type:', this.cacheManager.stores?.constructor?.name);
+  
+
     return { msg: 'Seats held successfully' };
   }
   async cancelHoldSeat(data: HoldSeatType, req: JWTUserType) {
@@ -205,21 +206,17 @@ export class SeatService {
       throw new BadRequestException('No seats selected');
     }
     // console.log(`seat-hold-${user.account_id}`);
-    const cachedHold = await this.cacheManager.get<HoldSeatType>(`seat-hold-${user.account_id}`);
-    // console.log('Cached Hold:', cachedHold);
-    if (!cachedHold) {
+    const redisRaw = await this.redisClient.get(`seat-hold-${user.account_id}`);
+    if (!redisRaw) {
       throw new NotFoundException('No held seats found for this user');
     }
 
-    if (cachedHold.schedule_id !== schedule_id) {
-      throw new BadRequestException('Schedule ID does not match the held seats');
+    let cachedHold: HoldSeatType;
+    try {
+      cachedHold = JSON.parse(redisRaw);
+    } catch (e) {
+      throw new BadRequestException('Invalid cached data format');
     }
-
-    const invalidSeats = seatIds.filter(id => !cachedHold.seatIds.includes(id));
-    if (invalidSeats.length > 0) {
-      throw new BadRequestException(`These seats are not held by this user: ${invalidSeats.join(', ')}`);
-    }
-
     const schedule = await this.scheduleRepository.findOne({
       where: { id: schedule_id, is_deleted: false },
     });
@@ -249,7 +246,7 @@ export class SeatService {
 
     await this.scheduleSeatRepository.save(foundSeats);
 
-    await this.cacheManager.del(`seat-hold-${user.account_id}`);
+    await this.redisClient.del(`seat-hold-${user.account_id}`);
 
     return {
       msg: 'Held seats cancelled successfully',

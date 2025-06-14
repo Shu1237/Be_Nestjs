@@ -22,6 +22,7 @@ import { VnpayModule } from './payment-menthod/vnpay/vnpay.module';
 import { ZalopayModule } from './payment-menthod/zalopay/zalopay.module';
 import { ScheduleSeat } from 'src/typeorm/entities/cinema/schedule_seat';
 import { SeatModule } from 'src/seat/seat.module';
+import { RedisModule } from 'src/redis/redis.module';
 
 @Module({
   imports: [
@@ -40,14 +41,15 @@ import { SeatModule } from 'src/seat/seat.module';
       OrderProduct,
       PaymentMethod,
       ScheduleSeat
-    ]),
+    ]
+  ),
     MomoModule,
     PayPalModule,
     VisaModule,
     VnpayModule,
     ZalopayModule,
     SeatModule,
-    
+    RedisModule
   ],
   controllers: [OrderController],
   providers: [OrderService],

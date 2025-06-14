@@ -69,7 +69,7 @@ export class AuthController {
 
   @ApiOperation({ summary: 'Login with username and password' })
   @ApiBody({ type: LoginAzureDto })
-  @Post('login/azure')
+  @Post('login')
   loginAzure(@Body() body: LoginAzureDto) {   
     return this.authService.loginAzureAndGoogle(body);
   }
