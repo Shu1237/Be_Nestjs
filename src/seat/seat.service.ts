@@ -1,4 +1,3 @@
-
 import {
   BadRequestException,
   Inject,
@@ -20,8 +19,6 @@ import { StatusSeat } from 'src/enum/status_seat.enum';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import Redis from 'ioredis/built/Redis';
 
-
-
 @Injectable()
 export class SeatService {
   constructor(
@@ -35,9 +32,8 @@ export class SeatService {
     @InjectRepository(ScheduleSeat)
     private scheduleSeatRepository: Repository<ScheduleSeat>,
 
-
     @Inject('REDIS_CLIENT') private readonly redisClient: Redis,
-  ) { }
+  ) {}
 
   async getAllSeats() {
     return this.seatRepository.find({
@@ -135,7 +131,6 @@ export class SeatService {
   }
 
   async holdSeat(data: HoldSeatType, req: JWTUserType) {
-
     const { seatIds, schedule_id } = data;
     const user = req;
     // console.log(`seat-hold-${user.account_id}`);
@@ -168,12 +163,13 @@ export class SeatService {
       throw new BadRequestException('Some seats do not exist in this schedule');
     }
 
-    const checkBookedSeat = foundSeats.filter(seat =>
-      seat.status === StatusSeat.BOOKED || seat.status === StatusSeat.HELD
+    const checkBookedSeat = foundSeats.filter(
+      (seat) =>
+        seat.status === StatusSeat.BOOKED || seat.status === StatusSeat.HELD,
     );
     if (checkBookedSeat.length > 0) {
       throw new BadRequestException(
-        `Some seats are already booked or held: ${checkBookedSeat.map(s => s.seat.id).join(', ')}`
+        `Some seats are already booked or held: ${checkBookedSeat.map((s) => s.seat.id).join(', ')}`,
       );
     }
 
@@ -190,9 +186,8 @@ export class SeatService {
         schedule_id: schedule_id,
       }),
       'EX',
-      600
+      600,
     );
-  
 
     return { msg: 'Seats held successfully' };
   }
@@ -235,7 +230,9 @@ export class SeatService {
     // console.log(foundSeats)
 
     if (foundSeats.length === 0) {
-      throw new NotFoundException('No seats found for the given IDs and schedule');
+      throw new NotFoundException(
+        'No seats found for the given IDs and schedule',
+      );
     }
 
     for (const seat of foundSeats) {
@@ -252,6 +249,4 @@ export class SeatService {
       msg: 'Held seats cancelled successfully',
     };
   }
-
-
 }
