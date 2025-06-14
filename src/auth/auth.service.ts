@@ -24,11 +24,12 @@ import { MailerService } from '@nestjs-modules/mailer';
 import { randomInt } from 'crypto';
 
 import { User } from 'src/typeorm/entities/user/user';
-import { Role } from 'src/typeorm/entities/user/roles';
+
 import { Member } from 'src/typeorm/entities/user/member';
 import { RefreshToken } from 'src/typeorm/entities/user/refresh-token';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
+import { Role } from 'src/typeorm/entities/user/roles';
 import { Role as RoleEnum } from 'src/enum/roles.enum';
 
 
@@ -45,7 +46,7 @@ export class AuthService {
 
     private jwtService: JwtService,
     private mailerService: MailerService,
-    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    // @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) { }
 
   // async validateUser(username: string, password: string) {
@@ -361,42 +362,42 @@ export class AuthService {
   }
 
   async checkEmail(email: string) {
-    const otpCode = await this.OtpCode(email);
-    await this.cacheManager.set(`email-${email}`, otpCode, { ttl: 60 * 5 } as any);
+    // const otpCode = await this.OtpCode(email);
+    // await this.cacheManager.set(`email-${email}`, otpCode, { ttl: 60 * 5 } as any);
 
 
-    // await this.otpRepository.save({
-    //   otp: otpCode,
-    //   is_used: false,
-    //   expires_at: new Date(Date.now() + 5 * 60 * 1000),
-    // });
+    // // await this.otpRepository.save({
+    // //   otp: otpCode,
+    // //   is_used: false,
+    // //   expires_at: new Date(Date.now() + 5 * 60 * 1000),
+    // // });
 
-    return { msg: 'OTP sent successfully' };
+    // return { msg: 'OTP sent successfully' };
   }
 
   async verifyOtp(otp: string, email: string) {
-    const cachedOtp = await this.cacheManager.get(`email-${email}`);
-    if (!cachedOtp) {
-      throw new UnauthorizedException('OTP has expired or does not exist');
-    }
-    if (cachedOtp !== otp) {
-      throw new UnauthorizedException('Invalid OTP');
-    }
-    // if (otpRecord.is_used) {
-    //   throw new UnauthorizedException('OTP has already been used');
+    // const cachedOtp = await this.cacheManager.get(`email-${email}`);
+    // if (!cachedOtp) {
+    //   throw new UnauthorizedException('OTP has expired or does not exist');
     // }
-    // otpRecord.is_used = true;
-    // await this.otpRepository.save(otpRecord);
-    const payload = {
-      sub: email,
-      purpose: 'verify_otp',
-    };
-    const tempToken = this.jwtService.sign(payload, {
-      secret: process.env.TMP_TOKEN_SECRET,
-      expiresIn: process.env.TMP_EXPIRES_IN,
-    });
-    // await this.otpRepository.delete(otpRecord.id);
-    return { msg: 'OTP verified successfully', token: tempToken };
+    // if (cachedOtp !== otp) {
+    //   throw new UnauthorizedException('Invalid OTP');
+    // }
+    // // if (otpRecord.is_used) {
+    // //   throw new UnauthorizedException('OTP has already been used');
+    // // }
+    // // otpRecord.is_used = true;
+    // // await this.otpRepository.save(otpRecord);
+    // const payload = {
+    //   sub: email,
+    //   purpose: 'verify_otp',
+    // };
+    // const tempToken = this.jwtService.sign(payload, {
+    //   secret: process.env.TMP_TOKEN_SECRET,
+    //   expiresIn: process.env.TMP_EXPIRES_IN,
+    // });
+    // // await this.otpRepository.delete(otpRecord.id);
+    // return { msg: 'OTP verified successfully', token: tempToken };
   }
 
   // async changePassword(newPassword: string, tmptoken: string) {

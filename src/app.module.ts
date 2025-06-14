@@ -1,4 +1,3 @@
-// src/app.module.ts
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -21,7 +20,9 @@ import { ScheduleModule } from './schedule/schedule.module';
 import { SeatModule } from './seat/seat.module';
 import { TicketModule } from './ticket/ticket.module';
 import { CacheModule } from '@nestjs/cache-manager';
-import * as redisStore from 'cache-manager-ioredis-yet';
+import { redisStore } from 'cache-manager-ioredis-yet';
+
+
 @Module({
   imports: [
     PassportModule,
@@ -42,10 +43,9 @@ import * as redisStore from 'cache-manager-ioredis-yet';
       ssl: {
         rejectUnauthorized: false
       },
-
     }),
     PassportModule.register({
-      defaultStrategy: 'jwt',
+      defaultStrategy: 'jwt'
     }),
     MailerModule.forRoot({
       transport: {
@@ -68,12 +68,8 @@ import * as redisStore from 'cache-manager-ioredis-yet';
         },
       },
     }),
-    CacheModule.register({
-      isGlobal: true,
-      store: redisStore,
-      url: process.env.REDIS_PUBLIC_URL,
-      ttl: 600,
-    }),
+    
+
     AuthModule,
     TesterModule,
     UserModule,
@@ -90,3 +86,4 @@ import * as redisStore from 'cache-manager-ioredis-yet';
   ],
 })
 export class AppModule { }
+
