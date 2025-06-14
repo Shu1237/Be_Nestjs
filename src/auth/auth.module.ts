@@ -10,7 +10,6 @@ import { RefreshToken } from 'src/typeorm/entities/user/refresh-token';
 import { MailOTP } from 'src/typeorm/entities/user/mail-otp';
 import { LocalStrategy } from './strategies/local.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
-import { RefreshTokenStrategy } from './strategies/refresh_token.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { RedisModule } from 'src/redis/redis.module';
@@ -29,6 +28,6 @@ import { RedisModule } from 'src/redis/redis.module';
   RedisModule
 ],
   controllers: [AuthController],
-  providers: [AuthService,LocalStrategy,JwtStrategy,RefreshTokenStrategy,GoogleStrategy]
+  providers: [AuthService,LocalStrategy,JwtStrategy,GoogleStrategy]
 })
 export class AuthModule { }
