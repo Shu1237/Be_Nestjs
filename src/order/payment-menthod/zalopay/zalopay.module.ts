@@ -11,12 +11,13 @@ import { TicketType } from "src/typeorm/entities/order/ticket-type";
 import { Promotion } from "src/typeorm/entities/promotion/promotion";
 import { MailerModule } from "@nestjs-modules/mailer";
 import { MomoModule } from "../momo/momo.module";
+import { ScheduleSeat } from "src/typeorm/entities/cinema/schedule_seat";
 
 
 
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Promotion,TicketType,Member, User, Transaction, Order, Ticket, Seat]),MomoModule,MailerModule],
+  imports: [TypeOrmModule.forFeature([Promotion,TicketType,Member, User, Transaction, Order, Ticket, Seat,ScheduleSeat]),MomoModule,MailerModule],
   controllers: [],
   providers: [ZalopayService],
   exports: [ZalopayService]

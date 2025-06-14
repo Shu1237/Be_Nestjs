@@ -11,10 +11,11 @@ import { CinemaRoom } from './cinema-room';
 import { Movie } from './movie';
 import { OrderDetail } from '../order/order-detail';
 import { Ticket } from '../order/ticket';
+import { ScheduleSeat } from './schedule_seat';
 
-@Entity('schedule') 
+@Entity('schedule')
 export class Schedule {
-  @PrimaryGeneratedColumn({ type: 'int' }) 
+  @PrimaryGeneratedColumn({ type: 'int' })
   id: number;
 
   @Column({ type: 'datetime', nullable: false })
@@ -25,7 +26,7 @@ export class Schedule {
 
   @Column({ type: 'boolean', default: false })
   is_deleted: boolean; //
-  
+
   @ManyToOne(() => CinemaRoom, (cinemaRoom) => cinemaRoom.schedules)
   @JoinColumn({ name: 'cinema_room_id' })
   cinemaRoom: CinemaRoom;
@@ -39,7 +40,11 @@ export class Schedule {
   @OneToMany(() => Ticket, (ticket) => ticket.schedule)
   tickets: Ticket[];
 
-  
+
   @OneToMany(() => OrderDetail, (orderDetail) => orderDetail.schedule)
   orderDetails: OrderDetail[];
+
+  @OneToMany(() => ScheduleSeat, (scheduleSeat) => scheduleSeat.schedule)
+  scheduleSeats: ScheduleSeat[];
+
 }

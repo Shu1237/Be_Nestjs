@@ -1,4 +1,3 @@
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
   BadRequestException,
   Inject,
@@ -14,7 +13,9 @@ import { CreateSeatDto } from './dto/create-seat.dto';
 import { UpdateSeatDto } from './dto/update-seat.dto';
 import { SeatType } from 'src/typeorm/entities/cinema/seat-type';
 import { CinemaRoom } from 'src/typeorm/entities/cinema/cinema-room';
-import { Request } from 'express';
+import { Schedule } from 'src/typeorm/entities/cinema/schedule';
+import { ScheduleSeat, SeatStatus } from 'src/typeorm/entities/cinema/schedule_seat';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 
 @Injectable()
 export class SeatService {
@@ -24,6 +25,11 @@ export class SeatService {
     private seatTypeRepository: Repository<SeatType>,
     @InjectRepository(CinemaRoom)
     private cinemaRoomRepository: Repository<CinemaRoom>,
+    @InjectRepository(Schedule)
+    private scheduleRepository: Repository<Schedule>,
+    @InjectRepository(ScheduleSeat)
+    private scheduleSeatRepository: Repository<ScheduleSeat>,
+
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
@@ -53,7 +59,7 @@ export class SeatService {
   }
 
   async createSeat(createSeatDto: CreateSeatDto) {
-    const { seat_type_id, cinema_room_id, ...seatDetails } = createSeatDto;
+    const { seat_type_id, cinema_room_id } = createSeatDto;
 
     const seatType = await this.seatTypeRepository.findOne({
       where: { id: parseInt(seat_type_id) },
@@ -69,14 +75,6 @@ export class SeatService {
       throw new NotFoundException('Cinema room not found');
     }
 
-    const seat = this.seatRepository.create({
-      ...seatDetails,
-      status: true,
-      is_hold: false,
-      seatType: seatType,
-      cinemaRoom: cinemaRoom,
-    });
-    await this.seatRepository.save(seat);
     return { msg: 'Seat created successfully' };
   }
 
@@ -89,9 +87,6 @@ export class SeatService {
 
   async deleteSeat(id: string) {
     const seat = await this.getSeatById(id);
-    if (seat.is_hold) {
-      throw new BadRequestException('Cannot delete a seat that is being held');
-    }
     if (seat.is_deleted) {
       throw new BadRequestException('Seat is already deleted');
     }
@@ -104,116 +99,133 @@ export class SeatService {
       where: { id, is_deleted: false },
       relations: ['seatType', 'cinemaRoom'],
     });
-    
+
     if (!seat) {
       throw new NotFoundException('Seat not found');
     }
 
-    if (seat.is_hold) {
-      throw new BadRequestException('Cannot update status of a seat that is being held');
-    }
-
-    // Toggle the status
-    await this.seatRepository.update(id, { status: !seat.status });
-    
-    // Clear any cached data for this seat
     await this.cacheManager.del(`seat-${id}`);
-    
+
     return { msg: 'Change status successfully' };
   }
 
-  async holdSeat(data: HoldSeatType, req: any) {
-    const { seatIds, cinema_id } = data;
-    const user = req.user as JWTUserType;
+  async holdSeat(data: HoldSeatType, req: { user: JWTUserType }) {
+    const { seatIds, schedule_id } = data;
+    const user = req.user;
 
     if (seatIds.length === 0) {
       return { msg: 'No seats selected' };
     }
-    const foundSeats = await this.seatRepository.find({
-      where: {
-        id: In(seatIds),
-      },
-      relations: ['cinemaRoom'],
+
+    const schedule = await this.scheduleRepository.findOne({
+      where: { id: schedule_id, is_deleted: false },
+      relations: ['movie'],
     });
 
-    if (foundSeats.length !== seatIds.length) {
-      throw new BadRequestException('Some seats do not exist');
+    if (!schedule) {
+      throw new NotFoundException('Schedule not found');
     }
-    const notMatching = foundSeats.some(
-      (seat) => seat.cinemaRoom.id !== cinema_id,
+
+    const foundSeats = await this.scheduleSeatRepository.find({
+      where: {
+        schedule: { id: schedule.id },
+        seat: { id: In(seatIds) },
+      },
+      relations: ['seat', 'schedule'],
+    });
+
+    if (foundSeats.length === 0) {
+      throw new NotFoundException('No seats found for the given IDs');
+    }
+
+    if (foundSeats.length !== seatIds.length) {
+      throw new BadRequestException('Some seats do not exist in this schedule');
+    }
+
+    const checkBookedSeat = foundSeats.filter(
+      (seat) => seat.status === SeatStatus.BOOKED || seat.status === SeatStatus.HELD,
     );
-    if (notMatching) {
+    if (checkBookedSeat.length > 0) {
       throw new BadRequestException(
-        'All seats must belong to the same cinema room',
+        `Some seats are already booked or held: ${checkBookedSeat.map((s) => s.seat.id).join(', ')}`,
       );
     }
 
     for (const seat of foundSeats) {
-      if (!seat.status) {
-        throw new BadRequestException(
-          `Seat with ID ${seat.id} was already booked`,
-        );
-      }
+      seat.status = SeatStatus.HELD;
     }
 
-    for (const seat of foundSeats) {
-      seat.is_hold = true;
-    }
-    await this.seatRepository.save(foundSeats);
+    await this.scheduleSeatRepository.save(foundSeats);
 
     await this.cacheManager.set(
-      `seat-${user.account_id}`,
-      { seatIds: seatIds, cinemaRoom_id: cinema_id },
-      { ttl: 600 } as any,
+      `seat-hold-${user.account_id}`,
+      {
+        seatIds: seatIds,
+        schedule_id: schedule_id,
+      },
+      { ttl: 600 } as any
     );
 
-    return {
-      msg: 'Seats held successfully',
-    };
+    return { msg: 'Seats held successfully' };
   }
 
-  async cancelHoldSeat(data: HoldSeatType, req: any) {
-    const user = req.user as JWTUserType;
-    const { seatIds, cinema_id } = data;
+  async cancelHoldSeat(data: HoldSeatType, req: { user: JWTUserType }) {
+    const user = req.user;
+    const { seatIds, schedule_id } = data;
+    
     if (seatIds.length === 0) {
       return { msg: 'No seats selected' };
     }
 
-    const foundSeats = await this.seatRepository.find({
-      where: {
-        id: In(seatIds),
-      },
-      relations: ['cinemaRoom'],
+    const cachedHold = await this.cacheManager.get<{
+      seatIds: string[];
+      schedule_id: number;
+    }>(`seat-hold-${user.account_id}`);
+    
+    if (!cachedHold) {
+      throw new BadRequestException('No held seats found for this user');
+    }
+
+    if (cachedHold.schedule_id !== schedule_id) {
+      throw new BadRequestException('Schedule ID does not match the held seats');
+    }
+
+    const invalidSeats = seatIds.filter(id => !cachedHold.seatIds.includes(id));
+    if (invalidSeats.length > 0) {
+      throw new BadRequestException(`These seats are not held by this user: ${invalidSeats.join(', ')}`);
+    }
+
+    const schedule = await this.scheduleRepository.findOne({
+      where: { id: schedule_id, is_deleted: false },
     });
 
-    if (foundSeats.length !== seatIds.length) {
-      throw new BadRequestException('Some seats do not exist');
+    if (!schedule) {
+      throw new NotFoundException('Schedule not found');
     }
-    const notMatching = foundSeats.some(
-      (seat) => seat.cinemaRoom.id !== cinema_id,
-    );
-    if (notMatching) {
-      throw new BadRequestException(
-        'All seats must belong to the same cinema room',
-      );
+
+    const foundSeats = await this.scheduleSeatRepository.find({
+      where: {
+        schedule: { id: schedule.id },
+        seat: { id: In(seatIds) },
+      },
+      relations: ['seat', 'schedule'],
+    });
+
+    if (foundSeats.length === 0) {
+      throw new NotFoundException('No seats found for the given IDs and schedule');
     }
 
     for (const seat of foundSeats) {
-      if (!seat.is_hold) {
-        throw new BadRequestException(`Seat with ID ${seat.id} was not held`);
+      if (seat.status === SeatStatus.HELD) {
+        seat.status = SeatStatus.NOT_YET;
       }
     }
 
-    for (const seat of foundSeats) {
-      seat.is_hold = false;
-    }
-    await this.seatRepository.save(foundSeats);
-
-    await this.cacheManager.del(`seat-${user.account_id}`);
+    await this.scheduleSeatRepository.save(foundSeats);
+    await this.cacheManager.del(`seat-hold-${user.account_id}`);
 
     return {
-      msg: 'Seats un-held successfully',
-      released: seatIds,
+      msg: 'Held seats cancelled successfully',
     };
   }
 }

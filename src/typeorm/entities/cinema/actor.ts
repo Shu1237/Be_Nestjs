@@ -1,6 +1,7 @@
 import { Entity, Column, PrimaryGeneratedColumn, OneToMany, CreateDateColumn, UpdateDateColumn, ManyToMany, JoinTable } from 'typeorm';
 // import { ActorMovie } from './actor-movie';
 import { Movie } from './movie';
+import { Gender } from 'src/utils/type';
 
 
 @Entity('actor')
@@ -14,8 +15,12 @@ export class Actor {
   @Column({ type: 'varchar', nullable: true, length: 100 }) // nickname
   stage_name?: string;
 
-  @Column({ type: 'boolean', nullable: false })
-  gender: boolean;
+  @Column({
+    type: 'enum',
+    enum: Gender,
+    default: Gender.OTHER
+  })
+  gender: Gender;
 
   @Column({ type: 'date', nullable: false })
   date_of_birth: Date;

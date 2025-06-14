@@ -296,9 +296,13 @@ export class AuthService {
   }
 
   async logout(data: LogoutType, user: JWTUserType) {
+    // console.log('Logout Data:', data);
+    // console.log('User Data:', user);
     const checkRefreshToken = await this.refreshTokenRepository.findOne({
       where: { refresh_token: data.refresh_token },
+      relations: ['user'], // Đảm bảo có quan hệ với user
     });
+    // console.log('Check Refresh Token:', checkRefreshToken);
     //   console.log('Check Refresh Token:', checkRefreshToken);
 
     if (!checkRefreshToken) {

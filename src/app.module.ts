@@ -21,7 +21,6 @@ import { ScheduleModule } from './schedule/schedule.module';
 import { SeatModule } from './seat/seat.module';
 import { TicketModule } from './ticket/ticket.module';
 import { CacheModule } from '@nestjs/cache-manager';
-
 @Module({
   imports: [
     PassportModule,
@@ -30,14 +29,19 @@ import { CacheModule } from '@nestjs/cache-manager';
     }),
     TypeOrmModule.forRoot({
       type: 'mysql',
+      url: process.env.DATABASE_URL,
       host: process.env.DB_HOST,
       port: parseInt(process.env.DB_PORT || '3306', 10),
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
+      database: process.env.DB_DATABASE,
       entities: allEntities,
       synchronize: true,
       autoLoadEntities: true,
+      ssl: {
+        rejectUnauthorized: false
+      },
+
     }),
     PassportModule.register({
       defaultStrategy: 'jwt',
@@ -63,9 +67,16 @@ import { CacheModule } from '@nestjs/cache-manager';
         },
       },
     }),
-    CacheModule.register({
+    CacheModule.registerAsync({
       isGlobal: true,
-      ttl: 10 * 60,
+      useFactory: async () => ({
+        store: 'redis',
+        host: process.env.REDIS_HOST,
+        port: parseInt(process.env.REDIS_PORT || '6379', 10),
+        username: process.env.REDIS_USERNAME,
+        password: process.env.REDIS_PASSWORD,
+        ttl: 600,
+      }),
     }),
     AuthModule,
     TesterModule,
@@ -82,4 +93,4 @@ import { CacheModule } from '@nestjs/cache-manager';
     TicketModule,
   ],
 })
-export class AppModule {}
+export class AppModule { }
