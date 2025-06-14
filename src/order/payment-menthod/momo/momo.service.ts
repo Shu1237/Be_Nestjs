@@ -2,7 +2,7 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import * as crypto from 'crypto';
 import axios from 'axios';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 import { Transaction } from 'src/typeorm/entities/order/transaction';
 import { Order } from 'src/typeorm/entities/order/order';
@@ -11,6 +11,9 @@ import { Seat } from 'src/typeorm/entities/cinema/seat';
 import { Member } from 'src/typeorm/entities/user/member';
 import { User } from 'src/typeorm/entities/user/user';
 import { MailerService } from '@nestjs-modules/mailer';
+import { ScheduleSeat, SeatStatus } from 'src/typeorm/entities/cinema/schedule_seat';
+import { StatusSeat } from 'src/enum/status_seat.enum';
+import { Role } from 'src/enum/roles.enum';
 
 @Injectable()
 export class MomoService {
@@ -25,6 +28,8 @@ export class MomoService {
     private readonly seatRepository: Repository<Seat>,
     @InjectRepository(Member)
     private readonly memberRepository: Repository<Member>,
+    @InjectRepository(ScheduleSeat)
+    private readonly scheduleSeatRepository: Repository<ScheduleSeat>,
 
     private mailerService: MailerService,
   ) { }
@@ -92,11 +97,11 @@ export class MomoService {
         'order.orderDetails.ticket',
         'order.orderDetails.ticket.ticketType',
         'order.orderDetails.ticket.seat',
-        'order.user',
-        'order.user.member',
         'order.orderDetails.ticket.schedule',
         'order.orderDetails.ticket.schedule.movie',
         'order.orderDetails.ticket.schedule.cinemaRoom',
+        'order.user',
+        'order.user.member',
         'paymentMethod',
       ],
     });
@@ -107,21 +112,53 @@ export class MomoService {
     return transaction;
   }
 
-  async handleReturn( query: any) {
+  async changeStatusScheduleSeat(seatIds: string[], scheduleId: number): Promise<void> {
+    if (!seatIds || seatIds.length === 0) {
+      throw new NotFoundException('Seat IDs are required');
+    }
+
+    const foundSeats = await this.scheduleSeatRepository.find({
+      where: {
+        schedule: { id: scheduleId },
+        seat: { id: In(seatIds) },
+      },
+      relations: ['seat', 'schedule'],
+    });
+
+    if (!foundSeats || foundSeats.length === 0) {
+      throw new NotFoundException('Seats not found for the given schedule');
+    }
+    for (const seat of foundSeats) {
+      seat.status = SeatStatus.NOT_YET
+      await this.scheduleSeatRepository.save(seat);
+    }
+
+  }
+
+  async handleReturn(query: any) {
     const { orderId, resultCode } = query;
 
     const transaction = await this.getTransactionByOrderId(orderId);
+    if (transaction.status !== 'pending') {
+      throw new NotFoundException('Transaction is not in pending state');
+    }
     const order = transaction.order;
 
     if (Number(resultCode) === 0) {
+      // Giao dịch thành công
       transaction.status = 'success';
       order.status = 'success';
 
       await this.transactionRepository.save(transaction);
       const savedOrder = await this.orderRepository.save(order);
-      order.user.member.score += order.add_score;
-      await this.memberRepository.save(order.user.member);
 
+      // Cộng điểm cho người dùng
+      if ((order.user?.member && order.user.role.role_id === Role.USER)) {
+        order.user.member.score += order.add_score;
+        await this.memberRepository.save(order.user.member);
+      }
+
+      // Đánh dấu ticket đã sử dụng
       for (const detail of order.orderDetails) {
         const ticket = detail.ticket;
         if (ticket) {
@@ -130,7 +167,7 @@ export class MomoService {
         }
       }
 
-      // Send email notification
+      // Gửi email xác nhận
       try {
         const firstTicket = order.orderDetails[0]?.ticket;
         await this.mailerService.sendMail({
@@ -144,13 +181,10 @@ export class MomoService {
             total: order.total_prices,
             addScore: order.add_score,
             paymentMethod: transaction.paymentMethod.name,
-
-            // Thông tin chung 1 lần
+            year: new Date().getFullYear(),
             movieName: firstTicket?.schedule.movie.name,
             showDate: firstTicket?.schedule.show_date,
             roomName: firstTicket?.schedule.cinemaRoom.cinema_room_name,
-
-            // Danh sách ghế
             seats: order.orderDetails.map(detail => ({
               row: detail.ticket.seat.seat_row,
               column: detail.ticket.seat.seat_column,
@@ -162,26 +196,28 @@ export class MomoService {
       } catch (error) {
         throw new NotFoundException('Failed to send confirmation email');
       }
+
       return {
         message: 'Payment successful',
         order: savedOrder,
       };
     } else {
+      // Giao dịch thất bại
       transaction.status = 'failed';
       order.status = 'failed';
       await this.transactionRepository.save(transaction);
       await this.orderRepository.save(order);
+
+      // Reset trạng thái ghế nếu cần
       for (const detail of order.orderDetails) {
         const ticket = detail.ticket;
-        if (ticket) {
-          if (ticket.seat) {
-            ticket.seat.status = false;
-            await this.seatRepository.save(ticket.seat);
-          }
-
+        if (ticket?.seat && ticket.schedule) {
+          await this.changeStatusScheduleSeat([ticket.seat.id], ticket.schedule.id);
         }
       }
+
       return { message: 'Payment failed' };
     }
   }
+
 }

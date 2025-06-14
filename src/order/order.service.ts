@@ -7,7 +7,6 @@ import { PaymentMethod } from 'src/typeorm/entities/order/payment-method';
 import { Transaction } from 'src/typeorm/entities/order/transaction';
 import { HoldSeatType, JWTUserType, OrderBillType, SeatInfo } from 'src/utils/type';
 import { User } from 'src/typeorm/entities/user/user';
-import { Seat } from 'src/typeorm/entities/cinema/seat';
 import { Promotion } from 'src/typeorm/entities/promotion/promotion';
 import { Schedule } from 'src/typeorm/entities/cinema/schedule';
 import { Ticket } from 'src/typeorm/entities/order/ticket';
@@ -19,7 +18,14 @@ import { VisaService } from './payment-menthod/visa/visa.service';
 import { VnpayService } from './payment-menthod/vnpay/vnpay.service';
 import { MomoService } from './payment-menthod/momo/momo.service';
 import { ZalopayService } from './payment-menthod/zalopay/zalopay.service';
+
+import { ScheduleSeat } from 'src/typeorm/entities/cinema/schedule_seat';
+import { StatusSeat } from 'src/enum/status_seat.enum';
+import { SeatService } from 'src/seat/seat.service';
 import { Cache } from 'cache-manager';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Seat } from 'src/typeorm/entities/cinema/seat';
+import Redis from 'ioredis';
 
 
 
@@ -36,8 +42,6 @@ export class OrderService {
     private orderDetailRepository: Repository<OrderDetail>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
-    @InjectRepository(Seat)
-    private seatRepository: Repository<Seat>,
     @InjectRepository(Promotion)
     private promotionRepository: Repository<Promotion>,
     @InjectRepository(Schedule)
@@ -46,14 +50,21 @@ export class OrderService {
     private ticketRepository: Repository<Ticket>,
     @InjectRepository(TicketType)
     private ticketTypeRepository: Repository<TicketType>,
-
+    @InjectRepository(ScheduleSeat)
+    private scheduleSeatRepository: Repository<ScheduleSeat>,
+    @InjectRepository(Seat)
+    private seatRepository: Repository<Seat>,
 
     private readonly momoService: MomoService,
     private readonly paypalService: PayPalService,
     private readonly visaService: VisaService,
     private readonly vnpayService: VnpayService,
     private readonly zalopayService: ZalopayService,
-    @Inject('CACHE_MANAGER') private cacheManager: Cache,
+    private readonly seatService: SeatService,
+    // @Inject(CACHE_MANAGER) private cacheManager: Cache,
+
+
+    @Inject('REDIS_CLIENT') private readonly redisClient: Redis,
 
 
   ) { }
@@ -61,7 +72,7 @@ export class OrderService {
   async getUserById(userId: string) {
     const user = await this.userRepository.findOne({
       where: { id: userId }
-      , relations: ['member']
+      , relations: ['member', 'role']
     }
     );
     if (!user) {
@@ -70,16 +81,6 @@ export class OrderService {
     return user;
   }
 
-  async getSeatById(seatId: string, seatRow: string, seatColumn: string) {
-    const seat = await this.seatRepository.findOne({
-      where: { id: seatId, seat_row: seatRow, seat_column: seatColumn },
-      relations: ['seatType', 'cinemaRoom'],
-    });
-    if (!seat) {
-      throw new NotFoundException(`Seat with ID ${seatId} not found`);
-    }
-    return seat;
-  }
 
   async getPromotionById(promotionId: number) {
     const promotion = await this.promotionRepository.findOne({
@@ -132,69 +133,103 @@ export class OrderService {
   }
 
   async createOrder(userData: JWTUserType, orderBill: OrderBillType, clientIp: string) {
-
     try {
-      const user = await this.getUserById(userData.account_id)
+      const user = await this.getUserById(userData.account_id);
+      // console.log('User:', user.id);
+
       const [promotion, schedule] = await Promise.all([
         this.getPromotionById(orderBill.promotion_id),
         this.getScheduleById(orderBill.schedule_id),
       ]);
 
-
-      // Fetch and validate seats
+      // Fetch seat IDs
       const seatIds = orderBill.seats.map((seat: SeatInfo) => seat.id);
 
-      const seats = await this.seatRepository.find({
-        where: { id: In(seatIds) },
-        relations: ['seatType'],
+      // Lấy scheduleSeats ban đầu để kiểm tra
+      let scheduleSeats = await this.scheduleSeatRepository.find({
+        where: {
+          seat: { id: In(seatIds) },
+          schedule: { id: schedule.id },
+        },
+        relations: ['seat', 'seat.seatType'],
       });
 
-
-      if (seats.length !== seatIds.length) {
-        throw new NotFoundException('Some seats were not found');
-      }
-      // check cache
-      const cacheHoldSeats = await this.cacheManager.get<HoldSeatType>(`seat-${user.id}`);
-
-      if (!cacheHoldSeats || !Array.isArray(cacheHoldSeats.seatIds)) {
-        throw new BadRequestException('No seats held for this user. Please hold seats before booking.');
-      }
-
-      if (cacheHoldSeats.cinema_id === schedule.cinemaRoom.id) {
-        const seats = await this.seatRepository.findBy({
-          id: In(cacheHoldSeats.seatIds),
-        });
-
-        await Promise.all(
-          seats.map(async seat => {
-            seat.is_hold = false;
-            await this.seatRepository.save(seat);
-          })
+      // Kiểm tra ghế đã booked
+      const bookedSeats = scheduleSeats.filter((seat) => seat.status === StatusSeat.BOOKED);
+      if (bookedSeats.length > 0) {
+        throw new BadRequestException(
+          `Some seats are already booked: ${bookedSeats.map(s => s.seat.id).join(', ')}`,
         );
-
-        await this.cacheManager.del(`seat-${user.id}`);
       }
-      const unavailableSeats = seats.filter(seat => !seat.status && seat.is_hold);
+      // Kiểm tra cache 
+      const cacheKey = `seat-hold-${user.id}`;
+      const redisRaw = await this.redisClient.get(cacheKey);
+
+      if (redisRaw) {
+        let cacheHoldSeats: HoldSeatType;
+
+        try {
+          cacheHoldSeats = JSON.parse(redisRaw);
+        } catch (error) {
+          throw new BadRequestException('Dữ liệu cache không hợp lệ');
+        }
+
+        if (
+          cacheHoldSeats.schedule_id === schedule.id &&
+          Array.isArray(cacheHoldSeats.seatIds) &&
+          cacheHoldSeats.seatIds.length > 0
+        ) {
+          await this.seatService.cancelHoldSeat(
+            {
+              seatIds: cacheHoldSeats.seatIds,
+              schedule_id: cacheHoldSeats.schedule_id,
+            },
+            {
+              account_id: user.id,
+              username: user.username,
+              role_id: user.role.role_id,
+            },
+          );
+
+          // Lấy lại scheduleSeats để phản ánh trạng thái mới
+          scheduleSeats = await this.scheduleSeatRepository.find({
+            where: {
+              seat: { id: In(seatIds) },
+              schedule: { id: schedule.id },
+            },
+            relations: ['seat', 'seat.seatType'],
+          });
+        }
+      }
+      // Kiểm tra unavailable seats SAU KHI cancelHoldSeat
+      const unavailableSeats = scheduleSeats.filter(
+        seat => seat.status === StatusSeat.BOOKED || seat.status === StatusSeat.HELD,
+      );
       if (unavailableSeats.length > 0) {
-        throw new BadRequestException(`Seats ${unavailableSeats.map(s => s.id).join(', ')} are already booked or another was held.`);
+        throw new BadRequestException(
+          `Seats ${unavailableSeats.map(s => s.seat.id).join(', ')} are already booked or held.`,
+        );
       }
 
-
+      // Tính toán giá vé
       let discount = promotion.discount;
       let totalPrice = 0;
 
       const ticketPrices = await Promise.all(
         orderBill.seats.map(async seatData => {
-          const seat = seats.find(s => s.id === seatData.id);
+          const seat = scheduleSeats.find(s => s.seat.id === seatData.id);
+          if (!seat) {
+            throw new NotFoundException(`Seat with ID ${seatData.id} not found`);
+          }
           const ticketType = await this.getTicketTypeByAudienceType(seatData.audience_type);
-          const seatPrice = parseFloat(seat?.seatType.seat_type_price as any);
+          const seatPrice = parseFloat(seat.seat.seatType.seat_type_price as any);
           const audienceDiscount = parseFloat(ticketType.discount as any);
           return seatPrice * (1 - audienceDiscount / 100);
-        })
+        }),
       );
 
       const subTotal = ticketPrices.reduce((sum, price) => sum + price, 0);
-
+      // console.log('SubTotal:', subTotal);
       if (Number(discount) === 0) {
         totalPrice = subTotal;
       } else {
@@ -202,29 +237,22 @@ export class OrderService {
         totalPrice = subTotal * (1 - promotionDiscount / 100);
       }
 
-
-
-      // Calculate total price (consider moving to a separate method)
-
-
       const inputTotal = parseFloat(orderBill.total_prices);
       if (Math.abs(totalPrice - inputTotal) > 0.01) {
         throw new BadRequestException('Total price mismatch. Please refresh and try again.');
       }
-      // 1d = 1000 vnd
-      // in member
-      // const totalScore = user.member.score + (Math.floor(Number(orderBill.total_prices) / 1000));
-      //in order
+
       const orderScore = Math.floor(Number(orderBill.total_prices) / 1000);
-      // Create transaction
+
+      // Tạo transaction
       const paymentMethod = await this.paymentMethodRepository.findOne({
         where: { id: Number(orderBill.payment_method_id) },
       });
       if (!paymentMethod) {
         throw new NotFoundException(`Payment method ${orderBill.payment_method_id} not found`);
       }
+
       let paymentCode: any;
-      // Create Momo payment
       switch (Number(orderBill.payment_method_id)) {
         case Method.MOMO:
           paymentCode = await this.momoService.createOrderMomo(orderBill.total_prices);
@@ -281,22 +309,25 @@ export class OrderService {
 
       // Create tickets and order details
       for (const seatData of orderBill.seats) {
-        const seat = seats.find(s => s.id === seatData.id);
-        const ticketType = await this.getTicketTypeByAudienceType(seatData.audience_type);
+        const seat = scheduleSeats.find(s => s.seat.id === seatData.id);
+        if (!seat) {
+          throw new NotFoundException(`Seat with ID ${seatData.id} not found`);
+        }
+        seat.status = StatusSeat.BOOKED;
+        await this.scheduleSeatRepository.save(seat);
 
-        // Create ticket
+        // create ticket 
+        const ticketType = await this.getTicketTypeByAudienceType(seatData.audience_type);
         const newTicket = await this.ticketRepository.save({
+          seat: seat.seat,
+          schedule: schedule,
+          ticketType: ticketType,
           status: Number(orderBill.payment_method_id) === Method.CASH ? true : false,
-          schedule,
-          seat,
-          ticketType,
         });
 
-        // Update seat status
-        await this.seatRepository.update(seatData.id, { status: false });
-
+        // create order detail
         // Calculate ticket price
-        const seatPrice = parseFloat(seat?.seatType.seat_type_price as any);
+        const seatPrice = parseFloat(seat.seat.seatType.seat_type_price as any);
         const discount = parseFloat(ticketType.discount as any);
         const finalPrice = seatPrice * (1 - discount / 100);
 
@@ -308,14 +339,12 @@ export class OrderService {
           schedule: schedule,
 
         });
-
       }
 
 
 
       return { payUrl: paymentCode.payUrl };
     } catch (error) {
-
       throw error;
     }
   }

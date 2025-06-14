@@ -16,6 +16,7 @@ import { changeVnToUSD } from 'src/utils/helper';
 import { Method } from 'src/enum/payment-menthod.enum';
 import { MailerService } from '@nestjs-modules/mailer';
 import { MomoService } from '../momo/momo.service';
+import { Role } from 'src/enum/roles.enum';
 
 @Injectable()
 export class PayPalService {
@@ -148,9 +149,9 @@ export class PayPalService {
 
     async handleReturnSuccessPaypal(transactionCode: string) {
         const transaction = await this.momoService.getTransactionByOrderId(transactionCode);
-        if (!transaction) throw new NotFoundException('Transaction not found');
-        // 1. Confirm transaction status
-
+        if (transaction.status !== 'pending') {
+            throw new NotFoundException('Transaction is not in pending state');
+        }
         if (transaction.paymentMethod.id === Method.PAYPAL) {
             const captureResult = await this.captureOrderPaypal(transaction.transaction_code);
             if (captureResult.status !== 'COMPLETED') {
@@ -166,8 +167,10 @@ export class PayPalService {
         await this.orderRepository.save(transaction.order);
         const order = transaction.order;
 
-        order.user.member.score += order.add_score;
-        await this.memberRepository.save(order.user.member);
+        if ((order.user?.member && order.user.role.role_id === Role.USER)) {
+            order.user.member.score += order.add_score;
+            await this.memberRepository.save(order.user.member);
+        }
 
         for (const orderDetail of order.orderDetails) {
             const ticket = orderDetail.ticket;
@@ -189,6 +192,7 @@ export class PayPalService {
                     total: order.total_prices,
                     addScore: order.add_score,
                     paymentMethod: transaction.paymentMethod.name,
+                    year: new Date().getFullYear(),
 
                     // Thông tin chung 1 lần
                     movieName: firstTicket?.schedule.movie.name,
@@ -217,27 +221,24 @@ export class PayPalService {
 
     async handleReturnCancelPaypal(transactionCode: string) {
         const transaction = await this.momoService.getTransactionByOrderId(transactionCode);
-        if (!transaction) throw new NotFoundException('Transaction not found');
-        transaction.status = 'failed';
-        await this.transactionRepository.save(transaction);
-        if (!transaction.order) throw new NotFoundException('Order not found for this transaction');
-        transaction.order.status = 'failed';
-        await this.orderRepository.save(transaction.order);
-
-        for (const orderDetail of transaction.order.orderDetails) {
-            const ticket = orderDetail.ticket;
-            if (ticket) {
-                if (ticket.seat) {
-                    ticket.seat.status = false;
-                    await this.seatRepository.save(ticket.seat);
-                }
-            }
-
+        if (transaction.status !== 'pending') {
+            throw new NotFoundException('Transaction is not in pending state');
         }
 
+        const order = transaction.order;
+        transaction.status = 'failed';
+        order.status = 'failed';
+        await this.transactionRepository.save(transaction);
+        await this.orderRepository.save(order);
 
-        return {
-            msg: 'Payment cancelled',
-        };
+        // Reset trạng thái ghế nếu cần
+        for (const detail of order.orderDetails) {
+            const ticket = detail.ticket;
+            if (ticket?.seat && ticket.schedule) {
+                await this.momoService.changeStatusScheduleSeat([ticket.seat.id], ticket.schedule.id);
+            }
+        }
+
+        return { message: 'Payment failed' };
     }
 }

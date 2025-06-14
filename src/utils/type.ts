@@ -98,6 +98,11 @@ export type IGerne = {
   genre_name: string;
 };
 
+export enum Gender {
+  MALE = 'male',
+  FEMALE = 'female',
+  OTHER = 'other'
+}
 export type IMovie = {
   id: number;
   name: string;
@@ -156,5 +161,13 @@ export type TicketSummary = {
 
 export type HoldSeatType = {
   seatIds: string[];
-  cinema_id: number;
+  schedule_id: number;
 };
+
+export type LoginAzureType = {
+  sub:string;
+  email: string;
+  picture?:string;
+  name: string;
+  role_id?: number;
+}

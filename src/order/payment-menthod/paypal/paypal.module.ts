@@ -11,6 +11,7 @@ import { Promotion } from "src/typeorm/entities/promotion/promotion";
 import { TicketType } from "src/typeorm/entities/order/ticket-type";
 import { MailerModule } from "@nestjs-modules/mailer";
 import { MomoModule } from "../momo/momo.module";
+import { ScheduleSeat } from "src/typeorm/entities/cinema/schedule_seat";
 
 
 
@@ -24,7 +25,8 @@ import { MomoModule } from "../momo/momo.module";
             Member,
             User,
             Promotion,
-            TicketType
+            TicketType,
+            ScheduleSeat
         ]),
         MomoModule,
         MailerModule

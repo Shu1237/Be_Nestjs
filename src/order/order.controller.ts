@@ -58,9 +58,9 @@ export class OrderController {
   @Get('paypal/cancel/return')
   async handlePaypalCancel(@Query('token') orderId: string, @Res() res: Response) {
     const result = await this.payPalService.handleReturnCancelPaypal(orderId);
-    if (!result) {
-      throw new BadRequestException('Invalid order ID');
-    }
+    // if (!result) {
+    //   throw new BadRequestException('Invalid order ID');
+    // }
     return res.send(result);
   }
 
@@ -81,9 +81,9 @@ export class OrderController {
   @Get('visa/cancel/return')
   async handleVisaCancel(@Query('orderId') orderId: string, @Res() res: Response) {
     const result = await this.payPalService.handleReturnCancelPaypal(orderId);
-    if (!result) {
-      throw new BadRequestException('Invalid order ID');
-    }
+    // if (!result) {
+    //   throw new BadRequestException('Invalid order ID');
+    // }
     return res.send(result);
   }
 

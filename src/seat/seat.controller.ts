@@ -32,7 +32,7 @@ import { HoldSeatDto } from './dto/hold-seat.dto';
 @ApiBearerAuth()
 @Controller('seat')
 export class SeatController {
-  constructor(private readonly seatService: SeatService) {}
+  constructor(private readonly seatService: SeatService) { }
 
   @Get()
   @ApiOperation({ summary: 'Get all seats' })
@@ -116,6 +116,22 @@ export class SeatController {
     return this.seatService.updateSeat(id, updateSeatDto);
   }
 
+
+  @Patch('hold')
+  @ApiOperation({ summary: 'Hold seats' })
+  @ApiBody({ type: HoldSeatDto })
+  holdSeat(@Body() data: HoldSeatDto, @Req() req) {
+    return this.seatService.holdSeat(data, req.user);
+  }
+
+  @Patch('cancel-hold')
+  @ApiOperation({ summary: 'Cancel hold seats' })
+  @ApiBody({ type: HoldSeatDto })
+  cancelHoldSeat(@Body() data: HoldSeatDto, @Req() req) {
+    return this.seatService.cancelHoldSeat(data, req.user);
+  }
+
+
   @Patch(':id')
   @ApiOperation({ summary: 'Soft delete seat by ID (admin only)' })
   @ApiResponse({
@@ -165,25 +181,10 @@ export class SeatController {
     return this.seatService.updateSeatStatus(id);
   }
 
-  @Post('hold')
-  @ApiOperation({ summary: 'Hold seats' })
-  @ApiResponse({
-    status: 200,
-    description: 'Seats held successfully',
-    example: { msg: 'Seats held successfully' },
-  })
-  holdSeat(@Body() data: HoldSeatDto, @Req() req: Request) {
-    return this.seatService.holdSeat(data, req);
-  }
 
-  @Post('cancel-hold')
-  @ApiOperation({ summary: 'Cancel hold seats' })
-  @ApiResponse({
-    status: 200,
-    description: 'Seats un-held successfully',
-    example: { msg: 'Seats un-held successfully' },
-  })
-  cancelHoldSeat(@Body() data: HoldSeatDto, @Req() req: Request) {
-    return this.seatService.cancelHoldSeat(data, req);
-  }
+
+
+
+
+
 }
