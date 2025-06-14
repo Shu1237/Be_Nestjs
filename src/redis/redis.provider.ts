@@ -4,7 +4,7 @@ import Redis from 'ioredis';
 export const RedisProvider: Provider = {
   provide: 'REDIS_CLIENT',
   useFactory: () => {
-    const redisUrl = process.env.REDIS_URL;
+    const redisUrl = process.env.REDIS_PUBLIC_URL;
     if (!redisUrl) {
       throw new Error('REDIS_URL environment variable is not defined');
     }
