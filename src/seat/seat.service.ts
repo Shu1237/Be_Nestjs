@@ -182,17 +182,15 @@ export class SeatService {
     }
 
     await this.scheduleSeatRepository.save(foundSeats);
-
     await this.redisClient.set(
       `seat-hold-${user.account_id}`,
       JSON.stringify({
         seatIds: seatIds,
         schedule_id: schedule_id,
-      }),
-      'EX',
-      600
+        expiresAt: Date.now() + 60000 // 1 phút
+      })
     );
-  
+
 
     return { msg: 'Seats held successfully' };
   }
@@ -252,6 +250,14 @@ export class SeatService {
       msg: 'Held seats cancelled successfully',
     };
   }
+
+
+
+
+
+
+  // corjob
+
 
 
 }
