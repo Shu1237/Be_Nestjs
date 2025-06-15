@@ -75,12 +75,12 @@ export class AuthController {
   }
 
   // @UseGuards(JwtAuthGuard)
-  @Get('refreshToken')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get all refresh tokens (admin only)' })
-  getAllRefreshTokens() {
-    return this.authService.getAllRefreshTokens();
-  }
+  // @Get('refreshToken')
+  // @ApiBearerAuth()
+  // @ApiOperation({ summary: 'Get all refresh tokens (admin only)' })
+  // getAllRefreshTokens() {
+  //   return this.authService.getAllRefreshTokens();
+  // }
 
   @UseGuards(RefreshGuard)
   @Post('refreshToken')
@@ -91,12 +91,12 @@ export class AuthController {
     return this.authService.refreshToken(req.user);
   }
 
-  @Delete('refreshToken/:id')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Delete a refresh token by ID' })
-  deleteRefreshToken(@Param('id', ParseIntPipe) refreshTokenId: number) {
-    return this.authService.deleteRefreshToken(refreshTokenId);
-  }
+  // @Delete('refreshToken/:id')
+  // @ApiBearerAuth()
+  // @ApiOperation({ summary: 'Delete a refresh token by ID' })
+  // deleteRefreshToken(@Param('id', ParseIntPipe) refreshTokenId: number) {
+  //   return this.authService.deleteRefreshToken(refreshTokenId);
+  // }
 
   @UseGuards(JwtAuthGuard)
   @Post('logout')
