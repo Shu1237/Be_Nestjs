@@ -21,31 +21,20 @@ export class SeatTypeService {
       where: { id: parseInt(id) },
     });
     if (!seatType) {
-      throw new NotFoundException('Seat type not found');
+      throw new NotFoundException(`Seat type with ID ${id} not found`);
     }
     return seatType;
   }
 
   async createSeatType(createSeatTypeDto: CreateSeatTypeDto) {
-    const seatType = new SeatType();
-    seatType.seat_type_name = createSeatTypeDto.seat_type_name;
-    seatType.seat_type_price = createSeatTypeDto.seat_type_price;
-    seatType.seat_type_description = createSeatTypeDto.seat_type_description;
+    const seatType = this.seatTypeRepository.create(createSeatTypeDto);
     await this.seatTypeRepository.save(seatType);
     return { msg: 'Seat type created successfully' };
   }
 
   async updateSeatType(id: string, updateSeatTypeDto: UpdateSeatTypeDto) {
     const seatType = await this.getSeatTypeById(id);
-    if (updateSeatTypeDto.seat_type_name !== undefined) {
-      seatType.seat_type_name = updateSeatTypeDto.seat_type_name;
-    }
-    if (updateSeatTypeDto.seat_type_price !== undefined) {
-      seatType.seat_type_price = updateSeatTypeDto.seat_type_price;
-    }
-    if (updateSeatTypeDto.seat_type_description !== undefined) {
-      seatType.seat_type_description = updateSeatTypeDto.seat_type_description;
-    }
+    Object.assign(seatType, updateSeatTypeDto);
     await this.seatTypeRepository.save(seatType);
     return { msg: 'Seat type updated successfully' };
   }

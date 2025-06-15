@@ -187,7 +187,7 @@ export class SeatService {
       JSON.stringify({
         seatIds: seatIds,
         schedule_id: schedule_id,
-        expiresAt: Date.now() + 60000 // 1 phút
+        expiresAt: Date.now() + 600000 // 10 phút
       })
     );
 
@@ -251,12 +251,6 @@ export class SeatService {
     };
   }
 
-
-
-
-
-
-  // corjob
 
 
 

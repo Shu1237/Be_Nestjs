@@ -70,7 +70,7 @@ export class PromotionService {
     return { msg: 'Promotion updated successfully' };
   }
 
-  async deletePromotion(id: number): Promise<{ msg: string }> {
+  async deletePromotion(id: number) {
     const promotion = await this.promotionRepository.findOne({
       where: { id },
     });
@@ -81,7 +81,7 @@ export class PromotionService {
     return { msg: 'Promotion deleted successfully' };
   }
 
-  async deleteSoftPromotion(id: number): Promise<void> {
+  async deleteSoftPromotion(id: number) {
     const promotion = await this.promotionRepository.findOne({
       where: { id },
     });
@@ -90,6 +90,7 @@ export class PromotionService {
     }
     promotion.is_active = false;
     await this.promotionRepository.save(promotion);
+    return { msg: 'Promotion deleted successfully' };
   }
 
   async changePromotion(body: ChangePromotionType, user: JWTUserType) {
