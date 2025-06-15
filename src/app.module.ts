@@ -16,12 +16,12 @@ import { ActorModule } from './actor/actor.module';
 import { GerneModule } from './gerne/gerne.module';
 import { VersionModule } from './version/version.module';
 import { CinemaRoomModule } from './cinema-room/cinema-room.module';
-import { ScheduleModule } from './schedule/schedule.module';
+import { ScheduleModule as ScheduleByDb } from './schedule/schedule.module';
 import { SeatModule } from './seat/seat.module';
 import { TicketModule } from './ticket/ticket.module';
-import { CacheModule } from '@nestjs/cache-manager';
-import { redisStore } from 'cache-manager-ioredis-yet';
-
+import { MyGateWayModule } from './gateways/seat.gateway.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { CronModule } from './cron/cron.module';
 
 @Module({
   imports: [
@@ -29,6 +29,7 @@ import { redisStore } from 'cache-manager-ioredis-yet';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    ScheduleModule.forRoot(),
     TypeOrmModule.forRoot({
       type: 'mysql',
       url: process.env.DATABASE_URL,
@@ -68,7 +69,7 @@ import { redisStore } from 'cache-manager-ioredis-yet';
         },
       },
     }),
-    
+
 
     AuthModule,
     TesterModule,
@@ -80,9 +81,15 @@ import { redisStore } from 'cache-manager-ioredis-yet';
     GerneModule,
     VersionModule,
     CinemaRoomModule,
-    ScheduleModule,
+    ScheduleByDb,
     SeatModule,
     TicketModule,
+
+    
+
+    CronModule,
+    MyGateWayModule
+
   ],
 })
 export class AppModule { }

@@ -162,6 +162,7 @@ export type TicketSummary = {
 export type HoldSeatType = {
   seatIds: string[];
   schedule_id: number;
+  expiresAt?: number; 
 };
 
 export type LoginAzureType = {

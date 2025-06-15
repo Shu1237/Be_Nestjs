@@ -75,12 +75,12 @@ export class AuthController {
   }
 
   // @UseGuards(JwtAuthGuard)
-  // @Get('refreshToken')
-  // @ApiBearerAuth()
-  // @ApiOperation({ summary: 'Get all refresh tokens (admin only)' })
-  // getAllRefreshTokens() {
-  //   return this.authService.getAllRefreshTokens();
-  // }
+  @Get('refreshToken')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get all refresh tokens (admin only)' })
+  getAllRefreshTokens() {
+    return this.authService.getAllRefreshTokens();
+  }
 
   @UseGuards(RefreshGuard)
   @Post('refreshToken')

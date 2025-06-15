@@ -277,7 +277,7 @@ export class AuthService {
       access_token: access_token,
       user: user,
       revoked: false,
-      expires_at: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+      expires_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),// 3 day
     });
     return {
       access_token,
