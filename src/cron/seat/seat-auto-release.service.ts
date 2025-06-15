@@ -20,7 +20,7 @@ export class SeatAutoReleaseService {
 
     ) { }
 
-    @Cron('*/30 * * * * *') // mỗi 30 giây
+   @Cron('*/10 * * * *') // mỗi 10 phút
     async handleClearExpiredSeats() {
         const keys = await this.redisClient.keys('seat-hold-*');
         const currentTime = Date.now();
