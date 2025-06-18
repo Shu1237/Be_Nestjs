@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { Order } from 'src/typeorm/entities/order/order';
@@ -11,23 +11,23 @@ import { Promotion } from 'src/typeorm/entities/promotion/promotion';
 import { Schedule } from 'src/typeorm/entities/cinema/schedule';
 import { Ticket } from 'src/typeorm/entities/order/ticket';
 import { TicketType } from 'src/typeorm/entities/order/ticket-type';
-
 import { PayPalService } from './payment-menthod/paypal/paypal.service';
 import { Method } from 'src/enum/payment-menthod.enum';
 import { VisaService } from './payment-menthod/visa/visa.service';
 import { VnpayService } from './payment-menthod/vnpay/vnpay.service';
 import { MomoService } from './payment-menthod/momo/momo.service';
 import { ZalopayService } from './payment-menthod/zalopay/zalopay.service';
-
 import { ScheduleSeat } from 'src/typeorm/entities/cinema/schedule_seat';
 import { StatusSeat } from 'src/enum/status_seat.enum';
-import { SeatService } from 'src/seat/seat.service';
-import { Cache } from 'cache-manager';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Seat } from 'src/typeorm/entities/cinema/seat';
 import Redis from 'ioredis';
 import { StatusOrder } from 'src/enum/status-order.enum';
-
+import { MyGateWay } from 'src/gateways/seat.gateway';
+import { SeatService } from 'src/seat/seat.service';
+import { OrderExtra } from 'src/typeorm/entities/order/order-extra';
+import { Product } from 'src/typeorm/entities/item/product';
+import { applyAudienceDiscount, calculateProductTotal } from 'src/utils/helper';
+import Stripe from 'stripe';
+import { LineItemsVisa } from 'src/utils/helper';
 
 
 @Injectable()
@@ -53,8 +53,14 @@ export class OrderService {
     private ticketTypeRepository: Repository<TicketType>,
     @InjectRepository(ScheduleSeat)
     private scheduleSeatRepository: Repository<ScheduleSeat>,
-    @InjectRepository(Seat)
-    private seatRepository: Repository<Seat>,
+    @InjectRepository(OrderExtra)
+    private orderExtraRepository: Repository<OrderExtra>,
+    @InjectRepository(Product)
+    private productRepository: Repository<Product>,
+
+
+
+
 
     private readonly momoService: MomoService,
     private readonly paypalService: PayPalService,
@@ -62,7 +68,8 @@ export class OrderService {
     private readonly vnpayService: VnpayService,
     private readonly zalopayService: ZalopayService,
     private readonly seatService: SeatService,
-    // @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private readonly gateway: MyGateWay,
+
 
 
     @Inject('REDIS_CLIENT') private readonly redisClient: Redis,
@@ -70,10 +77,10 @@ export class OrderService {
 
   ) { }
 
-  async getUserById(userId: string) {
+  private async getUserById(userId: string) {
     const user = await this.userRepository.findOne({
       where: { id: userId }
-      , relations: ['member', 'role']
+      , relations: ['role']
     }
     );
     if (!user) {
@@ -83,9 +90,10 @@ export class OrderService {
   }
 
 
-  async getPromotionById(promotionId: number) {
+  private async getPromotionById(promotionId: number) {
     const promotion = await this.promotionRepository.findOne({
       where: { id: promotionId },
+      relations: ['promotionType']
     });
     if (!promotion) {
       throw new NotFoundException(`Promotion with ID ${promotionId} not found`);
@@ -93,7 +101,7 @@ export class OrderService {
     return promotion;
   }
 
-  async getScheduleById(scheduleId: number) {
+  private async getScheduleById(scheduleId: number) {
     const schedule = await this.scheduleRepository.findOne({
       where: { id: scheduleId },
     });
@@ -102,7 +110,7 @@ export class OrderService {
     }
     return schedule;
   }
-  async getOrderById(orderId: number) {
+  private async getOrderById(orderId: number) {
     const order = await this.orderRepository.findOne({
       where: { id: orderId },
       relations: ['transaction']
@@ -112,7 +120,7 @@ export class OrderService {
     }
     return order;
   }
-  async getTransactionById(transactionId: number) {
+  private async getTransactionById(transactionId: number) {
     const transaction = await this.transactionRepository.findOne({
       where: { id: transactionId },
       relations: ['order', 'paymentMethod'],
@@ -123,86 +131,68 @@ export class OrderService {
     return transaction;
   }
 
-  async getTicketTypeByAudienceType(audienceType: string) {
-    const ticketType = await this.ticketTypeRepository.findOne({
-      where: { audience_type: audienceType },
+  private async getTicketTypesByAudienceTypes(audienceTypes: string[]) {
+    const ticketTypes = await this.ticketTypeRepository.find({
+      where: { audience_type: In(audienceTypes) },
     });
-    if (!ticketType) {
-      throw new NotFoundException(`Ticket type not found for audience: ${audienceType}`);
+
+    if (!ticketTypes || ticketTypes.length === 0) {
+      throw new NotFoundException(`No ticket types found for audiences: ${audienceTypes.join(', ')}`);
     }
-    return ticketType;
+
+    return ticketTypes;
+  }
+  async getOrderExtraByIds(productIds: number[]) {
+    const orderExtras = await this.productRepository.find({
+      where: { id: In(productIds) },
+
+    });
+    if (!orderExtras || orderExtras.length === 0) {
+      throw new NotFoundException(`No products found for IDs: ${productIds.join(', ')}`);
+    }
+    return orderExtras;
+  }
+  private async getScheduleSeatsByIds(seatIds: string[], scheduleId: number) {
+    const scheduleSeats = await this.scheduleSeatRepository.find({
+      where: {
+        seat: { id: In(seatIds) },
+        schedule: { id: scheduleId },
+      },
+      relations: ['seat', 'seat.seatType'],
+    });
+    if (!scheduleSeats || scheduleSeats.length === 0) {
+      throw new NotFoundException(`No schedule seats found for IDs: ${seatIds.join(', ')} in schedule ${scheduleId}`);
+    }
+    return scheduleSeats;
   }
 
   async createOrder(userData: JWTUserType, orderBill: OrderBillType, clientIp: string) {
     try {
       const user = await this.getUserById(userData.account_id);
-      // console.log('User:', user.id);
+      // check products
+      const products = orderBill.products || [];
+      let orderExtras: Product[] = [];
+      if (products.length > 0) {
+        const productIds = products.map(item => item.product_id);
+        orderExtras = await this.getOrderExtraByIds(productIds);
+      }
 
       const [promotion, schedule] = await Promise.all([
         this.getPromotionById(orderBill.promotion_id),
         this.getScheduleById(orderBill.schedule_id),
       ]);
 
+
       // Fetch seat IDs
       const seatIds = orderBill.seats.map((seat: SeatInfo) => seat.id);
+      const scheduleId = orderBill.schedule_id.toString();
 
-      // Lấy scheduleSeats ban đầu để kiểm tra
-      let scheduleSeats = await this.scheduleSeatRepository.find({
-        where: {
-          seat: { id: In(seatIds) },
-          schedule: { id: schedule.id },
-        },
-        relations: ['seat', 'seat.seatType'],
-      });
+      // check redis
+      await this.validateBeforeOrder(scheduleId, user.id, seatIds);
 
-      // Kiểm tra ghế đã booked
-      const bookedSeats = scheduleSeats.filter((seat) => seat.status === StatusSeat.BOOKED);
-      if (bookedSeats.length > 0) {
-        throw new BadRequestException(
-          `Some seats are already booked: ${bookedSeats.map(s => s.seat.id).join(', ')}`,
-        );
-      }
-      // Kiểm tra cache 
-      const cacheKey = `seat-hold-${user.id}`;
-      const redisRaw = await this.redisClient.get(cacheKey);
+      const scheduleSeats = await this.getScheduleSeatsByIds(seatIds, orderBill.schedule_id);
 
-      if (redisRaw) {
-        let cacheHoldSeats: HoldSeatType;
-
-        try {
-          cacheHoldSeats = JSON.parse(redisRaw);
-        } catch (error) {
-          throw new BadRequestException('Dữ liệu cache không hợp lệ');
-        }
-
-        if (
-          cacheHoldSeats.schedule_id === schedule.id &&
-          Array.isArray(cacheHoldSeats.seatIds) &&
-          cacheHoldSeats.seatIds.length > 0
-        ) {
-          await this.seatService.cancelHoldSeat(
-            {
-              seatIds: cacheHoldSeats.seatIds,
-              schedule_id: cacheHoldSeats.schedule_id,
-            },
-            {
-              account_id: user.id,
-              username: user.username,
-              role_id: user.role.role_id,
-            },
-          );
-
-          // Lấy lại scheduleSeats để phản ánh trạng thái mới
-          scheduleSeats = await this.scheduleSeatRepository.find({
-            where: {
-              seat: { id: In(seatIds) },
-              schedule: { id: schedule.id },
-            },
-            relations: ['seat', 'seat.seatType'],
-          });
-        }
-      }
-      // Kiểm tra unavailable seats SAU KHI cancelHoldSeat
+      // Kiểm tra unavailable seats
       const unavailableSeats = scheduleSeats.filter(
         seat => seat.status === StatusSeat.BOOKED || seat.status === StatusSeat.HELD,
       );
@@ -211,40 +201,56 @@ export class OrderService {
           `Seats ${unavailableSeats.map(s => s.seat.id).join(', ')} are already booked or held.`,
         );
       }
-
-      // Tính toán giá vé
-      let discount = promotion.discount;
+      // tinh toan tổng tiền
+      let totalSeats = 0;
+      let totalProduct = 0;
       let totalPrice = 0;
 
-      const ticketPrices = await Promise.all(
-        orderBill.seats.map(async seatData => {
-          const seat = scheduleSeats.find(s => s.seat.id === seatData.id);
-          if (!seat) {
-            throw new NotFoundException(`Seat with ID ${seatData.id} not found`);
-          }
-          const ticketType = await this.getTicketTypeByAudienceType(seatData.audience_type);
-          const seatPrice = parseFloat(seat.seat.seatType.seat_type_price as any);
-          const audienceDiscount = parseFloat(ticketType.discount as any);
-          return seatPrice * (1 - audienceDiscount / 100);
-        }),
-      );
+      const promotionDiscount = parseFloat(promotion?.discount ?? '0');
+      const isPercentage = promotion?.promotionType?.type === 'percentage';
 
-      const subTotal = ticketPrices.reduce((sum, price) => sum + price, 0);
-      // console.log('SubTotal:', subTotal);
-      if (Number(discount) === 0) {
-        totalPrice = subTotal;
-      } else {
-        const promotionDiscount = parseFloat(discount as any);
-        totalPrice = subTotal * (1 - promotionDiscount / 100);
+
+
+      // 1. Tính giá từng vé sau audience-discount
+      const audienceTypes = orderBill.seats.map(seat => seat.audience_type);
+      const ticketForAudienceTypes = await this.getTicketTypesByAudienceTypes(audienceTypes);
+
+      const seatPriceMap = new Map<string, number>(); // Map seatId -> final seat price
+
+      for (const seatData of orderBill.seats) {
+        const seat = scheduleSeats.find(s => s.seat.id === seatData.id);
+        if (!seat) throw new NotFoundException(`Seat ${seatData.id} not found`);
+
+        const ticketType = ticketForAudienceTypes.find(t => t.audience_type === seatData.audience_type);
+        const discount = parseFloat(ticketType?.discount ?? '0');
+
+        const basePrice = seat.seat.seatType.seat_type_price;
+        const finalPrice = applyAudienceDiscount(basePrice, discount);
+
+        seatPriceMap.set(seatData.id, finalPrice);
+        totalSeats += finalPrice;
       }
+      if (orderExtras.length > 0) {
+        totalProduct = calculateProductTotal(orderExtras, orderBill);
+      }
+      const totalBeforePromotion = totalSeats + totalProduct;
+      const promotionAmount = isPercentage
+        ? Math.round(totalBeforePromotion * (promotionDiscount / 100))
+        : Math.round(promotionDiscount);
 
+      totalPrice = totalBeforePromotion - promotionAmount;
+
+
+      // 5. So sánh với client gửi
       const inputTotal = parseFloat(orderBill.total_prices);
       if (Math.abs(totalPrice - inputTotal) > 0.01) {
         throw new BadRequestException('Total price mismatch. Please refresh and try again.');
       }
 
-      const orderScore = Math.floor(Number(orderBill.total_prices) / 1000);
+      const seatRatio = totalSeats / totalBeforePromotion;
 
+      const seatDiscount = Math.round(promotionAmount * seatRatio);
+      const productDiscount = promotionAmount - seatDiscount;
       // Tạo transaction
       const paymentMethod = await this.paymentMethodRepository.findOne({
         where: { id: Number(orderBill.payment_method_id) },
@@ -253,37 +259,22 @@ export class OrderService {
         throw new NotFoundException(`Payment method ${orderBill.payment_method_id} not found`);
       }
 
-      let paymentCode: any;
-      switch (Number(orderBill.payment_method_id)) {
-        case Method.MOMO:
-          paymentCode = await this.momoService.createOrderMomo(orderBill.total_prices);
-          break;
-        case Method.PAYPAL:
-          paymentCode = await this.paypalService.createOrderPaypal(orderBill);
-          break;
-        case Method.VISA:
-          paymentCode = await this.visaService.createOrderVisa(orderBill);
-          break;
-        case Method.VNPAY:
-          paymentCode = await this.vnpayService.createOrderVnPay(orderBill, clientIp);
-          break;
-        case Method.ZALOPAY:
-          paymentCode = await this.zalopayService.createOrderZaloPay(orderBill);
-          break;
-        default:
-          paymentCode = {
-            payUrl: 'Payment successful by Cash',
-            orderId: 'CASH_ORDER_' + new Date().getTime(),
-          };
+      // get line_item for visa 
+
+      let line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
+      if (paymentMethod.id === Method.VISA) {
+        line_items = LineItemsVisa(orderBill, scheduleSeats, ticketForAudienceTypes, orderExtras, promotionDiscount, isPercentage);
       }
 
+
+      let paymentCode: any;
+      // get payment code
+      paymentCode = await this.getPaymentCode(orderBill, clientIp, line_items, promotionDiscount, isPercentage, orderExtras);
       if (!paymentCode || !paymentCode.payUrl || !paymentCode.orderId) {
         throw new BadRequestException('Payment method failed to create order');
       }
       // Create order
       const newOrder = await this.orderRepository.save({
-        booking_date: orderBill.booking_date,
-        add_score: orderScore,
         total_prices: orderBill.total_prices,
         status: Number(orderBill.payment_method_id) === Method.CASH ? StatusOrder.SUCCESS : StatusOrder.PENDING,
         user,
@@ -308,45 +299,168 @@ export class OrderService {
       updatedTransaction.order = newOrderWithTransaction;
       await this.transactionRepository.save(updatedTransaction);
 
+
+
       // Create tickets and order details
+      const ticketsToSave: Ticket[] = [];
+      const updatedSeats: ScheduleSeat[] = [];
+      const orderDetails: {
+        total_each_ticket: string;
+        order: any;
+        ticket: any;
+        schedule: any;
+      }[] = [];
+
+
+
+      const discountPerSeat = seatDiscount / orderBill.seats.length;
+
       for (const seatData of orderBill.seats) {
         const seat = scheduleSeats.find(s => s.seat.id === seatData.id);
-        if (!seat) {
-          throw new NotFoundException(`Seat with ID ${seatData.id} not found`);
-        }
-        seat.status = StatusSeat.BOOKED;
-        await this.scheduleSeatRepository.save(seat);
+        const ticketType = ticketForAudienceTypes.find(t => t.audience_type === seatData.audience_type);
+        const priceBeforePromo = seatPriceMap.get(seatData.id)!;
 
-        // create ticket 
-        const ticketType = await this.getTicketTypeByAudienceType(seatData.audience_type);
-        const newTicket = await this.ticketRepository.save({
+
+        const shareRatio = priceBeforePromo / totalSeats;
+        const promotionDiscountForThisSeat = seatDiscount * shareRatio;
+        const finalPrice = Math.round(priceBeforePromo - promotionDiscountForThisSeat);
+
+        if (!seat) {
+          throw new NotFoundException(`Seat ${seatData.id} not found in scheduleSeats`);
+        }
+
+        seat.status = StatusSeat.BOOKED;
+        updatedSeats.push(seat);
+
+        const newTicket = this.ticketRepository.create({
           seat: seat.seat,
-          schedule: schedule,
-          ticketType: ticketType,
-          status: Number(orderBill.payment_method_id) === Method.CASH ? true : false,
+          schedule,
+          ticketType,
+          status: Number(orderBill.payment_method_id) === Method.CASH,
         });
 
-        // create order detail
-        // Calculate ticket price
-        const seatPrice = parseFloat(seat.seat.seatType.seat_type_price as any);
-        const discount = parseFloat(ticketType.discount as any);
-        const finalPrice = seatPrice * (1 - discount / 100);
+        ticketsToSave.push(newTicket);
 
-        // Create order detail
-        await this.orderDetailRepository.save({
-          total_each_ticket: finalPrice.toString(),
+        orderDetails.push({
+          total_each_ticket: finalPrice.toFixed(0),
           order: newOrder,
           ticket: newTicket,
-          schedule: schedule,
-
+          schedule,
         });
       }
 
 
+      const savedTickets = await this.ticketRepository.save(ticketsToSave);
+      orderDetails.forEach((detail, index) => {
+        detail.ticket = savedTickets[index];
+      });
 
+      await this.scheduleSeatRepository.save(updatedSeats);
+      await this.orderDetailRepository.save(orderDetails);
+
+      // Create order extras
+      const productTotals = orderExtras.map(p => {
+        const quantity = orderBill.products?.find(item => item.product_id === p.id)?.quantity || 0;
+        return {
+          product: p,
+          quantity,
+          total: Number(p.price) * quantity,
+        };
+      });
+      const totalProductBeforePromo = productTotals.reduce((sum, item) => sum + item.total, 0);
+      const orderExtrasToSave: Omit<OrderExtra, 'id'>[] = [];
+
+      for (const item of productTotals) {
+        const shareRatio = item.total / totalProductBeforePromo || 0;
+
+        let unit_price_after_discount: number = Number(item.product.price);
+
+        if (isPercentage) {
+          const unitDiscount = Number(item.product.price) * (productDiscount / totalProductBeforePromo);
+          unit_price_after_discount = Math.round(Number(item.product.price) - unitDiscount);
+        } else {
+          const productDiscountShare = productDiscount * shareRatio;
+          const unitDiscount = productDiscountShare / item.quantity;
+          unit_price_after_discount = Math.round(Number(item.product.price) - unitDiscount);
+        }
+
+        orderExtrasToSave.push({
+          quantity: item.quantity,
+          unit_price: unit_price_after_discount.toString(),
+          order: newOrder,
+          product: item.product,
+          status: Number(orderBill.payment_method_id) === Method.CASH ? StatusOrder.SUCCESS : StatusOrder.PENDING,
+        });
+      }
+      await this.orderExtraRepository.save(orderExtrasToSave);
       return { payUrl: paymentCode.payUrl };
     } catch (error) {
       throw error;
+    }
+  }
+
+  private async validateBeforeOrder(scheduleId: string, userId: string, requestSeatIds: string[]): Promise<void> {
+    const keys = await this.redisClient.keys(`seat-hold-*`);
+
+    if (!keys.length) return;
+    const redisData = await Promise.all(keys.map(key => this.redisClient.get(key)));
+
+
+    for (let i = 0; i < redisData.length; i++) {
+      const key = keys[i];
+      const data = redisData[i];
+      if (!data) continue;
+      // get userId from key
+      const redisUserId = key.replace('seat-hold-', '');
+      if (redisUserId === userId) continue;
+
+      let parsed: HoldSeatType;
+      try {
+        parsed = JSON.parse(data);
+      } catch (e) {
+        continue; // skip malformed data
+      }
+      // not match scheduleId
+      if (parsed.schedule_id.toString() !== scheduleId) continue;
+
+      // check if requestSeatIds is in redisData
+      const isSeatHeld = requestSeatIds.some(seatId => parsed.seatIds.includes(seatId));
+      if (isSeatHeld) {
+        throw new ConflictException('Some seats are already held by another user. Please try again later.');
+      }
+      // delete redis ky of this user
+      await this.redisClient.del(`seat-hold-${userId}`);
+    }
+
+  }
+
+
+  private async getPaymentCode(
+    orderBill: OrderBillType,
+    clientIp: string,
+    line_item: Stripe.Checkout.SessionCreateParams.LineItem[],
+    promotionDiscount: number,
+    isPercentage: boolean,
+    orderExtras: Product[] = []
+
+
+  ) {
+    switch (Number(orderBill.payment_method_id)) {
+      case Method.MOMO:
+        return this.momoService.createOrderMomo(orderBill.total_prices);
+      case Method.PAYPAL:
+        return this.paypalService.createOrderPaypal(orderBill);
+      case Method.VISA:
+        return this.visaService.createOrderVisa(line_item, orderBill);
+      case Method.VNPAY:
+        return this.vnpayService.createOrderVnPay(orderBill, clientIp);
+      case Method.ZALOPAY:
+        return this.zalopayService.createOrderZaloPay(orderBill, orderExtras, promotionDiscount, isPercentage);
+      default:
+        return {
+          payUrl: 'Payment successful by Cash',
+          orderId: 'CASH_ORDER_' + new Date().getTime(),
+        };
     }
   }
 
@@ -354,7 +468,17 @@ export class OrderService {
 
   async getAllOrders() {
     const orders = await this.orderRepository.find({
-      relations: ['user', 'promotion', 'transaction', 'transaction.paymentMethod', 'orderDetails', 'orderDetails.ticket', 'orderDetails.schedule', 'orderDetails.schedule.movie', 'orderDetails.ticket', 'orderDetails.ticket.seat', 'orderDetails.ticket.ticketType'],
+      relations: ['user',
+        'promotion',
+        'transaction',
+        'transaction.paymentMethod',
+        'orderDetails',
+        'orderDetails.ticket',
+        'orderDetails.schedule',
+        'orderDetails.schedule.movie',
+        'orderDetails.ticket',
+        'orderDetails.ticket.seat',
+        'orderDetails.ticket.ticketType'],
     });
 
     const bookingSummaries = orders.map(order => this.mapToBookingSummaryLite(order));
@@ -364,7 +488,16 @@ export class OrderService {
   async getOrderByIdEmployeeAndAdmin(orderId: number) {
     const order = await this.orderRepository.findOne({
       where: { id: orderId },
-      relations: ['user', 'promotion', 'transaction', 'transaction.paymentMethod', 'orderDetails', 'orderDetails.ticket', 'orderDetails.schedule', 'orderDetails.schedule.movie', 'orderDetails.ticket.seat', 'orderDetails.ticket.ticketType'],
+      relations: ['user',
+        'promotion',
+        'transaction',
+        'transaction.paymentMethod',
+        'orderDetails',
+        'orderDetails.ticket',
+        'orderDetails.schedule',
+        'orderDetails.schedule.movie',
+        'orderDetails.ticket.seat',
+        'orderDetails.ticket.ticketType'],
     });
     if (!order) {
       throw new NotFoundException(`Order with ID ${orderId} not found`);
@@ -374,7 +507,14 @@ export class OrderService {
   async getMyOrders(userId: string) {
     const orderByUser = await this.orderRepository.find({
       where: { user: { id: userId } },
-      relations: ['user', 'promotion', 'transaction', 'transaction.paymentMethod', 'orderDetails', 'orderDetails.ticket', 'orderDetails.schedule', 'orderDetails.schedule.movie', 'orderDetails.ticket.seat', 'orderDetails.ticket.ticketType'],
+      relations: ['user',
+        'promotion', 'transaction',
+        'transaction.paymentMethod',
+        'orderDetails', 'orderDetails.ticket',
+        'orderDetails.schedule',
+        'orderDetails.schedule.movie',
+        'orderDetails.ticket.seat',
+        'orderDetails.ticket.ticketType'],
     });
 
     const bookingSummaries = orderByUser.map(order => this.mapToBookingSummaryLite(order));
@@ -384,7 +524,7 @@ export class OrderService {
   private mapToBookingSummaryLite(order: Order) {
     return {
       id: order.id,
-      booking_date: order.booking_date,
+      order_date: order.order_date,
       total_prices: order.total_prices,
       status: order.status,
       user: {
@@ -406,7 +546,9 @@ export class OrderService {
         ticketType: {
           ticket_name: detail.ticket.ticketType.ticket_name,
         },
-        show_date: detail.schedule.show_date,
+        start_movie_time: detail.schedule.start_movie_time,
+        end_movie_time: detail.schedule.end_movie_time,
+
         movie: {
           id: detail.schedule.movie.id,
           name: detail.schedule.movie.name,

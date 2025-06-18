@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req, ForbiddenException } from '@nestjs/common';
 import { TicketService } from './ticket.service';
 import { JwtAuthGuard } from 'src/guards/jwt.guard';
 import { JWTUserType } from 'src/utils/type';
@@ -18,7 +18,8 @@ export class TicketController {
   getAllTickets(@Req() req) {
     const user = req.user as JWTUserType
     if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new Error('Only admin or employee can view all tickets');
+      throw new ForbiddenException('Only admin or employee can view all tickets');
+
     }
     return this.ticketService.getAllTickets();
   }
@@ -26,11 +27,7 @@ export class TicketController {
   @Get(':id')
   @ApiOperation({ summary: 'Get ticket by ID' })
   @ApiBearerAuth()
-  getTicketById(@Param('id') id: string, @Req() req) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new Error('Only admin or employee can view ticket details');
-    }
+  getTicketById(@Param('id') id: string) {
     return this.ticketService.getTicketById(id);
   }
 

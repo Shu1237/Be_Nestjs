@@ -3,14 +3,16 @@ import { AuthTesterController } from './controllers/auth-tester/auth-tester.cont
 import { JwtAuthGuard } from 'src/guards/jwt.guard';
 import { JwtModule } from '@nestjs/jwt';
 import { RedisModule } from 'src/redis/redis.module';
+import { OrderModule } from 'src/order/order.module';
 
 @Module({
   imports: [
     JwtModule.register({
-      secret: process.env.JWT_SECRET_KEY, // đảm bảo biến này tồn tại trong .env
-      signOptions: { expiresIn: '1d' },    // thời hạn token, có thể điều chỉnh
+      secret: process.env.JWT_SECRET_KEY, 
+      signOptions: { expiresIn: '1d' },    
     }),
-    RedisModule
+    RedisModule,
+    OrderModule
   ],
   controllers: [AuthTesterController],
   providers: [JwtAuthGuard],

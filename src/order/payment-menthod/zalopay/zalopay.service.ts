@@ -9,15 +9,18 @@ import { OrderBillType } from "src/utils/type";
 import { Seat } from "src/typeorm/entities/cinema/seat";
 import { Order } from "src/typeorm/entities/order/order";
 import { Ticket } from "src/typeorm/entities/order/ticket";
-import { Member } from "src/typeorm/entities/user/member";
 import { User } from "src/typeorm/entities/user/user";
 import { Transaction } from "src/typeorm/entities/order/transaction";
 import { TicketType } from "src/typeorm/entities/order/ticket-type";
 import { Promotion } from "src/typeorm/entities/promotion/promotion";
-import { MailerService } from "@nestjs-modules/mailer";
 import { MomoService } from "../momo/momo.service";
 import { Role } from "src/enum/roles.enum";
 import { StatusOrder } from "src/enum/status-order.enum";
+import { HistoryScore } from "src/typeorm/entities/order/history_score";
+import { Product } from "src/typeorm/entities/item/product";
+import { applyAudienceDiscount, applyPromotion } from "src/utils/helper";
+import { OrderExtra } from "src/typeorm/entities/order/order-extra";
+import { MyGateWay } from "src/gateways/seat.gateway";
 
 @Injectable()
 export class ZalopayService {
@@ -30,15 +33,18 @@ export class ZalopayService {
     private readonly ticketRepository: Repository<Ticket>,
     @InjectRepository(Seat)
     private readonly seatRepository: Repository<Seat>,
-    @InjectRepository(Member)
-    private readonly memberRepository: Repository<Member>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    @InjectRepository(HistoryScore)
+    private readonly historyScoreRepository: Repository<HistoryScore>,
     @InjectRepository(TicketType)
     private readonly ticketTypeRepository: Repository<TicketType>,
-    @InjectRepository(Promotion)
-    private readonly promotionRepository: Repository<Promotion>,
+    @InjectRepository(OrderExtra)
+    private readonly orderExtraRepository: Repository<OrderExtra>,
 
-    private mailerService: MailerService,
-    private momoService: MomoService
+
+    private momoService: MomoService,
+    private mygateway: MyGateWay
   ) { }
 
   private app_id = Number(process.env.ZALO_APP_ID);
@@ -46,7 +52,12 @@ export class ZalopayService {
   private endpoint = process.env.ZALOPAY_ENDPOINT;
   private callback_url = process.env.ZALO_RETURN_URL;
 
-  async createOrderZaloPay(orderItem: OrderBillType) {
+  async createOrderZaloPay(
+    orderItem: OrderBillType,
+    orderExtras: Product[],
+    promotionDiscount: number,
+    isPercentage: boolean
+  ) {
     if (!this.app_id || !this.key1 || !this.endpoint) {
       throw new Error("ZaloPay configuration is missing");
     }
@@ -57,56 +68,132 @@ export class ZalopayService {
 
     const transID = Date.now();
     const app_trans_id = `${moment().format("YYMMDD")}_${transID}`;
-    const amount = Number(orderItem.total_prices)
-
-    if (isNaN(amount) || amount <= 0) {
-      throw new Error("Invalid total price for ZaloPay order");
-    }
 
     const items: { itemid: string; itemname: string; itemprice: number; itemquantity: number }[] = [];
 
-    for (const item of orderItem.seats) {
-      const seat = await this.seatRepository.findOne({ where: { id: item.id }, relations: ["seatType"] });
-      const ticketType = await this.ticketTypeRepository.findOne({ where: { audience_type: item.audience_type } });
+    let seatTotal = 0;
+    let productTotal = 0;
+    const seatDetails: {
+      id: string;
+      name: string;
+      basePrice: number;
+      discount: number;
+      finalPrice: number;
+    }[] = [];
+
+    // ===== Tính tổng tiền ghế =====
+    for (const seatItem of orderItem.seats) {
+      const seat = await this.seatRepository.findOne({ where: { id: seatItem.id }, relations: ["seatType"] });
+      const ticketType = await this.ticketTypeRepository.findOne({ where: { audience_type: seatItem.audience_type } });
 
       if (!seat || !ticketType) {
         throw new NotFoundException("Seat or ticket type not found");
       }
 
-      const discount = parseFloat(ticketType.discount) / 100;
-      let seatPrice = seat.seatType.seat_type_price * (1 - discount);
+      const basePrice = seat.seatType.seat_type_price;
+      const ticketDiscount = parseFloat(ticketType.discount);
+
+      const priceAfterAudience = applyAudienceDiscount(basePrice, ticketDiscount);
+
+      seatTotal += priceAfterAudience;
+
+      seatDetails.push({
+        id: seatItem.id,
+        name: `Seat ${seatItem.seat_row}${seatItem.seat_column}`,
+        basePrice,
+        discount: ticketDiscount,
+        finalPrice: priceAfterAudience,
+      });
+    }
+
+    // ===== Tính tổng tiền sản phẩm =====
+    const productDetails: {
+      id: string;
+      name: string;
+      quantity: number;
+      unitPrice: number;
+      totalPrice: number;
+    }[] = [];
+
+    if (Array.isArray(orderItem.products)) {
+      for (const prod of orderItem.products) {
+        const product = orderExtras.find(p => p.id === prod.product_id);
+        if (!product) continue;
+
+        const quantity = prod.quantity ?? 1;
+        const unitPrice = Number(product.price);
+        const total = unitPrice * quantity;
+
+        productTotal += total;
+
+        productDetails.push({
+          id: product.id.toString(),
+          name: product.name,
+          quantity,
+          unitPrice,
+          totalPrice: total,
+        });
+      }
+    }
+
+    const totalBeforeDiscount = seatTotal + productTotal;
+
+    // ===== Tính số tiền giảm giá =====
+    const totalPromotionAmount = isPercentage
+      ? Math.round(totalBeforeDiscount * (promotionDiscount / 100))
+      : Math.round(promotionDiscount);
+
+    const seatRatio = seatTotal / totalBeforeDiscount;
+    const productRatio = productTotal / totalBeforeDiscount;
+
+    const seatDiscountTotal = Math.round(totalPromotionAmount * seatRatio);
+    const productDiscountTotal = totalPromotionAmount - seatDiscountTotal;
+
+    // ===== Ghế sau giảm giá =====
+    for (const seat of seatDetails) {
+      const seatShare = seat.finalPrice / seatTotal;
+      const discountForThisSeat = seatDiscountTotal * seatShare;
+      const finalPrice = Math.round(seat.finalPrice - discountForThisSeat);
 
       items.push({
-        itemid: item.id,
-        itemname: `Seat ${item.seat_row}${item.seat_column}`,
-        itemprice: Math.round(seatPrice),
+        itemid: seat.id,
+        itemname: seat.name,
+        itemprice: finalPrice,
         itemquantity: 1,
       });
     }
 
-    if (orderItem.promotion_id) {
-      const promotion = await this.promotionRepository.findOne({ where: { id: orderItem.promotion_id } });
-      if (!promotion) throw new NotFoundException("Promotion not found");
+    // ===== Sản phẩm sau giảm giá =====
+    const totalProductBeforePromo = Math.max(productTotal, 1);
 
-      const promoDiscount = parseFloat(promotion.discount) / 100;
-      items.forEach(i => {
-        i.itemprice = Math.round(i.itemprice * (1 - promoDiscount));
+    for (const product of productDetails) {
+      const shareRatio = product.totalPrice / totalProductBeforePromo;
+      const productDiscountShare = productDiscountTotal * shareRatio;
+      const unitDiscount = productDiscountShare / product.quantity;
+      const unitPriceAfterDiscount = Math.round(product.unitPrice - unitDiscount);
+
+      items.push({
+        itemid: `product_${product.id}`,
+        itemname: product.name,
+        itemprice: unitPriceAfterDiscount,
+        itemquantity: product.quantity,
       });
     }
+
+    const totalPriceVND = items.reduce((sum, item) => sum + item.itemprice * item.itemquantity, 0);
 
     const app_time = dayjs().valueOf();
     const embed_data = {
       redirecturl: this.callback_url,
     };
-    const item = items;
 
     const rawData = {
       app_id: this.app_id,
       app_trans_id,
       app_user: "ZaloPay Movie Theater",
-      amount,
+      amount: totalPriceVND,
       app_time,
-      item: JSON.stringify(item),
+      item: JSON.stringify(items),
       embed_data: JSON.stringify(embed_data),
       description: "Thanh toán vé xem phim",
       bank_code: "zalopayapp",
@@ -123,6 +210,7 @@ export class ZalopayService {
     ].join("|");
 
     const mac = crypto.createHmac("sha256", this.key1).update(dataToMac).digest("hex");
+
     const requestBody = {
       ...rawData,
       mac,
@@ -159,12 +247,20 @@ export class ZalopayService {
       order.status = StatusOrder.SUCCESS;
       await this.transactionRepository.save(transaction);
       const savedOrder = await this.orderRepository.save(order);
-
-      if ((order.user?.member && order.user.role.role_id === Role.USER)) {
-        order.user.member.score += order.add_score;
-        await this.memberRepository.save(order.user.member);
+      ``
+      // Cộng điểm cho người dùng
+      if (order.user?.role.role_id === Role.USER) {
+        const orderScore = Math.floor(Number(order.total_prices) / 1000);
+        const addScore = orderScore - (order.promotion?.exchange ?? 0);
+        order.user.score += addScore;
+        await this.userRepository.save(order.user);
+        // history score
+        await this.historyScoreRepository.save({
+          score_change: addScore,
+          user: order.user,
+          order: savedOrder,
+        });
       }
-
       for (const detail of order.orderDetails) {
         const ticket = detail.ticket;
         if (ticket) {
@@ -172,41 +268,25 @@ export class ZalopayService {
           await this.ticketRepository.save(ticket);
         }
       }
+      // order extras
+      if (order.orderExtras && order.orderExtras.length > 0) {
+        for (const extra of order.orderExtras) {
+          extra.status = StatusOrder.SUCCESS;
+          await this.orderExtraRepository.save(extra);
+        }
+      }
       // send email notification
       try {
-        const firstTicket = order.orderDetails[0]?.ticket;
-        await this.mailerService.sendMail({
-          to: order.user.email,
-          subject: 'Your Order Successful',
-          template: 'order-confirmation',
-          context: {
-            user: order.user.username,
-            transactionCode: transaction.transaction_code,
-            bookingDate: order.booking_date,
-            total: order.total_prices,
-            addScore: order.add_score,
-            paymentMethod: transaction.paymentMethod.name,
-            year: new Date().getFullYear(),
-
-
-            // Thông tin chung 1 lần
-            movieName: firstTicket?.schedule.movie.name,
-            showDate: firstTicket?.schedule.show_date,
-            roomName: firstTicket?.schedule.cinemaRoom.cinema_room_name,
-
-            // Danh sách ghế
-            seats: order.orderDetails.map(detail => ({
-              row: detail.ticket.seat.seat_row,
-              column: detail.ticket.seat.seat_column,
-              ticketType: detail.ticket.ticketType.ticket_name,
-              price: detail.total_each_ticket,
-            })),
-          },
-        });
+        await this.momoService.sendOrderConfirmationEmail(order, transaction);
       } catch (error) {
+        console.error('Mailer error:', error);
         throw new NotFoundException('Failed to send confirmation email');
       }
-
+      // Gửi thông báo đến client qua WebSocket
+      this.mygateway.onBookSeat({
+        schedule_id: order.orderDetails[0].ticket.schedule.id,
+        seatIds: order.orderDetails.map(detail => detail.ticket.seat.id),
+      });
       return {
         message: "Payment successful",
         order: savedOrder,

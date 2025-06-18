@@ -1,4 +1,4 @@
-import {  Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import * as crypto from 'crypto';
 import axios from 'axios';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -6,12 +6,14 @@ import { In, Repository } from 'typeorm';
 import { Transaction } from 'src/typeorm/entities/order/transaction';
 import { Order } from 'src/typeorm/entities/order/order';
 import { Ticket } from 'src/typeorm/entities/order/ticket';
-import { Seat } from 'src/typeorm/entities/cinema/seat';
-import { Member } from 'src/typeorm/entities/user/member';
 import { MailerService } from '@nestjs-modules/mailer';
 import { ScheduleSeat, SeatStatus } from 'src/typeorm/entities/cinema/schedule_seat';
 import { Role } from 'src/enum/roles.enum';
 import { StatusOrder } from 'src/enum/status-order.enum';
+import { HistoryScore } from 'src/typeorm/entities/order/history_score';
+import { User } from 'src/typeorm/entities/user/user';
+import { OrderExtra } from 'src/typeorm/entities/order/order-extra';
+import { MyGateWay } from 'src/gateways/seat.gateway';
 
 @Injectable()
 export class MomoService {
@@ -22,14 +24,17 @@ export class MomoService {
     private readonly orderRepository: Repository<Order>,
     @InjectRepository(Ticket)
     private readonly ticketRepository: Repository<Ticket>,
-    @InjectRepository(Seat)
-    private readonly seatRepository: Repository<Seat>,
-    @InjectRepository(Member)
-    private readonly memberRepository: Repository<Member>,
     @InjectRepository(ScheduleSeat)
     private readonly scheduleSeatRepository: Repository<ScheduleSeat>,
-
+    @InjectRepository(HistoryScore)
+    private readonly historyScoreRepository: Repository<HistoryScore>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    @InjectRepository(OrderExtra)
+    private readonly orderExtraRepository: Repository<OrderExtra>,
     private mailerService: MailerService,
+
+       private readonly gateway: MyGateWay,
   ) { }
 
   async createOrderMomo(total: string) {
@@ -90,18 +95,29 @@ export class MomoService {
     const transaction = await this.transactionRepository.findOne({
       where: { transaction_code: orderId },
       relations: [
+
+        'paymentMethod',
         'order',
+
+
+        'order.user',
+        'order.user.role',
+        'order.promotion',
+        'order.orderExtras',
+        'order.orderExtras.product',
+
+
         'order.orderDetails',
+
+
+        'order.orderDetails.schedule',
         'order.orderDetails.ticket',
+
         'order.orderDetails.ticket.ticketType',
         'order.orderDetails.ticket.seat',
         'order.orderDetails.ticket.schedule',
         'order.orderDetails.ticket.schedule.movie',
         'order.orderDetails.ticket.schedule.cinemaRoom',
-        'order.user',
-        'order.user.member',
-        'order.user.role',
-        'paymentMethod',
       ],
     });
 
@@ -138,11 +154,11 @@ export class MomoService {
     const { orderId, resultCode } = query;
 
     const transaction = await this.getTransactionByOrderId(orderId);
-    if (transaction.status !==  StatusOrder.PENDING) {
+    if (transaction.status !== StatusOrder.PENDING) {
       throw new NotFoundException('Transaction is not in pending state');
     }
     const order = transaction.order;
-
+    console.log(order.user.email);
     if (Number(resultCode) === 0) {
       // Giao dịch thành công
       transaction.status = StatusOrder.SUCCESS;
@@ -152,9 +168,17 @@ export class MomoService {
       const savedOrder = await this.orderRepository.save(order);
 
       // Cộng điểm cho người dùng
-      if ((order.user?.member && order.user.role.role_id === Role.USER)) {
-        order.user.member.score += order.add_score;
-        await this.memberRepository.save(order.user.member);
+      if (order.user?.role.role_id === Role.USER) {
+        const orderScore = Math.floor(Number(order.total_prices) / 1000);
+        const addScore = orderScore - (order.promotion?.exchange ?? 0);
+        order.user.score += addScore;
+        await this.userRepository.save(order.user);
+        // history score
+        await this.historyScoreRepository.save({
+          score_change: addScore,
+          user: order.user,
+          order: savedOrder,
+        });
       }
 
       // Đánh dấu ticket đã sử dụng
@@ -165,41 +189,32 @@ export class MomoService {
           await this.ticketRepository.save(ticket);
         }
       }
+      if (order.orderExtras && order.orderExtras.length > 0) {
+        for (const extra of order.orderExtras) {
+          extra.status = StatusOrder.SUCCESS;
+          await this.orderExtraRepository.save(extra);
+        }
+      }
+
 
       // Gửi email xác nhận
       try {
-        const firstTicket = order.orderDetails[0]?.ticket;
-        await this.mailerService.sendMail({
-          to: order.user.email,
-          subject: 'Your Order Successful',
-          template: 'order-confirmation',
-          context: {
-            user: order.user.username,
-            transactionCode: transaction.transaction_code,
-            bookingDate: order.booking_date,
-            total: order.total_prices,
-            addScore: order.add_score,
-            paymentMethod: transaction.paymentMethod.name,
-            year: new Date().getFullYear(),
-            movieName: firstTicket?.schedule.movie.name,
-            showDate: firstTicket?.schedule.show_date,
-            roomName: firstTicket?.schedule.cinemaRoom.cinema_room_name,
-            seats: order.orderDetails.map(detail => ({
-              row: detail.ticket.seat.seat_row,
-              column: detail.ticket.seat.seat_column,
-              ticketType: detail.ticket.ticketType.ticket_name,
-              price: detail.total_each_ticket,
-            })),
-          },
-        });
+        await this.sendOrderConfirmationEmail(order, transaction);
       } catch (error) {
+        console.error('Mailer error:', error);
         throw new NotFoundException('Failed to send confirmation email');
       }
-
+      this.gateway.onBookSeat({
+        schedule_id: order.orderDetails[0].ticket.schedule.id,
+        seatIds: order.orderDetails.map(detail => detail.ticket.seat.id),
+        
+      })
       return {
         message: 'Payment successful',
         order: savedOrder,
       };
+      //socket
+      
     } else {
       // Giao dịch thất bại
       transaction.status = StatusOrder.FAILED;
@@ -214,9 +229,51 @@ export class MomoService {
           await this.changeStatusScheduleSeat([ticket.seat.id], ticket.schedule.id);
         }
       }
+      if (order.orderExtras && order.orderExtras.length > 0) {
+        for (const extra of order.orderExtras) {
+          extra.status = StatusOrder.FAILED;
+          await this.orderExtraRepository.save(extra);
+        }
+      }
 
       return { message: 'Payment failed' };
     }
+  }
+
+
+
+
+  async sendOrderConfirmationEmail(order: Order, transaction: Transaction) {
+    const firstTicket = order.orderDetails[0]?.ticket;
+    await this.mailerService.sendMail({
+      to: order.user.email,
+      subject: 'Your Order Successful',
+      template: 'order-confirmation',
+      context: {
+        user: order.user.username,
+        transactionCode: transaction.transaction_code,
+        order_date: order.order_date,
+        total: Number(order.total_prices).toLocaleString('vi-VN'),
+        paymentMethod: transaction.paymentMethod.name,
+        year: new Date().getFullYear(),
+        movieName: firstTicket?.schedule.movie.name,
+        roomName: firstTicket?.schedule.cinemaRoom.cinema_room_name,
+        start_movie_time: firstTicket?.schedule.start_movie_time,
+        end_movie_time: firstTicket?.schedule.end_movie_time,
+        seats: order.orderDetails.map(detail => ({
+          row: detail.ticket.seat.seat_row,
+          column: detail.ticket.seat.seat_column,
+          ticketType: detail.ticket.ticketType.ticket_name,
+          price: Number(detail.total_each_ticket).toLocaleString('vi-VN'),
+        })),
+        orderExtras: order.orderExtras?.map(extra => ({
+          name: extra.product.name,
+          quantity: extra.quantity,
+          price: Number(extra.unit_price).toLocaleString('vi-VN'),
+          total: (extra.quantity * Number(extra.unit_price)).toLocaleString('vi-VN'),
+        })) || [],
+      },
+    });
   }
 
 }

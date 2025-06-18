@@ -8,8 +8,6 @@ import {
 } from 'typeorm';
 
 import { Schedule } from './schedule';
-// import { ActorMovie } from './actor-movie';
-// import { MovieGenre } from './gerne-movie';
 import { Actor } from './actor';
 import { Gerne } from './gerne';
 import { Version } from './version';
@@ -45,6 +43,15 @@ export class Movie {
 
   @Column({ type: 'varchar', length: 255 })
   banner: string;
+
+  @Column({ type: 'int', nullable: true })
+  limited_age: string;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  trailer: string;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  nation: string;
 
   @Column({ type: 'boolean', default: false })
   is_deleted: boolean;

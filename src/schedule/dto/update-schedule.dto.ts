@@ -12,8 +12,13 @@ export class UpdateScheduleDto {
   movie_id: number;
 
   @IsDate()
-  @ApiProperty({ description: 'Ngày và giờ chiếu phim', example: '2025-06-10T14:00:00Z' })
   @Type(() => Date)
-  show_date: Date;
+  @ApiProperty({ description: 'Ngày và giờ chiếu phim', example: '2025-06-10T14:00:00Z' })
+  start_movie_time: Date;
+
+  @IsDate()
+  @Type(() => Date)
+  @ApiProperty({ description: 'Ngày và giờ kết thúc chiếu phim', example: '2025-06-10T16:00:00Z' })
+  end_movie_time: Date;
 
 }
