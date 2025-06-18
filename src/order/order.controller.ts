@@ -9,7 +9,6 @@ import { ApiOperation, ApiBody, ApiResponse, ApiBearerAuth, ApiExcludeEndpoint }
 import { VnpayService } from './payment-menthod/vnpay/vnpay.service';
 import { ZalopayService } from './payment-menthod/zalopay/zalopay.service';
 import { JWTUserType } from 'src/utils/type';
-import { Method } from 'src/enum/payment-menthod.enum';
 import { Role } from 'src/enum/roles.enum';
 
 @Controller('order')
@@ -27,7 +26,6 @@ export class OrderController {
   @ApiOperation({ summary: 'Create a new order' })
   @ApiBearerAuth()
   @ApiBody({ type: CreateOrderBillDto })
-  @ApiResponse({ status: 201, description: 'Order created successfully' })
   createOrder(@Body() body: CreateOrderBillDto, @Req() req) {
     const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     if (!clientIp) {

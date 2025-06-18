@@ -19,10 +19,10 @@ export class Schedule {
   id: number;
 
   @Column({ type: 'datetime', nullable: false })
-  show_date: Date;
-
-  @DeleteDateColumn({ nullable: true })
-  deletedAt?: Date;
+  start_movie_time: Date;
+  
+  @Column({ type: 'datetime', nullable: false })
+  end_movie_time: Date;
 
   @Column({ type: 'boolean', default: false })
   is_deleted: boolean; //

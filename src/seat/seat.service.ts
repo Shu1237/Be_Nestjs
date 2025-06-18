@@ -6,7 +6,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Cache } from 'cache-manager';
 import { Seat } from 'src/typeorm/entities/cinema/seat';
 import { HoldSeatType, JWTUserType } from 'src/utils/type';
 import { In, Repository } from 'typeorm';
@@ -17,7 +16,6 @@ import { CinemaRoom } from 'src/typeorm/entities/cinema/cinema-room';
 import { Schedule } from 'src/typeorm/entities/cinema/schedule';
 import { ScheduleSeat } from 'src/typeorm/entities/cinema/schedule_seat';
 import { StatusSeat } from 'src/enum/status_seat.enum';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import Redis from 'ioredis/built/Redis';
 
 
@@ -134,7 +132,7 @@ export class SeatService {
     return { msg: 'Change status successfully' };
   }
 
-  async holdSeat(data: HoldSeatType, req: JWTUserType) {
+  async holdSeat(data: HoldSeatType, req: JWTUserType) : Promise<void> {
 
     const { seatIds, schedule_id } = data;
     const user = req;
@@ -142,59 +140,16 @@ export class SeatService {
     if (!seatIds || seatIds.length === 0) {
       throw new BadRequestException('No seats selected');
     }
-
-    const schedule = await this.scheduleRepository.findOne({
-      where: { id: schedule_id, is_deleted: false },
-      relations: ['movie'],
-    });
-
-    if (!schedule) {
-      throw new NotFoundException('Schedule not found');
-    }
-
-    const foundSeats = await this.scheduleSeatRepository.find({
-      where: {
-        schedule: { id: schedule.id },
-        seat: { id: In(seatIds) },
-      },
-      relations: ['seat', 'schedule'],
-    });
-
-    if (foundSeats.length === 0) {
-      throw new NotFoundException('No seats found for the given IDs');
-    }
-
-    if (foundSeats.length !== seatIds.length) {
-      throw new BadRequestException('Some seats do not exist in this schedule');
-    }
-
-    const checkBookedSeat = foundSeats.filter(seat =>
-      seat.status === StatusSeat.BOOKED || seat.status === StatusSeat.HELD
-    );
-    if (checkBookedSeat.length > 0) {
-      throw new BadRequestException(
-        `Some seats are already booked or held: ${checkBookedSeat.map(s => s.seat.id).join(', ')}`
-      );
-    }
-
-    for (const seat of foundSeats) {
-      seat.status = StatusSeat.HELD;
-    }
-
-    await this.scheduleSeatRepository.save(foundSeats);
     await this.redisClient.set(
       `seat-hold-${user.account_id}`,
       JSON.stringify({
         seatIds: seatIds,
         schedule_id: schedule_id,
-        expiresAt: Date.now() + 600000 // 10 phút
-      })
+      }),
+      'EX', 600
     );
-
-
-    return { msg: 'Seats held successfully' };
   }
-  async cancelHoldSeat(data: HoldSeatType, req: JWTUserType) {
+  async cancelHoldSeat(data: HoldSeatType, req: JWTUserType): Promise<void> {
     const user = req;
     // console.log(user.account_id)
 
@@ -215,40 +170,8 @@ export class SeatService {
     } catch (e) {
       throw new BadRequestException('Invalid cached data format');
     }
-    const schedule = await this.scheduleRepository.findOne({
-      where: { id: schedule_id, is_deleted: false },
-    });
-
-    if (!schedule) {
-      throw new NotFoundException('Schedule not found');
-    }
-
-    const foundSeats = await this.scheduleSeatRepository.find({
-      where: {
-        schedule: { id: schedule.id },
-        seat: { id: In(seatIds) },
-      },
-      relations: ['seat', 'schedule'],
-    });
-    // console.log(foundSeats)
-
-    if (foundSeats.length === 0) {
-      throw new NotFoundException('No seats found for the given IDs and schedule');
-    }
-
-    for (const seat of foundSeats) {
-      if (seat.status === StatusSeat.HELD) {
-        seat.status = StatusSeat.NOT_YET;
-      }
-    }
-
-    await this.scheduleSeatRepository.save(foundSeats);
-
     await this.redisClient.del(`seat-hold-${user.account_id}`);
 
-    return {
-      msg: 'Held seats cancelled successfully',
-    };
   }
 
 

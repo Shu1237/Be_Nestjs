@@ -1,19 +1,19 @@
-import { Controller, Get, Inject, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Inject, Post, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/guards/jwt.guard';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
 import Redis from 'ioredis';
+import { OrderService } from 'src/order/order.service';
 
 
-@ApiTags('Tester') // Nhóm hiển thị trên Swagger UI
-@ApiBearerAuth()         // Bật gửi Authorization header trong Swagger
+@ApiTags('Tester')
+@ApiBearerAuth()
 
 @Controller('test')
 export class AuthTesterController {
 
     constructor(
         @Inject('REDIS_CLIENT') private readonly redisClient: Redis,
+        private readonly orderService: OrderService,
     ) { }
     @UseGuards(JwtAuthGuard)
     @Get()
@@ -94,6 +94,13 @@ export class AuthTesterController {
             message: 'Cache cleared successfully',
         };
     }
+
+    @Post('products')
+    testProduct (){
+        return this.orderService.getOrderExtraByIds([1,2.3,4,5]);
+    }
+    
+  
 }
 
 

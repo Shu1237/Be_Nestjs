@@ -5,13 +5,14 @@ import { Order } from "src/typeorm/entities/order/order";
 import { Ticket } from "src/typeorm/entities/order/ticket";
 import { Transaction } from "src/typeorm/entities/order/transaction";
 import { PayPalService } from "./paypal.service";
-import { Member } from "src/typeorm/entities/user/member";
 import { User } from "src/typeorm/entities/user/user";
 import { Promotion } from "src/typeorm/entities/promotion/promotion";
 import { TicketType } from "src/typeorm/entities/order/ticket-type";
-import { MailerModule } from "@nestjs-modules/mailer";
 import { MomoModule } from "../momo/momo.module";
 import { ScheduleSeat } from "src/typeorm/entities/cinema/schedule_seat";
+import { HistoryScore } from "src/typeorm/entities/order/history_score";
+import { MyGateWayModule } from "src/gateways/seat.gateway.module";
+import { OrderExtra } from "src/typeorm/entities/order/order-extra";
 
 
 
@@ -22,14 +23,16 @@ import { ScheduleSeat } from "src/typeorm/entities/cinema/schedule_seat";
             Order,
             Ticket,
             Seat,
-            Member,
             User,
             Promotion,
             TicketType,
-            ScheduleSeat
+            ScheduleSeat,
+            HistoryScore,
+            OrderExtra
+
         ]),
         MomoModule,
-        MailerModule
+        MyGateWayModule
 
     ],
     controllers: [],

@@ -20,10 +20,10 @@ export class ScheduleService {
 
     @InjectRepository(CinemaRoom)
     private readonly cinemaRoomRepository: Repository<CinemaRoom>,
-  ) {}
+  ) { }
 
   async create(createScheduleDto: CreateScheduleDto): Promise<ISchedule> {
-    const { movie_id, cinema_room_id, show_date } = createScheduleDto;
+    const { movie_id, cinema_room_id, start_movie_time, end_movie_time } = createScheduleDto;
 
     // Kiểm tra sự tồn tại của Movie
     const movie = await this.movieRepository.findOne({
@@ -47,7 +47,7 @@ export class ScheduleService {
 
     // Tạo mới Schedule
     const schedule = this.scheduleRepository.create({
-      show_date,
+      start_movie_time, end_movie_time,
       movie,
       cinemaRoom,
     });
@@ -58,7 +58,8 @@ export class ScheduleService {
     return {
       id: savedSchedule.id,
       cinema_room_id: savedSchedule.cinemaRoom.id,
-      show_date: savedSchedule.show_date,
+      start_movie_time: savedSchedule.start_movie_time,
+      end_movie_time: savedSchedule.end_movie_time,
       movie: {
         id: savedSchedule.movie.id,
         name: savedSchedule.movie.name,
@@ -74,7 +75,8 @@ export class ScheduleService {
     return schedules.map((schedule) => ({
       id: schedule.id,
       cinema_room_id: schedule.cinemaRoom.id,
-      show_date: schedule.show_date,
+      start_movie_time: schedule.start_movie_time,
+      end_movie_time: schedule.end_movie_time,
       movie: {
         id: schedule.movie.id,
         name: schedule.movie.name,
@@ -96,7 +98,8 @@ export class ScheduleService {
     return {
       id: schedule.id,
       cinema_room_id: schedule.cinemaRoom.id,
-      show_date: schedule.show_date,
+      start_movie_time: schedule.start_movie_time,
+      end_movie_time: schedule.end_movie_time,
       movie: {
         id: schedule.movie.id,
         name: schedule.movie.name,
@@ -108,7 +111,7 @@ export class ScheduleService {
     id: number,
     updateScheduleDto: UpdateScheduleDto,
   ): Promise<ISchedule> {
-    const { movie_id, cinema_room_id, show_date } = updateScheduleDto;
+    const { movie_id, cinema_room_id, start_movie_time, end_movie_time } = updateScheduleDto;
 
     // Tìm Schedule theo ID
     const schedule = await this.scheduleRepository.findOne({
@@ -120,8 +123,9 @@ export class ScheduleService {
     }
 
     // Cập nhật ngày chiếu nếu có
-    if (show_date) {
-      schedule.show_date = show_date;
+    if (start_movie_time) {
+      schedule.start_movie_time = start_movie_time;
+      schedule.end_movie_time = end_movie_time; // Cập nhật thời gian kết thúc
     }
 
     // Cập nhật Movie nếu có
@@ -156,7 +160,8 @@ export class ScheduleService {
     return {
       id: updatedSchedule.id,
       cinema_room_id: updatedSchedule.cinemaRoom.id,
-      show_date: updatedSchedule.show_date,
+      start_movie_time: updatedSchedule.start_movie_time,
+      end_movie_time: updatedSchedule.end_movie_time,
       movie: {
         id: updatedSchedule.movie.id,
         name: updatedSchedule.movie.name,

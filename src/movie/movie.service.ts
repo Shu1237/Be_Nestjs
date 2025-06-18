@@ -28,7 +28,7 @@ export class MovieService {
     @InjectRepository(Version)
     private readonly versionRepository: Repository<Version>,
     // Injec // Inject Actor repository
-  ) {}
+  ) { }
   private getMovieSummary(movie: IMovie) {
     return {
       id: movie.id,
@@ -37,6 +37,9 @@ export class MovieService {
       director: movie.director,
       duration: movie.duration,
       from_date: movie.from_date,
+      limited_age: movie.limited_age,
+      trailer: movie.trailer,
+      nation: movie.nation,
       to_date: movie.to_date,
       production_company: movie.production_company,
       thumbnail: movie.thumbnail,
@@ -123,7 +126,7 @@ export class MovieService {
       }
       movie.versions = versions;
     }
-      await this.movieRepository.save(movie);
+    await this.movieRepository.save(movie);
     // Trả về dữ liệu đã gói gọn
     return {
       msg: 'Movie created successfully',
@@ -178,11 +181,11 @@ export class MovieService {
       existingMovie.versions = versions;
     }
 
-     await this.movieRepository.save(existingMovie);
+    await this.movieRepository.save(existingMovie);
     // Trả về dữ liệu đã gói gọn
     return {
       msg: 'Movie updated successfully',
-     };
+    };
   }
 
   async deleteMovie(id: number) {

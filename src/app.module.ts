@@ -19,9 +19,9 @@ import { CinemaRoomModule } from './cinema-room/cinema-room.module';
 import { ScheduleModule as ScheduleByDb } from './schedule/schedule.module';
 import { SeatModule } from './seat/seat.module';
 import { TicketModule } from './ticket/ticket.module';
-import { MyGateWayModule } from './gateways/seat.gateway.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { CronModule } from './cron/cron.module';
+import { MyGateWayModule } from './gateways/seat.gateway.module';
 
 @Module({
   imports: [
@@ -39,7 +39,7 @@ import { CronModule } from './cron/cron.module';
       password: process.env.DB_PASSWORD,
       database: process.env.DB_DATABASE,
       entities: allEntities,
-      synchronize: true,
+      synchronize: false,
       autoLoadEntities: true,
       ssl: {
         rejectUnauthorized: false
@@ -88,7 +88,7 @@ import { CronModule } from './cron/cron.module';
     
 
     CronModule,
-    MyGateWayModule
+   MyGateWayModule
 
   ],
 })

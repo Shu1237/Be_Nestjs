@@ -1,5 +1,6 @@
-import { Entity, Column, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
 import { Order } from '../order/order';
+import { PromotionType } from './promtion_type';
 
 @Entity('promotion')
 export class Promotion {
@@ -31,4 +32,8 @@ export class Promotion {
   is_active: boolean;
   @OneToMany(() => Order, (order) => order.promotion)
   orders: Order[];
+
+  @ManyToOne(() => PromotionType, (promotionType) => promotionType.promotions)
+  @JoinColumn({ name: 'promotion_type_id' })
+  promotionType: PromotionType;
 }

@@ -1,26 +1,24 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, OneToMany, JoinColumn, OneToOne } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, OneToMany, JoinColumn, OneToOne, CreateDateColumn } from 'typeorm';
 import { User } from '../user/user';
 import { Promotion } from '../promotion/promotion';
 import { OrderDetail } from './order-detail';
-import { OrderProduct } from './order-product';
 import { Transaction } from './transaction';
+import { HistoryScore } from './history_score';
+import { OrderExtra } from './order-extra';
 
 @Entity('orders')
 export class Order {
   @PrimaryGeneratedColumn({ type: 'int' })
   id: number;
 
-  @Column({ type: 'date', nullable: false })
-  booking_date: Date;
-
-  @Column({ type: 'int', default: 0 })
-  add_score: number;
-
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: false })
   total_prices: string;
 
   @Column({ type: 'varchar', length: 50, nullable: false })
   status: string;
+
+  @CreateDateColumn({ type: 'timestamp' })
+  order_date: Date;
 
   @ManyToOne(() => User, (user) => user.orders, { nullable: false })
   @JoinColumn({ name: 'user_id' })
@@ -34,10 +32,13 @@ export class Order {
   @OneToMany(() => OrderDetail, (orderDetail) => orderDetail.order, { cascade: true })
   orderDetails: OrderDetail[];
 
-  @OneToMany(() => OrderProduct, (orderProduct) => orderProduct.order, { cascade: true })
-  orderProducts: OrderProduct[];
+  @OneToMany(() => OrderExtra, (orderExtra) => orderExtra.order, { cascade: true })
+  orderExtras: OrderExtra[];
 
   @OneToOne(() => Transaction, (transaction) => transaction.order, { nullable: true })
   @JoinColumn()
   transaction: Transaction;
+
+  @OneToOne(() => HistoryScore, (historyScore) => historyScore.order, { nullable: true })
+  historyScore: HistoryScore;
 }
