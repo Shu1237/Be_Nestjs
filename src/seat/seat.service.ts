@@ -131,6 +131,20 @@ export class SeatService {
 
     return { msg: 'Change status successfully' };
   }
+   private async getScheduleSeats(scheduleId: number, seatIds: string[]): Promise<ScheduleSeat[]> {
+    const scheduleSeats = await this.scheduleSeatRepository.find({
+      where: {
+        schedule: { id: scheduleId },
+        seat: { id: In(seatIds) },
+        status: StatusSeat.NOT_YET,
+      },
+    });
+    if (!scheduleSeats || scheduleSeats.length === 0) {
+      throw new NotFoundException(`No available seats found for schedule ID ${scheduleId} or seats booked`);
+    }
+    return scheduleSeats;
+  }
+
 
   async holdSeat(data: HoldSeatType, req: JWTUserType) : Promise<void> {
 
@@ -140,6 +154,11 @@ export class SeatService {
     if (!seatIds || seatIds.length === 0) {
       throw new BadRequestException('No seats selected');
     }
+    const seats = await this.getScheduleSeats(schedule_id, seatIds);
+    if (seats.length !== seatIds.length) {
+      throw new NotFoundException('Some selected seats are not available');
+    }
+    
     await this.redisClient.set(
       `seat-hold-${user.account_id}`,
       JSON.stringify({

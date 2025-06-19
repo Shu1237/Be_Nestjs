@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import * as crypto from 'crypto';
 import axios from 'axios';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -34,7 +34,7 @@ export class MomoService {
     private readonly orderExtraRepository: Repository<OrderExtra>,
     private mailerService: MailerService,
 
-       private readonly gateway: MyGateWay,
+    private readonly gateway: MyGateWay,
   ) { }
 
   async createOrderMomo(total: string) {
@@ -152,13 +152,12 @@ export class MomoService {
 
   async handleReturn(query: any) {
     const { orderId, resultCode } = query;
-
     const transaction = await this.getTransactionByOrderId(orderId);
     if (transaction.status !== StatusOrder.PENDING) {
       throw new NotFoundException('Transaction is not in pending state');
     }
     const order = transaction.order;
-    console.log(order.user.email);
+    // console.log(order.user.email);
     if (Number(resultCode) === 0) {
       // Giao dịch thành công
       transaction.status = StatusOrder.SUCCESS;
@@ -207,14 +206,14 @@ export class MomoService {
       this.gateway.onBookSeat({
         schedule_id: order.orderDetails[0].ticket.schedule.id,
         seatIds: order.orderDetails.map(detail => detail.ticket.seat.id),
-        
+
       })
       return {
         message: 'Payment successful',
         order: savedOrder,
       };
       //socket
-      
+
     } else {
       // Giao dịch thất bại
       transaction.status = StatusOrder.FAILED;
