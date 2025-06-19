@@ -16,6 +16,11 @@ export class TicketService {
       id: ticket.id,
       is_used: ticket.is_used,
       status: ticket.status,
+      ticketType: {
+        id: ticket.ticketType.id,
+        name: ticket.ticketType.ticket_name,
+        audience_type: ticket.ticketType.audience_type,
+      },
       schedule: {
         start_movie_time: ticket.schedule.start_movie_time,
         end_movie_time: ticket.schedule.end_movie_time,
