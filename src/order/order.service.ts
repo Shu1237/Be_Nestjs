@@ -25,7 +25,7 @@ import { MyGateWay } from 'src/gateways/seat.gateway';
 import { SeatService } from 'src/seat/seat.service';
 import { OrderExtra } from 'src/typeorm/entities/order/order-extra';
 import { Product } from 'src/typeorm/entities/item/product';
-import { applyAudienceDiscount, calculateProductTotal } from 'src/utils/helper';
+import { applyAudienceDiscount, calculateProductTotal, roundUpToNearest } from 'src/utils/helper';
 import Stripe from 'stripe';
 import { LineItemsVisa } from 'src/utils/helper';
 
@@ -208,6 +208,7 @@ export class OrderService {
 
       const promotionDiscount = parseFloat(promotion?.discount ?? '0');
       const isPercentage = promotion?.promotionType?.type === 'percentage';
+      // console.log(promotion)
 
 
 
@@ -233,13 +234,14 @@ export class OrderService {
       if (orderExtras.length > 0) {
         totalProduct = calculateProductTotal(orderExtras, orderBill);
       }
-      const totalBeforePromotion = totalSeats + totalProduct;
+      const totalBeforePromotion = totalSeats + totalProduct;// before promotion
       const promotionAmount = isPercentage
         ? Math.round(totalBeforePromotion * (promotionDiscount / 100))
         : Math.round(promotionDiscount);
 
       totalPrice = totalBeforePromotion - promotionAmount;
 
+      // console.log({ totalBeforePromotion, promotionAmount, totalPrice });
 
       // 5. So sánh với client gửi
       const inputTotal = parseFloat(orderBill.total_prices);
@@ -261,15 +263,15 @@ export class OrderService {
 
       // get line_item for visa 
 
-      let line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
-      if (paymentMethod.id === Method.VISA) {
-        line_items = LineItemsVisa(orderBill, scheduleSeats, ticketForAudienceTypes, orderExtras, promotionDiscount, isPercentage);
-      }
+      // let line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
+      // if (paymentMethod.id === Method.VISA) {
+      //   line_items = LineItemsVisa(orderBill, scheduleSeats, ticketForAudienceTypes, orderExtras, promotionDiscount, isPercentage);
+      // }
 
 
       let paymentCode: any;
       // get payment code
-      paymentCode = await this.getPaymentCode(orderBill, clientIp, line_items, promotionDiscount, isPercentage, orderExtras);
+      paymentCode = await this.getPaymentCode(orderBill, clientIp);
       if (!paymentCode || !paymentCode.payUrl || !paymentCode.orderId) {
         throw new BadRequestException('Payment method failed to create order');
       }
@@ -313,7 +315,7 @@ export class OrderService {
 
 
 
-      const discountPerSeat = seatDiscount / orderBill.seats.length;
+      // const discountPerSeat = seatDiscount / orderBill.seats.length;
 
       for (const seatData of orderBill.seats) {
         const seat = scheduleSeats.find(s => s.seat.id === seatData.id);
@@ -342,7 +344,7 @@ export class OrderService {
         ticketsToSave.push(newTicket);
 
         orderDetails.push({
-          total_each_ticket: finalPrice.toFixed(0),
+          total_each_ticket: (roundUpToNearest(finalPrice)).toString(),
           order: newOrder,
           ticket: newTicket,
           schedule,
@@ -386,7 +388,7 @@ export class OrderService {
 
         orderExtrasToSave.push({
           quantity: item.quantity,
-          unit_price: unit_price_after_discount.toString(),
+          unit_price: roundUpToNearest(unit_price_after_discount).toString(),
           order: newOrder,
           product: item.product,
           status: Number(orderBill.payment_method_id) === Method.CASH ? StatusOrder.SUCCESS : StatusOrder.PENDING,
@@ -437,13 +439,7 @@ export class OrderService {
 
   private async getPaymentCode(
     orderBill: OrderBillType,
-    clientIp: string,
-    line_item: Stripe.Checkout.SessionCreateParams.LineItem[],
-    promotionDiscount: number,
-    isPercentage: boolean,
-    orderExtras: Product[] = []
-
-
+    clientIp: string
   ) {
     switch (Number(orderBill.payment_method_id)) {
       case Method.MOMO:
@@ -451,11 +447,11 @@ export class OrderService {
       case Method.PAYPAL:
         return this.paypalService.createOrderPaypal(orderBill);
       case Method.VISA:
-        return this.visaService.createOrderVisa(line_item, orderBill);
+        return this.visaService.createOrderVisa( orderBill);
       case Method.VNPAY:
         return this.vnpayService.createOrderVnPay(orderBill, clientIp);
       case Method.ZALOPAY:
-        return this.zalopayService.createOrderZaloPay(orderBill, orderExtras, promotionDiscount, isPercentage);
+        return this.zalopayService.createOrderZaloPay(orderBill);
       default:
         return {
           payUrl: 'Payment successful by Cash',
