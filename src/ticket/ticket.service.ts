@@ -40,6 +40,10 @@ export class TicketService {
         row: ticket.seat.seat_row,
         column: ticket.seat.seat_column,
       },
+      seat_type:{
+        id: ticket.seat.seatType.id,
+        name: ticket.seat.seatType.seat_type_name,
+      }
     };
   }
 
@@ -100,6 +104,10 @@ export class TicketService {
               row: ticket.seat.seat_row,
               column: ticket.seat.seat_column,
             },
+            seat_type: {
+              id: ticket.seat.seatType.id,
+              name: ticket.seat.seatType.seat_type_name,
+            }
           };
         })
       )
