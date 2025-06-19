@@ -241,7 +241,7 @@ export class OrderService {
 
       totalPrice = totalBeforePromotion - promotionAmount;
 
-      // console.log({ totalBeforePromotion, promotionAmount, totalPrice });
+      console.log({ totalBeforePromotion, promotionAmount, totalPrice });
 
       // 5. So sánh với client gửi
       const inputTotal = parseFloat(orderBill.total_prices);
@@ -271,7 +271,7 @@ export class OrderService {
 
       let paymentCode: any;
       // get payment code
-      paymentCode = await this.getPaymentCode(orderBill, clientIp);
+      paymentCode = await this.getPaymentCode(orderBill, clientIp, promotionDiscount, isPercentage, orderExtras);
       if (!paymentCode || !paymentCode.payUrl || !paymentCode.orderId) {
         throw new BadRequestException('Payment method failed to create order');
       }
@@ -344,7 +344,7 @@ export class OrderService {
         ticketsToSave.push(newTicket);
 
         orderDetails.push({
-          total_each_ticket: (roundUpToNearest(finalPrice)).toString(),
+          total_each_ticket: roundUpToNearest(finalPrice, 1000).toString(),
           order: newOrder,
           ticket: newTicket,
           schedule,
@@ -388,7 +388,7 @@ export class OrderService {
 
         orderExtrasToSave.push({
           quantity: item.quantity,
-          unit_price: roundUpToNearest(unit_price_after_discount).toString(),
+          unit_price: roundUpToNearest(unit_price_after_discount, 1000).toString(),
           order: newOrder,
           product: item.product,
           status: Number(orderBill.payment_method_id) === Method.CASH ? StatusOrder.SUCCESS : StatusOrder.PENDING,
@@ -402,6 +402,9 @@ export class OrderService {
   }
 
   private async validateBeforeOrder(scheduleId: string, userId: string, requestSeatIds: string[]): Promise<void> {
+    console.log('userId', userId);
+    console.log('scheduleId', scheduleId);
+    console.log(`seat-hold-${userId}`);
     const keys = await this.redisClient.keys(`seat-hold-*`);
 
     if (!keys.length) return;
@@ -430,16 +433,20 @@ export class OrderService {
       if (isSeatHeld) {
         throw new ConflictException('Some seats are already held by another user. Please try again later.');
       }
-      // delete redis ky of this user
-      await this.redisClient.del(`seat-hold-${userId}`);
+     
     }
+    // delete redis key of this user
+    await this.redisClient.del(`seat-hold-${userId}`);
 
   }
 
 
   private async getPaymentCode(
     orderBill: OrderBillType,
-    clientIp: string
+    clientIp: string,
+    promotionDiscount: number,
+    isPercentage: boolean,
+    orderExtras?: Product[],
   ) {
     switch (Number(orderBill.payment_method_id)) {
       case Method.MOMO:
@@ -447,11 +454,11 @@ export class OrderService {
       case Method.PAYPAL:
         return this.paypalService.createOrderPaypal(orderBill);
       case Method.VISA:
-        return this.visaService.createOrderVisa( orderBill);
+        return this.visaService.createOrderVisa(orderBill);
       case Method.VNPAY:
         return this.vnpayService.createOrderVnPay(orderBill, clientIp);
       case Method.ZALOPAY:
-        return this.zalopayService.createOrderZaloPay(orderBill);
+        return this.zalopayService.createOrderZaloPay(orderBill, orderExtras, promotionDiscount, isPercentage);
       default:
         return {
           payUrl: 'Payment successful by Cash',

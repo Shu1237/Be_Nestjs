@@ -134,6 +134,8 @@ export class PayPalService {
                 throw new Error('Payment not completed on PayPal');
             }
         }
+        // check signature 
+    
 
         transaction.status = StatusOrder.SUCCESS;
         order.status = StatusOrder.SUCCESS;

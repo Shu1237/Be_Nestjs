@@ -188,3 +188,15 @@ export type ProductType ={
   discount?:string;
   type: string;
 }
+
+
+export type ZaloReturnQuery = {
+  appid: string;
+  apptransid: string;
+  pmcid: string;
+  bankcode?: string;
+  amount: string;
+  discountamount: string;
+  status: string;
+  checksum: string;
+}
