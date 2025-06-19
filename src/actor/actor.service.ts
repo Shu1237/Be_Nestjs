@@ -28,7 +28,9 @@ export class ActorService {
         `Actor with name "${createActorDto.name}" already exists`,
       );
     }
-    await this.actorRepository.create(createActorDto);
+
+    const actor = this.actorRepository.create(createActorDto);
+    await this.actorRepository.save(actor);
     return {
       msg: 'Actor created successfully',
     };
