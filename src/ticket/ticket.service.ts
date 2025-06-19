@@ -16,6 +16,11 @@ export class TicketService {
       id: ticket.id,
       is_used: ticket.is_used,
       status: ticket.status,
+      ticketType: {
+        id: ticket.ticketType.id,
+        name: ticket.ticketType.ticket_name,
+        audience_type: ticket.ticketType.audience_type,
+      },
       schedule: {
         start_movie_time: ticket.schedule.start_movie_time,
         end_movie_time: ticket.schedule.end_movie_time,
@@ -35,6 +40,10 @@ export class TicketService {
         row: ticket.seat.seat_row,
         column: ticket.seat.seat_column,
       },
+      seat_type:{
+        id: ticket.seat.seatType.id,
+        name: ticket.seat.seatType.seat_type_name,
+      }
     };
   }
 
@@ -95,6 +104,10 @@ export class TicketService {
               row: ticket.seat.seat_row,
               column: ticket.seat.seat_column,
             },
+            seat_type: {
+              id: ticket.seat.seatType.id,
+              name: ticket.seat.seatType.seat_type_name,
+            }
           };
         })
       )
