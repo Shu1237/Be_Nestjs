@@ -17,7 +17,8 @@ export class CinemaRoomService {
     private readonly cinemaRoomRepository: Repository<CinemaRoom>,
   ) {}
 
-  async create(createCinemaRoomDto: CreateCinemaRoomDto): Promise<CinemaRoom> {
+  async create(createCinemaRoomDto: CreateCinemaRoomDto): 
+  Promise<{ message: string }> {
     const existing = await this.cinemaRoomRepository.findOne({
       where: { cinema_room_name: createCinemaRoomDto.cinema_room_name },
     });
@@ -25,7 +26,10 @@ export class CinemaRoomService {
       throw new BadRequestException('Tên phòng chiếu đã tồn tại');
     }
     const cinemaRoom = this.cinemaRoomRepository.create(createCinemaRoomDto);
-    return await this.cinemaRoomRepository.save(cinemaRoom);
+    await this.cinemaRoomRepository.save(cinemaRoom);
+    return {
+      message: 'Cinema room created successfully',
+    }
   }
 
   async findAll(): Promise<CinemaRoom[]> {
@@ -45,7 +49,7 @@ export class CinemaRoomService {
   async update(
     id: number,
     updateCinemaRoomDto: UpdateCinemaRoomDto,
-  ): Promise<CinemaRoom> {
+  ): Promise<{ message: string } > {
     const existing = await this.cinemaRoomRepository.findOne({
       where: { cinema_room_name: updateCinemaRoomDto.cinema_room_name },
     });
@@ -54,12 +58,16 @@ export class CinemaRoomService {
     }
     const cinemaRoom = await this.findOne(id);
     Object.assign(cinemaRoom, updateCinemaRoomDto);
-    return await this.cinemaRoomRepository.save(cinemaRoom);
+     await this.cinemaRoomRepository.save(cinemaRoom);
+     return {
+      message: 'Cinema room updated successfully',
+     }
   }
 
-  async remove(id: number): Promise<void> {
+  async remove(id: number): Promise<{ msg: string }> {
     const cinemaRoom = await this.findOne(id);
     await this.cinemaRoomRepository.remove(cinemaRoom);
+    return { msg: 'Cinema Room deleted successfully' };
   }
   async softDeleteCinemaRoom(
     id: number,

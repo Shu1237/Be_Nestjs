@@ -16,12 +16,7 @@ import {
 import { ActorService } from './actor.service';
 import { CreateActorDto } from './dtos/createActor.dto';
 import { UpdateActorDto } from './dtos/updateActor.dto';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/guards/jwt.guard';
 import { Actor } from 'src/typeorm/entities/cinema/actor';
 import { Role } from 'src/enum/roles.enum';
@@ -109,8 +104,6 @@ export class ActorController {
     }
     return await this.actorService.removeActor(+id);
   }
-
-  
 
   // @UseGuards(JwtAuthGuard)
   // @Patch(':actorId/remove-movie/:movieId')
