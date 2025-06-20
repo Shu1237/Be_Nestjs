@@ -20,63 +20,64 @@ export class SeatAutoReleaseService {
 
     ) { }
 
-   @Cron('*/10 * * * *') // mỗi 10 phút
+    @Cron('*/10 * * * *', {
+        name: 'clear-expired-seats'
+    })
     async handleClearExpiredSeats() {
-        const keys = await this.redisClient.keys('seat-hold-*');
-        const currentTime = Date.now();
-        for (const key of keys) {
-            this.logger.log(`Processing key: ${key}`);
-            try {
-                const redisRaw = await this.redisClient.get(key);
-                if (!redisRaw) continue;
+        // const keys = await this.redisClient.keys('seat-hold-*');
+        // const currentTime = Date.now();
+        // for (const key of keys) {
+        //     this.logger.log(`Processing key: ${key}`);
+        //     try {
+        //         const redisRaw = await this.redisClient.get(key);
+        //         if (!redisRaw) continue;
 
-                const holdData: HoldSeatType = JSON.parse(redisRaw);
+        //         const holdData: HoldSeatType = JSON.parse(redisRaw);
 
-                if (typeof holdData.expiresAt === 'number' && holdData.expiresAt > currentTime) {
-                    continue;
-                }
+        //         if (typeof holdData.expiresAt === 'number' && holdData.expiresAt > currentTime) {
+        //             continue;
+        //         }
 
-                const { seatIds, schedule_id } = holdData;
+        //         const { seatIds, schedule_id } = holdData;
 
-                // tìm và cập nhật ghế
-                const foundSeats = await this.scheduleSeatRepository.find({
-                    where: {
-                        schedule: { id: schedule_id },
-                        seat: { id: In(seatIds) },
-                    },
-                    relations: ['seat', 'schedule'],
-                });
+        //         // tìm và cập nhật ghế
+        //         const foundSeats = await this.scheduleSeatRepository.find({
+        //             where: {
+        //                 schedule: { id: schedule_id },
+        //                 seat: { id: In(seatIds) },
+        //             },
+        //             relations: ['seat', 'schedule'],
+        //         });
 
-                if (foundSeats.length === 0) continue;
+        //         if (foundSeats.length === 0) continue;
 
-                for (const seat of foundSeats) {
-                    if (seat.status === StatusSeat.HELD) {
-                        seat.status = StatusSeat.NOT_YET;
-                    }
-                }
+        //         for (const seat of foundSeats) {
+        //             if (seat.status === StatusSeat.HELD) {
+        //                 seat.status = StatusSeat.NOT_YET;
+        //             }
+        //         }
 
-                await this.scheduleSeatRepository.save(foundSeats);
+        //         await this.scheduleSeatRepository.save(foundSeats);
 
-                // xóa Redis key
-                await this.redisClient.del(key);
+        //         // xóa Redis key
+        //         await this.redisClient.del(key);
 
-                // socket thông báo cho tất cả client
-                try {
-                    this.gateway.server.emit('seat_release_update', {
-                        seatIds: holdData.seatIds,
-                        schedule_id: holdData.schedule_id,
-                        userId: key.split('seat-hold-')[1],
-                        status: SeatStatus.NOT_YET,
-                    });
-                } catch (emitErr) {
-                    this.logger.warn('Emit socket error:', emitErr);
-                }
+        //         // socket thông báo cho tất cả client
+        //         try {
+        //             this.gateway.server.emit('seat_hold_update', {
+        //                 seatIds: seatIds,
+        //                 schedule_id: schedule_id,
+        //                 status: SeatStatus.NOT_YET,
+        //             });
+        //         } catch (emitErr) {
+        //             this.logger.warn('Emit socket error:', emitErr);
+        //         }
 
 
-            } catch (error) {
-                this.logger.error(' Error in handleClearExpiredSeats:', error);
-            }
-        }
+        //     } catch (error) {
+        //         this.logger.error(' Error in handleClearExpiredSeats:', error);
+        //     }
+        // }
     }
 
 }

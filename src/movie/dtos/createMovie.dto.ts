@@ -21,6 +21,21 @@ export class CreateMovieDto {
   id_Actor?: number[];
 
   @IsOptional()
+  @IsString()
+  @ApiProperty({ description: 'Giới hạn độ tuổi của bộ phim', example: 18 })
+  limited_age?: string;
+
+  @IsOptional()
+  @IsString()
+  @ApiProperty({ description: 'URL của trailer phim', example: 'https://example.com/trailer.mp4' })
+  trailer?: string;
+
+  @IsOptional()
+  @IsString()
+  @ApiProperty({ description: 'Quốc gia sản xuất phim', example: 'USA' })
+  nation?: string;
+
+  @IsOptional()
   @IsArray()
   @IsInt({ each: true })
   @ApiProperty({

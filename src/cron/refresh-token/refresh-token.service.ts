@@ -12,9 +12,11 @@ export class RefreshTokenService {
     private readonly logger = new Logger(RefreshTokenService.name);
     constructor(
         @InjectRepository(RefreshToken) private readonly refreshTokenRepository: Repository<RefreshToken>,
-    ){}
+    ) { }
 
-    @Cron('0 0 * * *') // Mỗi ngày lúc 00:00
+    @Cron('0 0 * * *', {
+        name: 'clear-expired-refresh-tokens'
+    })
     async handleCron() {
         this.logger.log('Called when the current second is 0');
         const currentDate = new Date();

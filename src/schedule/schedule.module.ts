@@ -5,9 +5,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Schedule } from '../typeorm/entities/cinema/schedule';
 import { Movie } from 'src/typeorm/entities/cinema/movie';
 import { CinemaRoom } from 'src/typeorm/entities/cinema/cinema-room';
+import { Version } from 'src/typeorm/entities/cinema/version';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Schedule, Movie, CinemaRoom])],
+  imports: [TypeOrmModule.forFeature([Schedule, Movie, CinemaRoom, Version])],
   controllers: [ScheduleController],
   providers: [ScheduleService],
 })

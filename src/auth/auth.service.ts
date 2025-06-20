@@ -15,20 +15,12 @@ import type {
   LogoutType,
 } from 'src/utils/type';
 import { Repository } from 'typeorm';
-
-import { comparePassword, hashPassword } from 'src/utils/helper';
 import { JwtService } from '@nestjs/jwt';
 import { v4 as uuidv4 } from 'uuid';
-
 import { MailerService } from '@nestjs-modules/mailer';
 import { randomInt } from 'crypto';
-
 import { User } from 'src/typeorm/entities/user/user';
-
-import { Member } from 'src/typeorm/entities/user/member';
 import { RefreshToken } from 'src/typeorm/entities/user/refresh-token';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
 import { Role } from 'src/typeorm/entities/user/roles';
 import { Role as RoleEnum } from 'src/enum/roles.enum';
 
@@ -41,7 +33,6 @@ export class AuthService {
   constructor(
     @InjectRepository(User) private userRepository: Repository<User>,
     @InjectRepository(Role) private roleRepository: Repository<Role>,
-    @InjectRepository(Member) private memberRepository: Repository<Member>,
     @InjectRepository(RefreshToken) private refreshTokenRepository: Repository<RefreshToken>,
 
     private jwtService: JwtService,
@@ -207,23 +198,18 @@ export class AuthService {
       if (!role) {
         throw new NotFoundException('Default role not found');
       }
-      const newUser = await this.userRepository.save({
+      await this.userRepository.save({
         id: sub,
         username: name,
         email: email,
         avatar: picture,
+        score: 0,
         role: role,
       });
-      if (roleId === RoleEnum.USER) {
-        await this.memberRepository.save({
-          score: 0,
-          user: newUser,
-        });
-      }
+
       payload = {
         account_id: sub,
         username: name,
-
         role_id: role.role_id,
       };
     }

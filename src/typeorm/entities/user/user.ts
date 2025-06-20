@@ -8,10 +8,11 @@ import {
   OneToOne,
   PrimaryColumn,
 } from 'typeorm';
-import { Member } from './member';
 import { RefreshToken } from './refresh-token';
 import { Role } from './roles';
 import { Order } from '../order/order';
+import { HistoryScore } from '../order/history_score';
+
 
 @Entity('user')
 export class User {
@@ -26,6 +27,9 @@ export class User {
 
   @Column({ type: 'varchar', length: 500, nullable: true })
   avatar?: string;
+
+  @Column({ type: 'int', default: 0 })
+  score: number;
 
   @Column({ type: 'boolean', default: true })
   status: boolean;
@@ -43,6 +47,6 @@ export class User {
   @OneToMany(() => Order, (order) => order.user)
   orders: Order[];
 
-  @OneToOne(() => Member, (member) => member.account)
-  member: Member;
+  @OneToMany(() => HistoryScore, (historyScore) => historyScore.user)
+  historyScores: HistoryScore[];
 }

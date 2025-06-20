@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Ticket } from 'src/typeorm/entities/order/ticket';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { User } from 'src/typeorm/entities/user/user';
 
 @Injectable()
@@ -14,8 +14,16 @@ export class TicketService {
   private summaryTicket(ticket: Ticket) {
     return {
       id: ticket.id,
+      is_used: ticket.is_used,
+      status: ticket.status,
+      ticketType: {
+        id: ticket.ticketType.id,
+        name: ticket.ticketType.ticket_name,
+        audience_type: ticket.ticketType.audience_type,
+      },
       schedule: {
-        show_date: ticket.schedule.show_date,
+        start_movie_time: ticket.schedule.start_movie_time,
+        end_movie_time: ticket.schedule.end_movie_time,
         movie: {
           id: ticket.schedule.movie.id,
           name: ticket.schedule.movie.name,
@@ -32,6 +40,10 @@ export class TicketService {
         row: ticket.seat.seat_row,
         column: ticket.seat.seat_column,
       },
+      seat_type:{
+        id: ticket.seat.seatType.id,
+        name: ticket.seat.seatType.seat_type_name,
+      }
     };
   }
 
@@ -66,13 +78,16 @@ export class TicketService {
           const ticket = detail.ticket;
           return {
             id: ticket.id,
+            is_used: ticket.is_used,
+            status: ticket.status,
             ticketType: {
               id: ticket.ticketType.id,
               name: ticket.ticketType.ticket_name,
               audience_type: ticket.ticketType.audience_type,
             },
             schedule: {
-              show_date: ticket.schedule.show_date,
+              start_movie_time: ticket.schedule.start_movie_time,
+              end_movie_time: ticket.schedule.end_movie_time,
               movie: {
                 id: ticket.schedule.movie.id,
                 name: ticket.schedule.movie.name,
@@ -89,6 +104,10 @@ export class TicketService {
               row: ticket.seat.seat_row,
               column: ticket.seat.seat_column,
             },
+            seat_type: {
+              id: ticket.seat.seatType.id,
+              name: ticket.seat.seatType.seat_type_name,
+            }
           };
         })
       )
@@ -117,20 +136,19 @@ export class TicketService {
 
 
   async markTicketsAsUsed(ticketIds: string[]) {
-
-    for (const ticketId of ticketIds) {
-      const ticket = await this.ticketRepository.findOne({
-        where: { id: ticketId },
-      });
-      if (!ticket) {
-        throw new Error(`Ticket with ID ${ticketId} not found`);
-      }
-      ticket.is_used = true;
-      await this.ticketRepository.save(ticket);
+    const tickets = await this.ticketRepository.find({
+      where: { id: In(ticketIds) },
+    });
+    if (tickets.length === 0) {
+      throw new Error('No tickets found for the provided IDs');
     }
+    for (const ticket of tickets) {
+      ticket.is_used = true;
+    }
+    await this.ticketRepository.save(tickets);
     return {
       msg: 'Tickets marked as used successfully',
     };
-    }
   }
+}
 

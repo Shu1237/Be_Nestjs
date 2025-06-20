@@ -1,4 +1,5 @@
 import { Role } from 'src/enum/roles.enum';
+import { OrderExtra } from 'src/typeorm/entities/order/order-extra';
 
 export type CreateAccountType = {
   address: string;
@@ -39,7 +40,10 @@ export type GoogleUserType = {
   avatarUrl: string;
   password?: string;
 };
-
+export type ProductOrderItem = {
+  product_id: number;
+  quantity: number;
+};
 export type SeatInfo = {
   id: string;
   seat_row: string;
@@ -49,11 +53,11 @@ export type SeatInfo = {
 
 export type OrderBillType = {
   payment_method_id: string;
-  booking_date: Date;
   total_prices: string;
   promotion_id: number;
   schedule_id: number;
   seats: SeatInfo[];
+  products?: ProductOrderItem[];
 };
 
 export type CreatePromotionType = {
@@ -111,6 +115,9 @@ export type IMovie = {
   duration: number;
   from_date: Date;
   to_date: Date;
+  limited_age: string;
+  trailer: string;
+  nation: string;
   production_company: string;
   thumbnail: string;
   banner: string;
@@ -123,15 +130,20 @@ export type IMovie = {
 
 export type ISchedule = {
   id: number;
-  show_date: Date;
+  start_movie_time: Date;
+  end_movie_time: Date;
   movie: IMovieBasic;
   cinema_room_id: number;
+   version?: { id: number; name: string } | null; // Cho phép giá trị null
+
+ 
   // Chỉ chứa id và name
 };
 
 export type IMovieBasic = {
   id: number;
   name: string;
+  // versions: IVersion[]; // Danh sách các phiên bản của phim
 };
 
 
@@ -140,7 +152,8 @@ export type IMovieBasic = {
 export type TicketSummary = {
   id: string;
   schedule: {
-    show_date: string;
+    start_movie_time: Date;
+    end_movie_time: Date;
     movie: {
       id: number;
       name: string;
@@ -162,13 +175,32 @@ export type TicketSummary = {
 export type HoldSeatType = {
   seatIds: string[];
   schedule_id: number;
-  expiresAt?: number; 
 };
 
 export type LoginAzureType = {
-  sub:string;
+  sub: string;
   email: string;
-  picture?:string;
+  picture?: string;
   name: string;
   role_id?: number;
+}
+export type ProductType ={
+  id:number;
+  name:string;
+  price:string;
+  category?:string;
+  discount?:string;
+  type: string;
+}
+
+
+export type ZaloReturnQuery = {
+  appid: string;
+  apptransid: string;
+  pmcid: string;
+  bankcode?: string;
+  amount: string;
+  discountamount: string;
+  status: string;
+  checksum: string;
 }

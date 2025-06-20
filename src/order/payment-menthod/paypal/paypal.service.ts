@@ -6,16 +6,18 @@ import { Transaction } from 'src/typeorm/entities/order/transaction';
 import { Order } from 'src/typeorm/entities/order/order';
 import { Ticket } from 'src/typeorm/entities/order/ticket';
 import { Seat } from 'src/typeorm/entities/cinema/seat';
-import { Member } from 'src/typeorm/entities/user/member';
 import { OrderBillType } from 'src/utils/type';
 import { Promotion } from 'src/typeorm/entities/promotion/promotion';
 import { TicketType } from 'src/typeorm/entities/order/ticket-type';
 import { changeVnToUSD } from 'src/utils/helper';
 import { Method } from 'src/enum/payment-menthod.enum';
-import { MailerService } from '@nestjs-modules/mailer';
 import { MomoService } from '../momo/momo.service';
 import { Role } from 'src/enum/roles.enum';
 import { StatusOrder } from 'src/enum/status-order.enum';
+import { HistoryScore } from 'src/typeorm/entities/order/history_score';
+import { User } from 'src/typeorm/entities/user/user';
+import { MyGateWay } from 'src/gateways/seat.gateway';
+import { OrderExtra } from 'src/typeorm/entities/order/order-extra';
 
 @Injectable()
 export class PayPalService {
@@ -28,15 +30,20 @@ export class PayPalService {
         private readonly ticketRepository: Repository<Ticket>,
         @InjectRepository(Seat)
         private readonly seatRepository: Repository<Seat>,
-        @InjectRepository(Member)
-        private readonly memberRepository: Repository<Member>,
+        @InjectRepository(HistoryScore)
+        private readonly historyScoreRepository: Repository<HistoryScore>,
+        @InjectRepository(User)
+        private readonly userRepository: Repository<User>,
         @InjectRepository(Promotion)
         private readonly promotionRepository: Repository<Promotion>,
         @InjectRepository(TicketType)
         private readonly ticketTypeRepository: Repository<TicketType>,
+        @InjectRepository(OrderExtra)
+        private readonly orderExtraRepository: Repository<OrderExtra>,
 
-        private mailerService: MailerService,
-        private momoService: MomoService
+
+        private momoService: MomoService,
+        private readonly gateway: MyGateWay,
     ) { }
 
     async generateAccessToken() {
@@ -53,45 +60,14 @@ export class PayPalService {
         return response.data.access_token
     }
 
-    async getSeatBasePrice(seatId: string): Promise<number> {
-        const seat = await this.seatRepository.findOne({
-            where: { id: seatId },
-            relations: ['seatType']
-        });
-        if (!seat) throw new Error(`Seat with ID ${seatId} not found`);
-        return seat.seatType.seat_type_price;
-    }
 
-    async getTicketDiscount(audienceType: string): Promise<number> {
-        const ticketType = await this.ticketTypeRepository.findOne({
-            where: { audience_type: audienceType },
-        });
-        if (!ticketType) throw new Error(`Ticket type not found for audience: ${audienceType}`);
-        return Number(ticketType.discount);
-    }
 
     async createOrderPaypal(item: OrderBillType) {
         const accessToken = await this.generateAccessToken();
         if (!accessToken) throw new Error('Failed to generate access token');
 
-        const promotion = item.promotion_id
-            ? await this.promotionRepository.findOne({ where: { id: item.promotion_id } })
-            : null;
-        const promotionDiscount = promotion ? Number(promotion.discount) : 0;
 
-        let totalPriceVND = 0;
-
-        for (const seat of item.seats) {
-            const basePrice = await this.getSeatBasePrice(seat.id);
-            const ticketDiscount = await this.getTicketDiscount(seat.audience_type);
-
-            const discountedPrice = basePrice * (1 - ticketDiscount / 100);
-            const finalPrice = discountedPrice * (1 - promotionDiscount / 100);
-
-            totalPriceVND += finalPrice;
-        }
-
-        const totalUSD = changeVnToUSD(totalPriceVND.toString());
+        const totalUSD = changeVnToUSD(item.total_prices.toString());
 
         const response = await axios.post(
             `${process.env.PAYPAL_BASE_URL}/v2/checkout/orders`,
@@ -151,70 +127,66 @@ export class PayPalService {
         if (transaction.status !== StatusOrder.PENDING) {
             throw new NotFoundException('Transaction is not in pending state');
         }
+        const order = transaction.order;
         if (transaction.paymentMethod.id === Method.PAYPAL) {
             const captureResult = await this.captureOrderPaypal(transaction.transaction_code);
             if (captureResult.status !== 'COMPLETED') {
                 throw new Error('Payment not completed on PayPal');
             }
         }
+        // check signature 
+    
+
         transaction.status = StatusOrder.SUCCESS;
+        order.status = StatusOrder.SUCCESS;
+
         await this.transactionRepository.save(transaction);
+        const savedOrder = await this.orderRepository.save(order);
 
-        if (!transaction.order) throw new NotFoundException('Order not found for this transaction');
-
-        transaction.order.status = 'success';
-        await this.orderRepository.save(transaction.order);
-        const order = transaction.order;
-
-        if ((order.user?.member && order.user.role.role_id === Role.USER)) {
-            order.user.member.score += order.add_score;
-            await this.memberRepository.save(order.user.member);
-        }
-
-        for (const orderDetail of order.orderDetails) {
-            const ticket = orderDetail.ticket;
-            if (ticket) {
-                ticket.status = true;
-                await this.ticketRepository.save(ticket);
-            }
-        }
-        try {
-            const firstTicket = order.orderDetails[0]?.ticket;
-            await this.mailerService.sendMail({
-                to: order.user.email,
-                subject: 'Your Order Successful',
-                template: 'order-confirmation',
-                context: {
-                    user: order.user.username,
-                    transactionCode: transaction.transaction_code,
-                    bookingDate: order.booking_date,
-                    total: order.total_prices,
-                    addScore: order.add_score,
-                    paymentMethod: transaction.paymentMethod.name,
-                    year: new Date().getFullYear(),
-
-                    // Thông tin chung 1 lần
-                    movieName: firstTicket?.schedule.movie.name,
-                    showDate: firstTicket?.schedule.show_date,
-                    roomName: firstTicket?.schedule.cinemaRoom.cinema_room_name,
-
-                    // Danh sách ghế
-                    seats: order.orderDetails.map(detail => ({
-                        row: detail.ticket.seat.seat_row,
-                        column: detail.ticket.seat.seat_column,
-                        ticketType: detail.ticket.ticketType.ticket_name,
-                        price: detail.total_each_ticket,
-                    })),
-                },
+        // Cộng điểm cho người dùng
+        if (order.user?.role.role_id === Role.USER) {
+            const orderScore = Math.floor(Number(order.total_prices) / 1000);
+            const addScore = orderScore - (order.promotion?.exchange ?? 0);
+            order.user.score += addScore;
+            await this.userRepository.save(order.user);
+            // history score
+            await this.historyScoreRepository.save({
+                score_change: addScore,
+                user: order.user,
+                order: savedOrder,
             });
-        } catch (error) {
-            throw new NotFoundException('Failed to send confirmation email');
-        }
+            for (const orderDetail of order.orderDetails) {
+                const ticket = orderDetail.ticket;
+                if (ticket) {
+                    ticket.status = true;
+                    await this.ticketRepository.save(ticket);
+                }
+            }
+            // 
+            if (order.orderExtras && order.orderExtras.length > 0) {
+                for (const extra of order.orderExtras) {
+                    extra.status = StatusOrder.SUCCESS;
+                    await this.orderExtraRepository.save(extra);
+                }
+            }
 
-        return {
-            msg: 'Payment successful',
-            order
-        };
+            try {
+                await this.momoService.sendOrderConfirmationEmail(order, transaction);
+            } catch (error) {
+                console.error('Mailer error:', error);
+                throw new NotFoundException('Failed to send confirmation email');
+            }
+            // send socket
+            this.gateway.onBookSeat({
+                schedule_id: order.orderDetails[0].ticket.schedule.id,
+                seatIds: order.orderDetails.map(detail => detail.ticket.seat.id),
+
+            })
+            return {
+                msg: 'Payment successful',
+                order
+            };
+        }
     }
 
 

@@ -1,4 +1,3 @@
-// create-order-bill.dto.ts
 import {
   IsArray,
   IsDate,
@@ -29,6 +28,16 @@ class SeatInfoDto {
   audience_type: 'adult' | 'student' | 'child';
 }
 
+class ProductItemDto {
+  @ApiProperty({ example: 1, description: 'Product ID' })
+  @IsNumber()
+  product_id: number;
+
+  @ApiProperty({ example: 2, description: 'Quantity' })
+  @IsNumber()
+  quantity: number;
+}
+
 export class CreateOrderBillDto {
   @ApiProperty({ example: "1", description: 'Payment method ID' })
   @IsString()
@@ -57,4 +66,11 @@ export class CreateOrderBillDto {
   @ValidateNested({ each: true })
   @Type(() => SeatInfoDto)
   seats: SeatInfoDto[];
+
+  @ApiPropertyOptional({ type: [ProductItemDto], description: 'List of products ordered' })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ProductItemDto)
+  products?: ProductItemDto[];
 }

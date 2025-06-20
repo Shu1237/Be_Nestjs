@@ -9,7 +9,7 @@ import { RefreshTokenService } from "./refresh-token/refresh-token.service";
 
 
 @Module({
-    imports: [ RedisModule,MyGateWayModule,TypeOrmModule.forFeature([RefreshToken,ScheduleSeat])], // Add your entities here if needed
+    imports: [ RedisModule,MyGateWayModule,TypeOrmModule.forFeature([RefreshToken,ScheduleSeat])], 
     providers: [SeatAutoReleaseService, RefreshTokenService],
     exports: [SeatAutoReleaseService , RefreshTokenService],
     controllers: [],

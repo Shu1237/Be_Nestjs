@@ -1,114 +1,138 @@
 import {
-    WebSocketGateway,
-    SubscribeMessage,
-    ConnectedSocket,
-    MessageBody,
-    OnGatewayConnection,
-    WebSocketServer,
+  WebSocketGateway,
+  SubscribeMessage,
+  ConnectedSocket,
+  MessageBody,
+  OnGatewayConnection,
+  WebSocketServer,
 } from '@nestjs/websockets';
-
-import { Socket } from 'socket.io';
-import { OnModuleInit } from '@nestjs/common';
-import { Server } from 'socket.io';
-import { JwtService } from '@nestjs/jwt';
+import { OnModuleInit, Logger } from '@nestjs/common';
+import { Server, Socket } from 'socket.io';
 import * as jwt from 'jsonwebtoken';
-import { HoldSeatType, JWTUserType } from 'src/utils/type';
+
 import { SeatService } from 'src/seat/seat.service';
 import { SeatStatus } from 'src/typeorm/entities/cinema/schedule_seat';
-
-
-
+import { HoldSeatType, JWTUserType } from 'src/utils/type';
 
 @WebSocketGateway({ cors: { origin: '*' } })
 export class MyGateWay implements OnGatewayConnection, OnModuleInit {
-    constructor(
-        private seatService: SeatService,
-    ) { }
-    @WebSocketServer()
-    server: Server;
-    onModuleInit() {
-        this.server.on('connection', (socket) => {
-            console.log('Client connected:', socket.id);
-        });
-    }
-    async handleConnection(client: Socket) {
-        const jwtSecret = process.env.JWT_SECRET_KEY;
-        if (!jwtSecret) {
-            console.error('JWT secret key is not defined');
-            client.disconnect(); // Đá kết nối nếu không có secret
-            return;
-        }
-        const token = client.handshake.query.token as string;
-        try {
-            const payload = jwt.verify(token, jwtSecret);
-            client.data.user = payload as JWTUserType;
+  private readonly logger = new Logger(MyGateWay.name);
 
-        } catch (err) {
-            console.error('Socket JWT invalid:', err.message);
-            client.disconnect();
-        }
-    }
-    OnModuleInit() {
-        this.server.on('connection', (socket) => {
-            console.log('Client connected:', socket.id);
-        });
+  constructor(private seatService: SeatService) {}
+
+  @WebSocketServer()
+  server: Server;
+
+  // Khi server khởi động
+  onModuleInit() {
+    this.server.on('connection', (socket) => {
+      this.logger.log(`Client connected: ${socket.id}`);
+
+      socket.on('disconnect', () => {
+        this.logger.log(`Client disconnected: ${socket.id}`);
+      });
+    });
+  }
+
+  // Khi client connect lần đầu
+  async handleConnection(client: Socket) {
+    const jwtSecret = process.env.JWT_SECRET_KEY;
+    if (!jwtSecret) {
+      this.logger.error('JWT secret key is not defined');
+      client.disconnect();
+      return;
     }
 
-    @SubscribeMessage('hold_seat')
-    async onHoldSeat(
-        @MessageBody() data: HoldSeatType,
-        @ConnectedSocket() client: Socket,
-    ) {
-        const user = client.data.user as JWTUserType;
+    const token = client.handshake.query.token as string;
+    try {
+      const payload = jwt.verify(token, jwtSecret);
+      client.data.user = payload as JWTUserType;
+    } catch (err) {
+      this.logger.warn(` Socket JWT invalid: ${err.message}`);
+      client.disconnect();
+    }
+  }
 
-        if (!data?.seatIds?.length || !data.schedule_id) {
-            //only this client send data
-            client.emit('error', { msg: 'Invalid seat data' });
-            return;
-        }
+  // Client tham gia vào lịch chiếu
+  @SubscribeMessage('join_schedule')
+  handleJoinSchedule(
+    @MessageBody() data: { scheduleId: number },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const room = `schedule-${data.scheduleId}`;
+    client.join(room);
+    client.emit('joined_room', { room });
+    this.logger.log(`Client ${client.id} joined room: ${room}`);
+  }
 
-        try {
-            await this.seatService.holdSeat(data, user);
+  // Client giữ ghế
+  @SubscribeMessage('hold_seat')
+  async onHoldSeat(
+    @MessageBody() data: HoldSeatType,
+    @ConnectedSocket() client: Socket,
+  ) {
+    const user = client.data.user as JWTUserType;
 
-            // send to all clients
-            this.server.emit('seat_hold_update', {
-                seatIds: data.seatIds,
-                schedule_id: data.schedule_id,
-                userId: user.account_id,
-                status: SeatStatus.HELD
-            });
-        } catch (err) {
-            client.emit('error', { msg: err.message || 'Failed to hold seat' });
-        }
+    if (!data?.seatIds?.length || !data.schedule_id) {
+      client.emit('error', { msg: 'Invalid seat data' });
+      return;
     }
 
+    try {
+      await this.seatService.holdSeat(data, user);
 
-    // @SubscribeMessage('release_seat')
-    // async onReleaseSeat(
-    //     @MessageBody()
-    //     data: HoldSeatType,
-    //     @ConnectedSocket() client: Socket,
-    // ) {
-    //     const user = client.data.user as JWTUserType;
+      // Gửi đến room cụ thể
+      this.server.to(`schedule-${data.schedule_id}`).emit('seat_hold_update', {
+        seatIds: data.seatIds,
+        schedule_id: data.schedule_id,
+        status: SeatStatus.HELD,
+      });
+    } catch (err) {
+      client.emit('error', { msg: err.message || 'Failed to hold seat' });
+    }
+  }
 
-    //     if (!data?.seatIds?.length || !data.schedule_id) {
-    //         //only this client send data
-    //         client.emit('error', { msg: 'Invalid seat data' });
-    //         return;
-    //     }
+  // Client huỷ giữ ghế
+  @SubscribeMessage('cancel_hold_seat')
+  async onCancelHoldSeat(
+    @MessageBody() data: HoldSeatType,
+    @ConnectedSocket() client: Socket,
+  ) {
+    const user = client.data.user as JWTUserType;
 
-    //     await this.seatService.cancelHoldSeat(data, user)
-    //         .then(() => {
-    //             // send to all clients
-    //             this.server.emit('seat_release_update', {
-    //                 seatIds: data.seatIds,
-    //                 schedule_id: data.schedule_id,
-    //                 userId: user.account_id,
-    //                 status: 'RELEASE',
-    //             });
-    //         })
-    //         .catch(err => {
-    //             client.emit('error', { msg: err.message || 'Failed to release seat' });
-    //         });
-    // }
+    if (!data?.seatIds?.length || !data.schedule_id) {
+      client.emit('error', { msg: 'Invalid seat data' });
+      return;
+    }
+
+    try {
+      await this.seatService.cancelHoldSeat(data, user);
+
+      this.server.to(`schedule-${data.schedule_id}`).emit('seat_cancel_hold_update', {
+        seatIds: data.seatIds,
+        schedule_id: data.schedule_id,
+        userId: user.account_id,
+        status: SeatStatus.NOT_YET,
+      });
+    } catch (err) {
+      client.emit('error', { msg: err.message || 'Failed to cancel hold seat' });
+    }
+  }
+
+  // Client đặt ghế thành công
+  @SubscribeMessage('book_seat')
+  async onBookSeat(
+    @MessageBody() data: HoldSeatType,
+  ) {
+    if (!data?.seatIds?.length || !data.schedule_id) {
+      this.server.to(`schedule-${data.schedule_id}`).emit('error', { msg: 'Invalid seat data' });
+      return;
+    }
+
+    this.server.to(`schedule-${data.schedule_id}`).emit('seat_booked_update', {
+      seatIds: data.seatIds,
+      schedule_id: data.schedule_id,
+      status: SeatStatus.BOOKED,
+    });
+  }
 }
