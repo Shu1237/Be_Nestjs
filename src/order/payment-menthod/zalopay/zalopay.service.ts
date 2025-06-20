@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
+import { ForbiddenException, Inject, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import * as crypto from "crypto";
 import axios from "axios";
 import * as moment from "moment";
@@ -12,16 +12,16 @@ import { Ticket } from "src/typeorm/entities/order/ticket";
 import { User } from "src/typeorm/entities/user/user";
 import { Transaction } from "src/typeorm/entities/order/transaction";
 import { TicketType } from "src/typeorm/entities/order/ticket-type";
-import { Promotion } from "src/typeorm/entities/promotion/promotion";
 import { MomoService } from "../momo/momo.service";
 import { Role } from "src/enum/roles.enum";
 import { StatusOrder } from "src/enum/status-order.enum";
 import { HistoryScore } from "src/typeorm/entities/order/history_score";
 import { Product } from "src/typeorm/entities/item/product";
-import { applyAudienceDiscount, applyPromotion } from "src/utils/helper";
+import { applyAudienceDiscount } from "src/utils/helper";
 import { OrderExtra } from "src/typeorm/entities/order/order-extra";
 import { MyGateWay } from "src/gateways/seat.gateway";
-
+import * as jwt from "jsonwebtoken";
+import { QrCodeService } from "src/qrcode/qrcode.service";
 @Injectable()
 export class ZalopayService {
   constructor(
@@ -44,7 +44,8 @@ export class ZalopayService {
 
 
     private momoService: MomoService,
-    private mygateway: MyGateWay
+    private gateway: MyGateWay,
+    private qrCodeService: QrCodeService
   ) { }
 
   private app_id = Number(process.env.ZALO_APP_ID);
@@ -234,7 +235,25 @@ export class ZalopayService {
       order.status = StatusOrder.SUCCESS;
       await this.transactionRepository.save(transaction);
       const savedOrder = await this.orderRepository.save(order);
-      ``
+
+      // generate QR code
+      const endScheduleTime = order.orderDetails[0].ticket.schedule.end_movie_time;
+      if (!process.env.JWT_QR_CODE_SECRET) {
+        throw new ForbiddenException('JWT QR Code secret is not set');
+      }
+      const endTime = new Date(endScheduleTime).getTime();
+      const now = Date.now();
+      const expiresInSeconds = Math.floor((endTime - now) / 1000);
+
+      const jwtOrderID = jwt.sign(
+        { orderId: savedOrder.id },
+        process.env.JWT_QR_CODE_SECRET,
+        {
+          expiresIn: expiresInSeconds > 0 ? expiresInSeconds : 60 * 60,
+        }
+      );
+      const qrCode = await this.qrCodeService.generateQrCode(jwtOrderID);
+
       // Cộng điểm cho người dùng
       if (order.user?.role.role_id === Role.USER) {
         const orderScore = Math.floor(Number(order.total_prices) / 1000);
@@ -270,13 +289,14 @@ export class ZalopayService {
         throw new NotFoundException('Failed to send confirmation email');
       }
       // Gửi thông báo đến client qua WebSocket
-      this.mygateway.onBookSeat({
+      this.gateway.onBookSeat({
         schedule_id: order.orderDetails[0].ticket.schedule.id,
         seatIds: order.orderDetails.map(detail => detail.ticket.seat.id),
       });
       return {
         message: "Payment successful",
         order: savedOrder,
+        qrCode: qrCode,
       };
     } else {
       const transaction = await this.momoService.getTransactionByOrderId(apptransid);
@@ -293,6 +313,11 @@ export class ZalopayService {
           await this.momoService.changeStatusScheduleSeat([ticket.seat.id], ticket.schedule.id);
         }
       }
+      // socket return seat not yet 
+      this.gateway.onCancelBookSeat({
+        schedule_id: order.orderDetails[0].ticket.schedule.id,
+        seatIds: order.orderDetails.map(detail => detail.ticket.seat.id),
+      });
 
       return { message: 'Payment failed' };
     }

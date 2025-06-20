@@ -3,6 +3,7 @@ import { JwtAuthGuard } from 'src/guards/jwt.guard';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import Redis from 'ioredis';
 import { OrderService } from 'src/order/order.service';
+import { QrCodeService } from 'src/qrcode/qrcode.service';
 
 
 @ApiTags('Tester')
@@ -14,6 +15,7 @@ export class AuthTesterController {
     constructor(
         @Inject('REDIS_CLIENT') private readonly redisClient: Redis,
         private readonly orderService: OrderService,
+        private readonly qrCodeService: QrCodeService,
     ) { }
     @UseGuards(JwtAuthGuard)
     @Get()
@@ -97,9 +99,15 @@ export class AuthTesterController {
 
     @Post('products')
     testProduct (){
-        return this.orderService.getOrderExtraByIds([1,2.3,4,5]);
+        return this.orderService.getOrderExtraByIds([1,2,3,4,5]);
     }
     
+
+    @Post('s3')
+    testS3(){
+        const data = 'Hello, QR Code!';
+        return this.qrCodeService.generateQrCode(data);
+    }
   
 }
 

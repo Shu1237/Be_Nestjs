@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import * as crypto from 'crypto';
 import * as qs from 'qs';
 import * as moment from 'moment';
@@ -16,6 +16,8 @@ import { HistoryScore } from 'src/typeorm/entities/order/history_score';
 import { User } from 'src/typeorm/entities/user/user';
 import { MyGateWay } from 'src/gateways/seat.gateway';
 import { OrderExtra } from 'src/typeorm/entities/order/order-extra';
+import * as jwt from 'jsonwebtoken';
+import { QrCodeService } from 'src/qrcode/qrcode.service';
 
 @Injectable()
 export class VnpayService {
@@ -34,7 +36,8 @@ export class VnpayService {
     private readonly historyScoreRepository: Repository<HistoryScore>,
 
     private momoService: MomoService,
-    private mygateway: MyGateWay
+    private gateway: MyGateWay,
+    private readonly qrCodeService: QrCodeService,
   ) { }
 
   async createOrderVnPay(orderItem: OrderBillType, clientIp: string) {
@@ -130,6 +133,24 @@ export class VnpayService {
         await this.transactionRepository.save(transaction);
         const savedOrder = await this.orderRepository.save(order);
 
+        // generate QR code
+        const endScheduleTime = order.orderDetails[0].ticket.schedule.end_movie_time;
+        if (!process.env.JWT_QR_CODE_SECRET) {
+          throw new ForbiddenException('JWT QR Code secret is not set');
+        }
+        const endTime = new Date(endScheduleTime).getTime();
+        const now = Date.now();
+        const expiresInSeconds = Math.floor((endTime - now) / 1000);
+
+        const jwtOrderID = jwt.sign(
+          { orderId: savedOrder.id },
+          process.env.JWT_QR_CODE_SECRET,
+          {
+            expiresIn: expiresInSeconds > 0 ? expiresInSeconds : 60 * 60,
+          }
+        );
+        const qrCode = await this.qrCodeService.generateQrCode(jwtOrderID);
+
         // Cộng điểm cho người dùng
         if (order.user?.role.role_id === Role.USER) {
           const orderScore = Math.floor(Number(order.total_prices) / 1000);
@@ -167,7 +188,7 @@ export class VnpayService {
         }
 
         // Gửi thông báo đến client qua WebSocket
-        this.mygateway.onBookSeat({
+        this.gateway.onBookSeat({
           schedule_id: order.orderDetails[0].ticket.schedule.id,
           seatIds: order.orderDetails.map(detail => detail.ticket.seat.id),
         });
@@ -191,6 +212,11 @@ export class VnpayService {
             await this.momoService.changeStatusScheduleSeat([ticket.seat.id], ticket.schedule.id);
           }
         }
+        // socket return seat not yet 
+        this.gateway.onCancelBookSeat({
+          schedule_id: order.orderDetails[0].ticket.schedule.id,
+          seatIds: order.orderDetails.map(detail => detail.ticket.seat.id),
+        });
 
         return { message: 'Payment failed' };
       }

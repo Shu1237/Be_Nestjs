@@ -11,6 +11,8 @@ import { HistoryScore } from "src/typeorm/entities/order/history_score";
 import { User } from "src/typeorm/entities/user/user";
 import { MyGateWayModule } from "src/gateways/seat.gateway.module";
 import { OrderExtra } from "src/typeorm/entities/order/order-extra";
+import { QrCodeModule } from "src/qrcode/qr.module";
+
 
 
 
@@ -18,7 +20,8 @@ import { OrderExtra } from "src/typeorm/entities/order/order-extra";
 @Module({
     imports: [TypeOrmModule.forFeature([Seat, Ticket, Order, Transaction, User, HistoryScore,OrderExtra]), 
     MomoModule,
-    MyGateWayModule
+    MyGateWayModule,
+    QrCodeModule
     ],
     controllers: [],
     providers: [VnpayService],

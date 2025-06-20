@@ -4,6 +4,7 @@ import { JwtAuthGuard } from 'src/guards/jwt.guard';
 import { JwtModule } from '@nestjs/jwt';
 import { RedisModule } from 'src/redis/redis.module';
 import { OrderModule } from 'src/order/order.module';
+import { QrCodeModule } from 'src/qrcode/qr.module';
 
 @Module({
   imports: [
@@ -12,7 +13,8 @@ import { OrderModule } from 'src/order/order.module';
       signOptions: { expiresIn: '1d' },    
     }),
     RedisModule,
-    OrderModule
+    OrderModule,
+    QrCodeModule
   ],
   controllers: [AuthTesterController],
   providers: [JwtAuthGuard],

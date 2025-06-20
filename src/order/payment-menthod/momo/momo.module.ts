@@ -10,13 +10,15 @@ import { ScheduleSeat } from "src/typeorm/entities/cinema/schedule_seat";
 import { HistoryScore } from "src/typeorm/entities/order/history_score";
 import { OrderExtra } from "src/typeorm/entities/order/order-extra";
 import { MyGateWayModule } from "src/gateways/seat.gateway.module";
+import { QrCodeModule } from "src/qrcode/qr.module";
 
 
 @Module({
     imports: [TypeOrmModule.forFeature([OrderExtra, Transaction, Order, Ticket, ScheduleSeat, HistoryScore, User]),
         MomoModule,
         MailerModule,
-        MyGateWayModule
+        MyGateWayModule,
+        QrCodeModule
     ],
     controllers: [],
     providers: [MomoService],

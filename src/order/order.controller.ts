@@ -10,7 +10,10 @@ import { VnpayService } from './payment-menthod/vnpay/vnpay.service';
 import { ZalopayService } from './payment-menthod/zalopay/zalopay.service';
 import { JWTUserType } from 'src/utils/type';
 import { Role } from 'src/enum/roles.enum';
+import { ScanQrCodeDto } from './dto/qrcode.dto';
 
+
+@ApiBearerAuth()
 @Controller('order')
 export class OrderController {
   constructor(
@@ -37,7 +40,7 @@ export class OrderController {
   @ApiExcludeEndpoint()
   @Get('momo/return')
   async handleMomoReturn(@Query() query: any, @Res() res: Response) {
-    const result = await this.momoService.handleReturn( query);
+    const result = await this.momoService.handleReturn(query);
     return res.send(result);
   }
   @ApiExcludeEndpoint()
@@ -142,6 +145,19 @@ export class OrderController {
     return this.orderService.getMyOrders(user.account_id);
   }
 
-  
-  
+
+
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get order by user ID' })
+  @ApiBody({ type: ScanQrCodeDto })
+  @ApiBearerAuth()
+  @Post('scan-qr')
+  scanQrCode(@Body() data: ScanQrCodeDto) {
+    return this.orderService.scanQrCode(data.qrCode);
+  }
+
+
+
+
+
 }

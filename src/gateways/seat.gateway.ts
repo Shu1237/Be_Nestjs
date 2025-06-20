@@ -18,7 +18,7 @@ import { HoldSeatType, JWTUserType } from 'src/utils/type';
 export class MyGateWay implements OnGatewayConnection, OnModuleInit {
   private readonly logger = new Logger(MyGateWay.name);
 
-  constructor(private seatService: SeatService) {}
+  constructor(private seatService: SeatService) { }
 
   @WebSocketServer()
   server: Server;
@@ -56,10 +56,10 @@ export class MyGateWay implements OnGatewayConnection, OnModuleInit {
   // Client tham gia vào lịch chiếu
   @SubscribeMessage('join_schedule')
   handleJoinSchedule(
-    @MessageBody() data: { scheduleId: number },
+    @MessageBody() data: { schedule_id: number },
     @ConnectedSocket() client: Socket,
   ) {
-    const room = `schedule-${data.scheduleId}`;
+    const room = `schedule-${data.schedule_id}`;
     client.join(room);
     client.emit('joined_room', { room });
     this.logger.log(`Client ${client.id} joined room: ${room}`);
@@ -100,25 +100,18 @@ export class MyGateWay implements OnGatewayConnection, OnModuleInit {
   ) {
     const user = client.data.user as JWTUserType;
 
-    if (!data?.seatIds?.length || !data.schedule_id) {
-      client.emit('error', { msg: 'Invalid seat data' });
-      return;
-    }
-
     try {
       await this.seatService.cancelHoldSeat(data, user);
 
       this.server.to(`schedule-${data.schedule_id}`).emit('seat_cancel_hold_update', {
         seatIds: data.seatIds,
         schedule_id: data.schedule_id,
-        userId: user.account_id,
         status: SeatStatus.NOT_YET,
       });
     } catch (err) {
-      client.emit('error', { msg: err.message || 'Failed to cancel hold seat' });
+      client.emit('error_message', { msg: err.message || 'Failed to cancel hold seat' });
     }
   }
-
   // Client đặt ghế thành công
   @SubscribeMessage('book_seat')
   async onBookSeat(
@@ -133,6 +126,23 @@ export class MyGateWay implements OnGatewayConnection, OnModuleInit {
       seatIds: data.seatIds,
       schedule_id: data.schedule_id,
       status: SeatStatus.BOOKED,
+    });
+  }
+
+  // Client hủy đặt ghế
+  @SubscribeMessage('cancel_book_seat')
+  async onCancelBookSeat(
+    @MessageBody() data: HoldSeatType,
+  ) {
+    if (!data?.seatIds?.length || !data.schedule_id) {
+      this.server.to(`schedule-${data.schedule_id}`).emit('error', { msg: 'Invalid seat data' });
+      return;
+    }
+
+    this.server.to(`schedule-${data.schedule_id}`).emit('seat_cancel_book_update', {
+      seatIds: data.seatIds,
+      schedule_id: data.schedule_id,
+      status: SeatStatus.NOT_YET,
     });
   }
 }

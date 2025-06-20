@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { Order } from 'src/typeorm/entities/order/order';
@@ -26,8 +26,8 @@ import { SeatService } from 'src/seat/seat.service';
 import { OrderExtra } from 'src/typeorm/entities/order/order-extra';
 import { Product } from 'src/typeorm/entities/item/product';
 import { applyAudienceDiscount, calculateProductTotal, roundUpToNearest } from 'src/utils/helper';
-import Stripe from 'stripe';
-import { LineItemsVisa } from 'src/utils/helper';
+import * as jwt from 'jsonwebtoken';
+
 
 
 @Injectable()
@@ -69,6 +69,7 @@ export class OrderService {
     private readonly zalopayService: ZalopayService,
     private readonly seatService: SeatService,
     private readonly gateway: MyGateWay,
+
 
 
 
@@ -241,7 +242,7 @@ export class OrderService {
 
       totalPrice = totalBeforePromotion - promotionAmount;
 
-      console.log({ totalBeforePromotion, promotionAmount, totalPrice });
+      // console.log({ totalBeforePromotion, promotionAmount, totalPrice });
 
       // 5. So sánh với client gửi
       const inputTotal = parseFloat(orderBill.total_prices);
@@ -260,13 +261,6 @@ export class OrderService {
       if (!paymentMethod) {
         throw new NotFoundException(`Payment method ${orderBill.payment_method_id} not found`);
       }
-
-      // get line_item for visa 
-
-      // let line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
-      // if (paymentMethod.id === Method.VISA) {
-      //   line_items = LineItemsVisa(orderBill, scheduleSeats, ticketForAudienceTypes, orderExtras, promotionDiscount, isPercentage);
-      // }
 
 
       let paymentCode: any;
@@ -401,43 +395,58 @@ export class OrderService {
     }
   }
 
-  private async validateBeforeOrder(scheduleId: string, userId: string, requestSeatIds: string[]): Promise<void> {
-    console.log('userId', userId);
-    console.log('scheduleId', scheduleId);
-    console.log(`seat-hold-${userId}`);
-    const keys = await this.redisClient.keys(`seat-hold-*`);
+  private async validateBeforeOrder(
+    scheduleId: string,
+    userId: string,
+    requestSeatIds: string[],
+  ): Promise<void> {
+
+    const redisKey = `seat-hold-${scheduleId}-${userId}`;
+    const data = await this.redisClient.get(redisKey);
+
+    if (!data) {
+      // socket seat return not yet
+      this.gateway.server.to(`schedule-${scheduleId}`).emit('seat_cancel_hold_update', {
+        seatIds: requestSeatIds,
+        schedule_id: scheduleId,
+        status: StatusSeat.NOT_YET,
+      });
+      throw new BadRequestException('Your seat hold has expired. Please select seats again.');
+    }
+
+    const keys = await this.redisClient.keys(`seat-hold-${scheduleId}-*`);
 
     if (!keys.length) return;
-    const redisData = await Promise.all(keys.map(key => this.redisClient.get(key)));
 
+    const redisData = await Promise.all(keys.map((key) => this.redisClient.get(key)));
 
     for (let i = 0; i < redisData.length; i++) {
       const key = keys[i];
       const data = redisData[i];
       if (!data) continue;
-      // get userId from key
-      const redisUserId = key.replace('seat-hold-', '');
+
+
+      const prefix = `seat-hold-${scheduleId}-`;
+      const redisUserId = key.slice(prefix.length);
+      // Bỏ qua nếu key này là của chính user đang đặt
       if (redisUserId === userId) continue;
 
       let parsed: HoldSeatType;
       try {
         parsed = JSON.parse(data);
       } catch (e) {
-        continue; // skip malformed data
+        continue;
       }
-      // not match scheduleId
-      if (parsed.schedule_id.toString() !== scheduleId) continue;
 
-      // check if requestSeatIds is in redisData
-      const isSeatHeld = requestSeatIds.some(seatId => parsed.seatIds.includes(seatId));
+      // Check trùng ghế
+      const isSeatHeld = requestSeatIds.some((seatId) => parsed.seatIds.includes(seatId));
       if (isSeatHeld) {
         throw new ConflictException('Some seats are already held by another user. Please try again later.');
       }
-     
     }
-    // delete redis key of this user
-    await this.redisClient.del(`seat-hold-${userId}`);
 
+    // Xóa Redis key của người dùng hiện tại sau khi đặt đơn thành công
+    await this.redisClient.del(redisKey);
   }
 
 
@@ -566,4 +575,21 @@ export class OrderService {
       },
     };
   }
+  async scanQrCode(qrCode: string) {
+    if (!process.env.JWT_QR_CODE_SECRET) {
+      throw new ForbiddenException('JWT QR Code secret is not set');
+    }
+    try {
+      const decoded = jwt.verify(qrCode, process.env.JWT_QR_CODE_SECRET) as { orderId: number };
+      //get Order from decoded
+      const order = await this.getOrderByIdEmployeeAndAdmin(decoded.orderId);
+      if (!order) {
+        throw new NotFoundException('Order not found');
+      }
+      return order;
+    } catch (error) {
+      throw new ForbiddenException('Invalid QR code');
+    }
+  }
+
 }

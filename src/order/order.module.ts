@@ -30,6 +30,7 @@ import { Product } from 'src/typeorm/entities/item/product';
 
 
 
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -60,7 +61,8 @@ import { Product } from 'src/typeorm/entities/item/product';
     ZalopayModule,
     SeatModule,
     RedisModule,
-    MyGateWayModule
+    MyGateWayModule,
+
 
   ],
   controllers: [OrderController],

@@ -13,6 +13,7 @@ import { ScheduleSeat } from "src/typeorm/entities/cinema/schedule_seat";
 import { HistoryScore } from "src/typeorm/entities/order/history_score";
 import { MyGateWayModule } from "src/gateways/seat.gateway.module";
 import { OrderExtra } from "src/typeorm/entities/order/order-extra";
+import { QrCodeModule } from "src/qrcode/qr.module";
 
 
 
@@ -32,7 +33,8 @@ import { OrderExtra } from "src/typeorm/entities/order/order-extra";
 
         ]),
         MomoModule,
-        MyGateWayModule
+        MyGateWayModule,
+        QrCodeModule
 
     ],
     controllers: [],

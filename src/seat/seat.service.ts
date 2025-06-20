@@ -131,7 +131,7 @@ export class SeatService {
 
     return { msg: 'Change status successfully' };
   }
-   private async getScheduleSeats(scheduleId: number, seatIds: string[]): Promise<ScheduleSeat[]> {
+  private async getScheduleSeats(scheduleId: number, seatIds: string[]): Promise<ScheduleSeat[]> {
     const scheduleSeats = await this.scheduleSeatRepository.find({
       where: {
         schedule: { id: scheduleId },
@@ -146,52 +146,47 @@ export class SeatService {
   }
 
 
-  async holdSeat(data: HoldSeatType, req: JWTUserType) : Promise<void> {
-
+  async holdSeat(data: HoldSeatType, req: JWTUserType): Promise<void> {
     const { seatIds, schedule_id } = data;
     const user = req;
-    // console.log(`seat-hold-${user.account_id}`);
+
     if (!seatIds || seatIds.length === 0) {
       throw new BadRequestException('No seats selected');
     }
+
     const seats = await this.getScheduleSeats(schedule_id, seatIds);
     if (seats.length !== seatIds.length) {
       throw new NotFoundException('Some selected seats are not available');
     }
-    
-    await this.redisClient.set(
-      `seat-hold-${user.account_id}`,
-      JSON.stringify({
-        seatIds: seatIds,
-        schedule_id: schedule_id,
-      }),
-      'EX', 600
-    );
-  }
-  async cancelHoldSeat(data: HoldSeatType, req: JWTUserType): Promise<void> {
-    const user = req;
-    // console.log(user.account_id)
 
-    const { seatIds, schedule_id } = data;
+    const redisKey = `seat-hold-${schedule_id}-${user.account_id}`;
 
-    if (!seatIds || seatIds.length === 0) {
-      throw new BadRequestException('No seats selected');
-    }
-    // console.log(`seat-hold-${user.account_id}`);
-    const redisRaw = await this.redisClient.get(`seat-hold-${user.account_id}`);
-    if (!redisRaw) {
-      throw new NotFoundException('No held seats found for this user');
-    }
-
-    let cachedHold: HoldSeatType;
     try {
-      cachedHold = JSON.parse(redisRaw);
-    } catch (e) {
-      throw new BadRequestException('Invalid cached data format');
+      await this.redisClient.set(
+        redisKey,
+        JSON.stringify({ seatIds, schedule_id }),
+        'EX',
+        600,
+      );
+    } catch (error) {
+      throw new BadRequestException('Failed to hold seats');
     }
-    await this.redisClient.del(`seat-hold-${user.account_id}`);
-
   }
+
+  async cancelHoldSeat(data: HoldSeatType, req: JWTUserType): Promise<void> {
+    const { schedule_id } = data;
+    const user = req;
+
+    const redisKey = `seat-hold-${schedule_id}-${user.account_id}`;
+    const redisRaw = await this.redisClient.get(redisKey);
+
+    if (!redisRaw) {
+      throw new NotFoundException('No held seats found for this schedule');
+    }
+
+    await this.redisClient.del(redisKey);
+  }
+
 
 
 

@@ -22,6 +22,7 @@ import { TicketModule } from './ticket/ticket.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { CronModule } from './cron/cron.module';
 import { MyGateWayModule } from './gateways/seat.gateway.module';
+import { S3Module } from './common/s3/s3.module';
 
 @Module({
   imports: [
@@ -32,7 +33,7 @@ import { MyGateWayModule } from './gateways/seat.gateway.module';
     ScheduleModule.forRoot(),
     TypeOrmModule.forRoot({
       type: 'mysql',
-      url: process.env.DATABASE_URL,
+      // url: process.env.DATABASE_URL,
       host: process.env.DB_HOST,
       port: parseInt(process.env.DB_PORT || '3306', 10),
       username: process.env.DB_USERNAME,
@@ -85,10 +86,12 @@ import { MyGateWayModule } from './gateways/seat.gateway.module';
     SeatModule,
     TicketModule,
 
-    
+
 
     CronModule,
-   MyGateWayModule
+    MyGateWayModule,
+
+    S3Module
 
   ],
 })
