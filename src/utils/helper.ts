@@ -5,6 +5,8 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { TicketType } from 'src/typeorm/entities/order/ticket-type';
 import { ScheduleSeat } from 'src/typeorm/entities/cinema/schedule_seat';
 import { Product } from 'src/typeorm/entities/item/product';
+import { ProductTypeEnum } from 'src/enum/product.enum';
+import { Combo } from 'src/typeorm/entities/item/combo';
 
 const SALT_ROUNDS = 10;
 
@@ -72,20 +74,37 @@ export const roundUpToNearest = (value: number, step: number = 1000): number => 
   return Math.ceil(value / step) * step;
 };
 
-export const calculateProductTotal = (orderExtras: Product[], orderBill: OrderBillType) => {
+export const calculateProductTotal = (
+  orderExtras: Product[], // chứa cả combo
+  orderBill: OrderBillType
+) => {
   let totalProduct = 0;
 
   for (const product of orderExtras) {
     const found = (orderBill.products ?? []).find(p => p.product_id === product.id);
+
     if (!found || found.quantity <= 0) {
       throw new BadRequestException(`Invalid quantity for product ${product.id}`);
     }
+
     const productPrice = parseFloat(product.price);
-    totalProduct += productPrice * found.quantity;
+    let finalPrice = productPrice;
+
+    // 👉 Kiểm tra nếu là combo thì ép kiểu để lấy discount
+    if (product.type === 'Combo') {
+      const comboProduct = product as Combo;
+
+      if (comboProduct.discount != null && !isNaN(comboProduct.discount)) {
+        finalPrice = productPrice * (1 - comboProduct.discount / 100);
+      }
+    }
+
+    totalProduct += finalPrice * found.quantity;
   }
 
-  return totalProduct
+  return totalProduct;
 };
+
 
 
 

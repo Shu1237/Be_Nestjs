@@ -24,6 +24,7 @@ import { CronModule } from './cron/cron.module';
 import { MyGateWayModule } from './gateways/seat.gateway.module';
 import { S3Module } from './common/s3/s3.module';
 import { ScheduleSeatModule } from './scheduleseat/scheduleseat.module';
+import { ProductModule } from './product/product.module';
 
 @Module({
   imports: [
@@ -87,6 +88,7 @@ import { ScheduleSeatModule } from './scheduleseat/scheduleseat.module';
     SeatModule,
     TicketModule,
     ScheduleSeatModule,
+    ProductModule,
 
 
 
