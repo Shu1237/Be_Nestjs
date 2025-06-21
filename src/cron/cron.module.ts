@@ -1,5 +1,5 @@
 import { Module } from "@nestjs/common";
-import { SeatAutoReleaseService } from "./seat/seat-auto-release.service";
+
 import { MyGateWayModule } from "src/gateways/seat.gateway.module";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { ScheduleSeat } from "src/typeorm/entities/cinema/schedule_seat";
@@ -10,8 +10,8 @@ import { RefreshTokenService } from "./refresh-token/refresh-token.service";
 
 @Module({
     imports: [ RedisModule,MyGateWayModule,TypeOrmModule.forFeature([RefreshToken,ScheduleSeat])], 
-    providers: [SeatAutoReleaseService, RefreshTokenService],
-    exports: [SeatAutoReleaseService , RefreshTokenService],
+    providers: [RefreshTokenService],
+    exports: [  RefreshTokenService],
     controllers: [],
 })
 export class CronModule { }
