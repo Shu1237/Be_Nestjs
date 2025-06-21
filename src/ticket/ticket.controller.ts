@@ -47,6 +47,6 @@ export class TicketController {
     if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
       throw new Error('Only admin or employee can mark tickets as used');
     }
-    return this.ticketService.markTicketsAsUsed(body.seatIds);
+    return this.ticketService.markTicketsAsUsed(body.ticketIds);
   }
 }

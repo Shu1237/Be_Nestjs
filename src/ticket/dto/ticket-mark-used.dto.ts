@@ -8,5 +8,5 @@ export class TicketMarkUsedDto {
     @IsArray()
     @ArrayNotEmpty()
     @IsString({ each: true })
-    seatIds: string[];
+    ticketIds: string[];
 }

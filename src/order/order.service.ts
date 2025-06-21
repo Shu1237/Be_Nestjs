@@ -550,6 +550,7 @@ export class OrderService {
       orderDetails: order.orderDetails.map(detail => ({
         id: detail.id,
         total_each_ticket: detail.total_each_ticket,
+        ticketId:detail.ticket.id,
         seat: {
           id: detail.ticket.seat.id,
           seat_row: detail.ticket.seat.seat_row,

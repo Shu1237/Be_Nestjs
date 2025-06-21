@@ -148,7 +148,7 @@ export class OrderController {
 
 
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Get order by user ID' })
+  @ApiOperation({ summary: 'Get order by Order ID' })
   @ApiBody({ type: ScanQrCodeDto })
   @ApiBearerAuth()
   @Post('scan-qr')
