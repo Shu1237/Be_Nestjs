@@ -389,6 +389,12 @@ export class OrderService {
         });
       }
       await this.orderExtraRepository.save(orderExtrasToSave);
+      if (Method.CASH) {
+        this.gateway.onBookSeat({
+          schedule_id: orderBill.schedule_id,
+          seatIds:orderBill.seats.map(seat => seat.id)
+        });
+      }
       return { payUrl: paymentCode.payUrl };
     } catch (error) {
       throw error;
@@ -550,7 +556,7 @@ export class OrderService {
       orderDetails: order.orderDetails.map(detail => ({
         id: detail.id,
         total_each_ticket: detail.total_each_ticket,
-        ticketId:detail.ticket.id,
+        ticketId: detail.ticket.id,
         seat: {
           id: detail.ticket.seat.id,
           seat_row: detail.ticket.seat.seat_row,
