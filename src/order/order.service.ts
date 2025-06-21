@@ -371,7 +371,7 @@ export class OrderService {
 
       for (const item of productTotals) {
         const shareRatio = item.total / totalProductBeforePromo || 0;
-        const isCombo = item.product.type === ProductTypeEnum.COMBO;
+        const isCombo = item.product.type.toLocaleLowerCase() === ProductTypeEnum.COMBO
 
 
         const basePrice = Number(item.product.price);
