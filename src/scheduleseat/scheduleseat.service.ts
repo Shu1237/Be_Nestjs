@@ -18,7 +18,7 @@ export class ScheduleSeatService {
                     id: scheduleId
                 }
             },
-            relations: ['schedule', 'seat'],
+            relations: ['schedule', 'seat','seat.seatType'],
         });
     }
 }
