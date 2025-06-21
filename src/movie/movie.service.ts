@@ -64,6 +64,7 @@ export class MovieService {
     const movies = await this.movieRepository.find({
       relations: ['gernes', 'actors', 'versions'],
     });
+    console.log('Movies from DB:', movies);
     return movies.map((movie) => this.getMovieSummary(movie));
   }
 

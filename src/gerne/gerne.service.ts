@@ -15,8 +15,6 @@ export class GerneService {
   constructor(
     @InjectRepository(Gerne)
     private readonly gerneRepository: Repository<Gerne>,
-    @InjectRepository(Movie)
-    private readonly movieRepository: Repository<Movie>,
   ) {}
 
   async createGerne(createGerneDto: CreateGerneDto): Promise<{ msg: string }> {
@@ -30,8 +28,8 @@ export class GerneService {
       );
     }
 
-    await this.gerneRepository.create(createGerneDto);
-    await this.gerneRepository.save(createGerneDto);
+    const gerne = this.gerneRepository.create(createGerneDto);
+    await this.gerneRepository.save(gerne);
     return { msg: 'Gerne created successfully' };
   }
 

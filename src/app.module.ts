@@ -22,6 +22,7 @@ import { TicketModule } from './ticket/ticket.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { CronModule } from './cron/cron.module';
 import { MyGateWayModule } from './gateways/seat.gateway.module';
+import { ProductsModule } from './product/products.module';
 
 @Module({
   imports: [
@@ -39,7 +40,7 @@ import { MyGateWayModule } from './gateways/seat.gateway.module';
       password: process.env.DB_PASSWORD,
       database: process.env.DB_DATABASE,
       entities: allEntities,
-      synchronize: false,
+      synchronize: true,
       autoLoadEntities: true,
       ssl: {
         rejectUnauthorized: false
@@ -84,6 +85,7 @@ import { MyGateWayModule } from './gateways/seat.gateway.module';
     ScheduleByDb,
     SeatModule,
     TicketModule,
+    ProductsModule,
 
     
 
