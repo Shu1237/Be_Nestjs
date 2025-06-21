@@ -91,7 +91,7 @@ export const calculateProductTotal = (
     let finalPrice = productPrice;
 
     // 👉 Kiểm tra nếu là combo thì ép kiểu để lấy discount
-    if (product.type === 'Combo') {
+    if (product.type.toLocaleLowerCase() === ProductTypeEnum.COMBO) {
       const comboProduct = product as Combo;
 
       if (comboProduct.discount != null && !isNaN(comboProduct.discount)) {

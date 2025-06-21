@@ -27,6 +27,8 @@ import { OrderExtra } from 'src/typeorm/entities/order/order-extra';
 import { Product } from 'src/typeorm/entities/item/product';
 import { applyAudienceDiscount, calculateProductTotal, roundUpToNearest } from 'src/utils/helper';
 import * as jwt from 'jsonwebtoken';
+import { ProductTypeEnum } from 'src/enum/product.enum';
+import { Combo } from 'src/typeorm/entities/item/combo';
 
 
 
@@ -265,7 +267,7 @@ export class OrderService {
 
       let paymentCode: any;
       // get payment code
-      paymentCode = await this.getPaymentCode(orderBill, clientIp, promotionDiscount, isPercentage, orderExtras);
+      paymentCode = await this.getPaymentCode(orderBill, clientIp);
       if (!paymentCode || !paymentCode.payUrl || !paymentCode.orderId) {
         throw new BadRequestException('Payment method failed to create order');
       }
@@ -363,21 +365,33 @@ export class OrderService {
           total: Number(p.price) * quantity,
         };
       });
+
       const totalProductBeforePromo = productTotals.reduce((sum, item) => sum + item.total, 0);
       const orderExtrasToSave: Omit<OrderExtra, 'id'>[] = [];
 
       for (const item of productTotals) {
         const shareRatio = item.total / totalProductBeforePromo || 0;
+        const isCombo = item.product.type === ProductTypeEnum.COMBO;
 
-        let unit_price_after_discount: number = Number(item.product.price);
+
+        const basePrice = Number(item.product.price);
+        let unit_price_after_discount = basePrice;
 
         if (isPercentage) {
-          const unitDiscount = Number(item.product.price) * (productDiscount / totalProductBeforePromo);
-          unit_price_after_discount = Math.round(Number(item.product.price) - unitDiscount);
+          const unitDiscount = basePrice * (productDiscount / totalProductBeforePromo);
+          unit_price_after_discount = Math.round(basePrice - unitDiscount);
         } else {
           const productDiscountShare = productDiscount * shareRatio;
           const unitDiscount = productDiscountShare / item.quantity;
-          unit_price_after_discount = Math.round(Number(item.product.price) - unitDiscount);
+          unit_price_after_discount = Math.round(basePrice - unitDiscount);
+        }
+
+      
+        if (isCombo) {
+          const comboProduct = item.product as Combo;
+          if (comboProduct.discount != null && !isNaN(comboProduct.discount)) {
+            unit_price_after_discount *= (1 - comboProduct.discount / 100);
+          }
         }
 
         orderExtrasToSave.push({
@@ -385,14 +399,18 @@ export class OrderService {
           unit_price: roundUpToNearest(unit_price_after_discount, 1000).toString(),
           order: newOrder,
           product: item.product,
-          status: Number(orderBill.payment_method_id) === Method.CASH ? StatusOrder.SUCCESS : StatusOrder.PENDING,
+          status:
+            Number(orderBill.payment_method_id) === Method.CASH
+              ? StatusOrder.SUCCESS
+              : StatusOrder.PENDING,
         });
       }
+
       await this.orderExtraRepository.save(orderExtrasToSave);
       if (Method.CASH) {
         this.gateway.onBookSeat({
           schedule_id: orderBill.schedule_id,
-          seatIds:orderBill.seats.map(seat => seat.id)
+          seatIds: orderBill.seats.map(seat => seat.id)
         });
       }
       return { payUrl: paymentCode.payUrl };
@@ -459,9 +477,7 @@ export class OrderService {
   private async getPaymentCode(
     orderBill: OrderBillType,
     clientIp: string,
-    promotionDiscount: number,
-    isPercentage: boolean,
-    orderExtras?: Product[],
+
   ) {
     switch (Number(orderBill.payment_method_id)) {
       case Method.MOMO:

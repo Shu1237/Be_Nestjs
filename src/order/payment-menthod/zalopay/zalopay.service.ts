@@ -38,7 +38,7 @@ export class ZalopayService {
 
     const transID = Date.now();
     const app_trans_id = `${moment().format("YYMMDD")}_${transID}`;
-   
+
 
 
 
@@ -51,7 +51,14 @@ export class ZalopayService {
       app_user: "ZaloPay Movie Theater",
       amount: orderItem.total_prices,
       app_time,
-      item: JSON.stringify('Order Bill Payment by ZaloPay'),
+      item: JSON.stringify([
+        {
+          itemid: `order_${this.app_id}`,
+          itemname: "Thanh toán đơn hàng",
+          itemprice: orderItem.total_prices,
+          itemquantity: 1,
+        }
+      ]),
       embed_data: JSON.stringify(embed_data),
       description: "Thanh toán vé xem phim",
       bank_code: "zalopayapp",
