@@ -467,7 +467,7 @@ export class OrderService {
       case Method.VNPAY:
         return this.vnpayService.createOrderVnPay(orderBill.total_prices, clientIp);
       case Method.ZALOPAY:
-        return this.zalopayService.createOrderZaloPay(orderBill, orderExtras, promotionDiscount, isPercentage);
+        return this.zalopayService.createOrderZaloPay(orderBill);
       default:
         return {
           payUrl: 'Payment successful by Cash',

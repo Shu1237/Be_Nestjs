@@ -16,12 +16,6 @@ import { applyAudienceDiscount } from "src/utils/helper";
 @Injectable()
 export class ZalopayService {
   constructor(
-    @InjectRepository(Seat)
-    private readonly seatRepository: Repository<Seat>,
-    @InjectRepository(TicketType)
-    private readonly ticketTypeRepository: Repository<TicketType>,
-
-
     private momoService: MomoService,
 
   ) { }
@@ -32,10 +26,7 @@ export class ZalopayService {
   private callback_url = process.env.ZALO_RETURN_URL;
 
   async createOrderZaloPay(
-    orderItem: OrderBillType,
-    orderExtras: Product[] = [],
-    promotionDiscount: number,
-    isPercentage: boolean
+    orderItem: OrderBillType
   ) {
     if (!this.app_id || !this.key1 || !this.endpoint) {
       throw new Error("ZaloPay configuration is missing");
@@ -47,104 +38,9 @@ export class ZalopayService {
 
     const transID = Date.now();
     const app_trans_id = `${moment().format("YYMMDD")}_${transID}`;
-    const items: { itemid: string; itemname: string; itemprice: number; itemquantity: number }[] = [];
+   
 
-    let seatTotal = 0;
-    let productTotal = 0;
 
-    const seatDetails: { id: string; name: string; basePrice: number; discount: number; finalPrice: number }[] = [];
-    for (const seatItem of orderItem.seats) {
-      const seat = await this.seatRepository.findOne({ where: { id: seatItem.id }, relations: ["seatType"] });
-      const ticketType = await this.ticketTypeRepository.findOne({ where: { audience_type: seatItem.audience_type } });
-
-      if (!seat || !ticketType) {
-        throw new NotFoundException("Seat or ticket type not found");
-      }
-
-      const basePrice = seat.seatType.seat_type_price;
-      const discount = parseFloat(ticketType.discount);
-      const finalPrice = applyAudienceDiscount(basePrice, discount);
-
-      seatTotal += finalPrice;
-
-      seatDetails.push({
-        id: seatItem.id,
-        name: `Seat ${seatItem.seat_row}${seatItem.seat_column}`,
-        basePrice,
-        discount,
-        finalPrice,
-      });
-    }
-
-    const productDetails: {
-      id: string;
-      name: string;
-      quantity: number;
-      unitPrice: number;
-      totalPrice: number;
-    }[] = [];
-    if (Array.isArray(orderItem.products)) {
-      for (const prod of orderItem.products) {
-        const product = orderExtras.find(p => p.id === prod.product_id);
-        if (!product) continue;
-
-        const quantity = prod.quantity ?? 1;
-        const unitPrice = Number(product.price);
-        const totalPrice = quantity * unitPrice;
-
-        productTotal += totalPrice;
-
-        productDetails.push({
-          id: product.id.toString(),
-          name: product.name,
-          quantity,
-          unitPrice,
-          totalPrice,
-        });
-      }
-    }
-
-    const totalBeforeDiscount = seatTotal + productTotal;
-    const totalPromotionAmount = isPercentage
-      ? Math.round(totalBeforeDiscount * (promotionDiscount / 100))
-      : Math.round(promotionDiscount);
-
-    const seatRatio = seatTotal / (totalBeforeDiscount || 1); // tránh chia 0
-    const productRatio = productTotal / (totalBeforeDiscount || 1);
-
-    const seatDiscountTotal = Math.round(totalPromotionAmount * seatRatio);
-    const productDiscountTotal = totalPromotionAmount - seatDiscountTotal;
-
-    // Ghế sau giảm
-    for (const seat of seatDetails) {
-      const seatShare = seat.finalPrice / (seatTotal || 1);
-      const discountAmount = seatDiscountTotal * seatShare;
-      const finalPrice = Math.round(seat.finalPrice - discountAmount);
-
-      items.push({
-        itemid: seat.id,
-        itemname: seat.name,
-        itemprice: finalPrice,
-        itemquantity: 1,
-      });
-    }
-
-    // Sản phẩm sau giảm
-    for (const product of productDetails) {
-      const shareRatio = product.totalPrice / (productTotal || 1);
-      const productDiscountShare = productDiscountTotal * shareRatio;
-      const unitDiscount = productDiscountShare / product.quantity;
-      const finalPrice = Math.round(product.unitPrice - unitDiscount);
-
-      items.push({
-        itemid: `product_${product.id}`,
-        itemname: product.name,
-        itemprice: finalPrice,
-        itemquantity: product.quantity,
-      });
-    }
-
-    const totalPriceVND = items.reduce((sum, item) => sum + item.itemprice * item.itemquantity, 0);
 
     const app_time = dayjs().valueOf();
     const embed_data = { redirecturl: this.callback_url };
@@ -153,9 +49,9 @@ export class ZalopayService {
       app_id: this.app_id,
       app_trans_id,
       app_user: "ZaloPay Movie Theater",
-      amount: totalPriceVND,
+      amount: orderItem.total_prices,
       app_time,
-      item: JSON.stringify(items),
+      item: JSON.stringify('Order Bill Payment by ZaloPay'),
       embed_data: JSON.stringify(embed_data),
       description: "Thanh toán vé xem phim",
       bank_code: "zalopayapp",
