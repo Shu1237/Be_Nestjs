@@ -49,13 +49,13 @@ export class ZalopayService {
       app_id: this.app_id,
       app_trans_id,
       app_user: "ZaloPay Movie Theater",
-      amount: orderItem.total_prices,
+      amount: Number(orderItem.total_prices),
       app_time,
       item: JSON.stringify([
         {
           itemid: `order_${this.app_id}`,
           itemname: "Thanh toán đơn hàng",
-          itemprice: orderItem.total_prices,
+          itemprice: Number(orderItem.total_prices),
           itemquantity: 1,
         }
       ]),
