@@ -8,6 +8,7 @@ import { CinemaRoom } from 'src/database/entities/cinema/cinema-room';
 import { CreateScheduleDto } from './dto/create-schedule.dto';
 import { ISchedule } from 'src/common/utils/type';
 import { NotFoundException } from 'src/common/exceptions/not-found.exception';
+import { Version } from 'src/database/entities/cinema/version';
 
 @Injectable()
 export class ScheduleService {
