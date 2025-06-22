@@ -4,7 +4,9 @@ import { Product } from 'src/typeorm/entities/item/product';
 import { Repository } from 'typeorm';
 import { CreateProductDto } from './dto/createProduct.dto';
 import { UpdateProductDto } from './dto/updateProduct.dto';
-
+import { Drink } from 'src/typeorm/entities/item/drink';
+import { Food } from 'src/typeorm/entities/item/food';
+import { Combo } from 'src/typeorm/entities/item/combo';
 
 @Injectable()
 export class ProductsService {
@@ -14,11 +16,23 @@ export class ProductsService {
   ) {}
 
   async createProduct(dto: CreateProductDto) {
-    const product = this.productRepository.create(dto);
+    let product: Product;
+    switch (dto.type) {
+      case 'drink':
+        product = Object.assign(new Drink(), dto);
+        break;
+      case 'food':
+        product = Object.assign(new Food(), dto);
+        break;
+      case 'combo':
+        product = Object.assign(new Combo(), dto);
+        break;
+      default:
+        throw new Error('Invalid product type');
+    }
     await this.productRepository.save(product);
     return { msg: 'Product created successfully' };
   }
-
   async getAllProducts() {
     return await this.productRepository.find();
   }
@@ -43,6 +57,7 @@ export class ProductsService {
     return { msg: 'Product deleted successfully' };
   }
 
+  
   async softDeleteProduct(id: number) {
     const product = await this.productRepository.findOne({ where: { id } });
     if (!product) throw new NotFoundException('Product not found');

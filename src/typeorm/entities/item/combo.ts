@@ -6,7 +6,7 @@ import { ComboDetail } from "./combo_detail";
 
 @ChildEntity()
 export class Combo extends Product {
-  @Column({ type: 'int', nullable: true })
+  @Column({ type: 'int', nullable: true,default: 0  })
   discount?: number;
 
   @OneToMany(() => ComboDetail, (detail) => detail.combo, { cascade: true })

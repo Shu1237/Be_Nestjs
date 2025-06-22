@@ -20,6 +20,7 @@ export abstract class Product {
   type: string;
 
   
+  
 
 
 
