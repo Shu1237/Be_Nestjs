@@ -19,7 +19,11 @@ export abstract class Product {
   @Column({ type: 'varchar' })
   type: string;
 
-  @Column({ nullable: false })
+  
+
+
+
+  @Column({ nullable: true })
   is_deleted?: boolean;
 
 
