@@ -134,12 +134,16 @@ export type ISchedule = {
   end_movie_time: Date;
   movie: IMovieBasic;
   cinema_room_id: number;
+   version?: { id: number; name: string } | null; // Cho phép giá trị null
+
+ 
   // Chỉ chứa id và name
 };
 
 export type IMovieBasic = {
   id: number;
   name: string;
+  // versions: IVersion[]; // Danh sách các phiên bản của phim
 };
 
 

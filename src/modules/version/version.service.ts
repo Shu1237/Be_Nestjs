@@ -41,6 +41,7 @@ export class VersionService {
       throw new NotFoundException(`Version with ID ${id} not found`);
     }
     return version;
+    
   }
 
   async update(
@@ -79,8 +80,9 @@ export class VersionService {
     return { msg: 'Version soft-deleted successfully', version };
   }
 
-  async remove(id: number): Promise<void> {
+  async remove(id: number): Promise<{ msg: string }> {
     const version = await this.findOne(id);
     await this.versionRepository.remove(version);
+    return { msg: 'Version deleted successfully'};
   }
 }

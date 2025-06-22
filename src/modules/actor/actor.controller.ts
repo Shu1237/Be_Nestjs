@@ -110,8 +110,6 @@ export class ActorController {
     return await this.actorService.removeActor(+id);
   }
 
-  
-
   // @UseGuards(JwtAuthGuard)
   // @Patch(':actorId/remove-movie/:movieId')
   // @ApiOperation({ summary: 'Remove a movie from an actor' })

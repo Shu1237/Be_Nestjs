@@ -12,6 +12,7 @@ import { Movie } from './movie';
 import { OrderDetail } from '../order/order-detail';
 import { Ticket } from '../order/ticket';
 import { ScheduleSeat } from './schedule_seat';
+import { Version } from './version';
 
 @Entity('schedule')
 export class Schedule {
@@ -35,6 +36,10 @@ export class Schedule {
   @ManyToOne(() => Movie, (movie) => movie.schedules)
   @JoinColumn({ name: 'movie_id' })
   movie: Movie;
+
+  @ManyToOne(() => Version, { eager: true }) // Liên kết với Version
+  @JoinColumn({ name: 'version_id' })
+  version: Version;
 
 
   @OneToMany(() => Ticket, (ticket) => ticket.schedule)

@@ -34,8 +34,6 @@ export class VersionController {
   @UseGuards(JwtAuthGuard)
   @Post()
   @ApiOperation({ summary: 'Create a new version (admin only)' })
-  @ApiResponse({ status: 201, description: 'Version created successfully.' })
-  @ApiResponse({ status: 403, description: 'Forbidden.' })
   async create(@Body() createVersionDto: CreateVersionDto, @Req() req) {
     const user = req.user as JWTUserType;
     if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
@@ -49,7 +47,6 @@ export class VersionController {
   @UseGuards(JwtAuthGuard)
   @Get()
   @ApiOperation({ summary: 'Get all versions' })
-  @ApiResponse({ status: 200, description: 'List of versions.' })
   async findAll() {
     return await this.versionService.findAll();
   }
@@ -57,8 +54,6 @@ export class VersionController {
   @UseGuards(JwtAuthGuard)
   @Get(':id')
   @ApiOperation({ summary: 'Get version by ID' })
-  @ApiResponse({ status: 200, description: 'Version found.' })
-  @ApiResponse({ status: 404, description: 'Version not found.' })
   async findOne(@Param('id') id: number) {
     return await this.versionService.findOne(id);
   }
@@ -66,8 +61,7 @@ export class VersionController {
   @UseGuards(JwtAuthGuard)
   @Put(':id')
   @ApiOperation({ summary: 'Update a version by ID (admin only)' })
-  @ApiResponse({ status: 200, description: 'Version updated successfully.' })
-  @ApiResponse({ status: 403, description: 'Forbidden.' })
+
   async update(
     @Param('id') id: number,
     @Body() updateVersionDto: UpdateVersionDto,
@@ -84,11 +78,6 @@ export class VersionController {
   @UseGuards(JwtAuthGuard)
   @Patch(':id/soft-delete')
   @ApiOperation({ summary: 'Soft delete a version (admin, employee only)' })
-  @ApiResponse({
-    status: 200,
-    description: 'Version soft-deleted successfully.',
-  })
-  @ApiResponse({ status: 403, description: 'Unauthorized.' })
   async softDeleteVersion(@Param('id', ParseIntPipe) id: number, @Req() req) {
     const user = req.user as JWTUserType;
     if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
@@ -102,8 +91,6 @@ export class VersionController {
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a version by ID (admin only)' })
-  @ApiResponse({ status: 200, description: 'Version deleted successfully.' })
-  @ApiResponse({ status: 403, description: 'Forbidden.' })
   async remove(@Param('id') id: number, @Req() req) {
     const user = req.user as JWTUserType;
     if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {

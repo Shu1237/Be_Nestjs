@@ -36,11 +36,6 @@ export class CinemaRoomController {
   @UseGuards(JwtAuthGuard)
   @Post()
   @ApiOperation({ summary: 'Create a new cinema room (admin, employee only)' })
-  @ApiResponse({
-    status: 201,
-    description: 'Cinema room created successfully.',
-  })
-  @ApiResponse({ status: 403, description: 'Forbidden.' })
   async create(@Body() createCinemaRoomDto: CreateCinemaRoomDto, @Req() req) {
     const user = req.user as JWTUserType;
     if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
@@ -54,7 +49,6 @@ export class CinemaRoomController {
   @UseGuards(JwtAuthGuard)
   @Get()
   @ApiOperation({ summary: 'Get all cinema rooms' })
-  @ApiResponse({ status: 200, description: 'List of cinema rooms.' })
   async findAll() {
     return await this.cinemaRoomService.findAll();
   }
@@ -62,7 +56,6 @@ export class CinemaRoomController {
   @UseGuards(JwtAuthGuard)
   @Get(':id')
   @ApiOperation({ summary: 'Get cinema room by ID' })
-  @ApiResponse({ status: 200, description: 'Cinema room found.' })
   async findOne(@Param('id') id: number) {
     return await this.cinemaRoomService.findOne(id);
   }
@@ -70,11 +63,6 @@ export class CinemaRoomController {
   @UseGuards(JwtAuthGuard)
   @Put(':id')
   @ApiOperation({ summary: 'Update cinema room by ID (admin, employee only)' })
-  @ApiResponse({
-    status: 200,
-    description: 'Cinema room updated successfully.',
-  })
-  @ApiResponse({ status: 403, description: 'Forbidden.' })
   async update(
     @Param('id') id: number,
     @Body() updateCinemaRoomDto: UpdateCinemaRoomDto,
@@ -91,11 +79,6 @@ export class CinemaRoomController {
   @UseGuards(JwtAuthGuard)
   @Patch(':id/soft-delete')
   @ApiOperation({ summary: 'Soft delete a cinema room (admin, employee only)' })
-  @ApiResponse({
-    status: 200,
-    description: 'Cinema room soft-deleted successfully.',
-  })
-  @ApiResponse({ status: 403, description: 'Unauthorized.' })
   async softDeleteCinemaRoom(
     @Param('id', ParseIntPipe) id: number,
     @Req() req,
@@ -112,11 +95,6 @@ export class CinemaRoomController {
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete cinema room by ID (admin, employee only)' })
-  @ApiResponse({
-    status: 200,
-    description: 'Cinema room deleted successfully.',
-  })
-  @ApiResponse({ status: 403, description: 'Forbidden.' })
   async remove(@Param('id') id: number, @Req() req) {
     const user = req.user as JWTUserType;
     if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
