@@ -1,29 +1,33 @@
 import { Injectable } from "@nestjs/common";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-
-
+import { ConfigService } from "@nestjs/config";
 
 @Injectable()
 export class S3Service {
-  private readonly s3Client = new S3Client({
-    region: process.env.S3_REGION!,
-    credentials: {
-      accessKeyId: process.env.S3_ACCESS_KEY!,
-      secretAccessKey: process.env.S3_SECRET_KEY!,
-    }
-  });
+  private readonly s3Client: S3Client;
+
+  constructor(private readonly configService: ConfigService) {
+    this.s3Client = new S3Client({
+      region: this.configService.get<string>('aws.region')!,
+      credentials: {
+        accessKeyId: this.configService.get<string>('aws.accessKey')!,
+        secretAccessKey: this.configService.get<string>('aws.secretKey')!,
+      },
+    });
+  }
 
   async uploadFile(file: Buffer, fileName: string): Promise<string> {
+    const bucketName = this.configService.get<string>('aws.bucketName')!;
+    const region = this.configService.get<string>('aws.region')!;
+
     await this.s3Client.send(
       new PutObjectCommand({
-        Bucket: process.env.S3_BUCKET_NAME,
+        Bucket: bucketName,
         Key: fileName,
         Body: file,
       }),
     );
 
-    return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.S3_REGION}.amazonaws.com/${fileName}`;
+    return `https://${bucketName}.s3.${region}.amazonaws.com/${fileName}`;
   }
-
-
 }
