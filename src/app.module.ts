@@ -1,76 +1,89 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
-import { AuthModule } from './auth/auth.module';
-import { TesterModule } from './tester/tester.module';
-import * as path from 'path';
-import { allEntities } from './typeorm';
 import { PassportModule } from '@nestjs/passport';
-import { UserModule } from './member/user.module';
-import { MovieModule } from './movie/movie.module';
-import { OrderModule } from './order/order.module';
-import { PromotionModule } from './promotion/promotion.module';
-import { ActorModule } from './actor/actor.module';
-import { GerneModule } from './gerne/gerne.module';
-import { VersionModule } from './version/version.module';
-import { CinemaRoomModule } from './cinema-room/cinema-room.module';
-import { ScheduleModule as ScheduleByDb } from './schedule/schedule.module';
-import { SeatModule } from './seat/seat.module';
-import { TicketModule } from './ticket/ticket.module';
 import { ScheduleModule } from '@nestjs/schedule';
-import { CronModule } from './cron/cron.module';
-import { MyGateWayModule } from './gateways/seat.gateway.module';
+import * as path from 'path';
+import configuration from './common/config/config';
+import { allEntities } from './database';
+
+// Modules
+import { AuthModule } from './modules/auth/auth.module';
+import { TesterModule } from './modules/tester/tester.module';
+import { UserModule } from './modules/member/user.module';
+import { MovieModule } from './modules/movie/movie.module';
+import { OrderModule } from './modules/order/order.module';
+import { PromotionModule } from './modules/promotion/promotion.module';
+import { ActorModule } from './modules/actor/actor.module';
+import { GerneModule } from './modules/gerne/gerne.module';
+import { VersionModule } from './modules/version/version.module';
+import { CinemaRoomModule } from './modules/cinema-room/cinema-room.module';
+import { ScheduleModule as ScheduleByDb } from './modules/schedule/schedule.module';
+import { SeatModule } from './modules/seat/seat.module';
+import { TicketModule } from './modules/ticket/ticket.module';
+import { CronModule } from './common/cron/cron.module';
+import { MyGateWayModule } from './common/gateways/seat.gateway.module';
+import { S3Module } from './common/s3/s3.module';
+import { ScheduleSeatModule } from './modules/scheduleseat/scheduleseat.module';
+import { ProductModule } from './modules/product/product.module';
 
 @Module({
   imports: [
-    PassportModule,
     ConfigModule.forRoot({
       isGlobal: true,
+      load: [configuration],
     }),
-    ScheduleModule.forRoot(),
-    TypeOrmModule.forRoot({
-      type: 'mysql',
-      url: process.env.DATABASE_URL,
-      host: process.env.DB_HOST,
-      port: parseInt(process.env.DB_PORT || '3306', 10),
-      username: process.env.DB_USERNAME,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_DATABASE,
-      entities: allEntities,
-      synchronize: false,
-      autoLoadEntities: true,
-      ssl: {
-        rejectUnauthorized: false
-      },
-    }),
+
     PassportModule.register({
-      defaultStrategy: 'jwt'
-    }),
-    MailerModule.forRoot({
-      transport: {
-        host: process.env.MAIL_HOST,
-        port: parseInt(process.env.MAIL_PORT || '465', 10),
-        secure: false,
-        auth: {
-          user: process.env.GMAIL_USER,
-          pass: process.env.GMAIL_PASS,
-        },
-      },
-      defaults: {
-        from: `BeMovie Team 1-3`,
-      },
-      template: {
-        dir: path.join(__dirname, '..', 'template'),
-        adapter: new HandlebarsAdapter(),
-        options: {
-          strict: true,
-        },
-      },
+      defaultStrategy: 'jwt',
     }),
 
+    ScheduleModule.forRoot(),
 
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        type: 'mysql',
+        url: configService.get<string>('database.url'),
+        host: configService.get<string>('database.host'),
+        port: configService.get<number>('database.port'),
+        username: configService.get<string>('database.username'),
+        password: configService.get<string>('database.password'),
+        database: configService.get<string>('database.name'),
+        entities: allEntities,
+        synchronize: true,
+        autoLoadEntities: true,
+      }),
+      inject: [ConfigService],
+    }),
+
+    MailerModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        transport: {
+          host: configService.get('gmail.host'),
+          port: configService.get<number>('gmail.port'),
+          secure: false,
+          auth: {
+            user: configService.get('gmail.user'),
+            pass: configService.get('gmail.pass'),
+          },
+        },
+        defaults: {
+          from: '"BeMovie Team 1-3" <noreply@bemovie.com>',
+        },
+        template: {
+          dir: path.join(__dirname, '..', 'template'),
+          adapter: new HandlebarsAdapter(),
+          options: { strict: true },
+        },
+      }),
+      inject: [ConfigService],
+    }),
+
+    // Application Modules
     AuthModule,
     TesterModule,
     UserModule,
@@ -84,13 +97,13 @@ import { MyGateWayModule } from './gateways/seat.gateway.module';
     ScheduleByDb,
     SeatModule,
     TicketModule,
+    ScheduleSeatModule,
+    ProductModule,
 
-    
-
+    // Shared Modules
     CronModule,
-   MyGateWayModule
-
+    MyGateWayModule,
+    S3Module,
   ],
 })
-export class AppModule { }
-
+export class AppModule {}
