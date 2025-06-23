@@ -46,7 +46,7 @@ import { ProductModule } from './modules/product/product.module';
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
         type: 'mysql',
-        url: configService.get<string>('database.url'),
+        // url: configService.get<string>('database.url'),
         host: configService.get<string>('database.host'),
         port: configService.get<number>('database.port'),
         username: configService.get<string>('database.username'),
