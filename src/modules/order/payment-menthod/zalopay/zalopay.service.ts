@@ -17,7 +17,9 @@ export class ZalopayService {
 
 
   async createOrderZaloPay(orderItem: OrderBillType) {
-    const app_id = this.configService.get<number>('zalopay.appId');
+    // console.log(orderItem);
+
+    const app_id = this.configService.get<string>('zalopay.appId');
     const key1 = this.configService.get<string>('zalopay.key1');
     const endpoint = this.configService.get<string>('zalopay.endpoint');
     const callback_url = this.configService.get<string>('zalopay.returnUrl');
@@ -36,7 +38,7 @@ export class ZalopayService {
     const embed_data = { redirecturl: callback_url };
 
     const rawData = {
-      app_id,
+      app_id: Number(app_id),
       app_trans_id,
       app_user: "ZaloPay Movie Theater",
       amount: Number(orderItem.total_prices),
@@ -44,16 +46,16 @@ export class ZalopayService {
       item: JSON.stringify([
         {
           itemid: `order_${app_id}`,
-          itemname: "Thanh toán đơn hàng",
+          itemname: "Thanh toan don hang",
           itemprice: Number(orderItem.total_prices),
           itemquantity: 1,
         },
       ]),
       embed_data: JSON.stringify(embed_data),
-      description: "Thanh toán vé xem phim",
+      description: "Thanh toan ve xem phim",
       bank_code: "zalopayapp",
     };
-
+//  console.log(rawData);
     const dataToMac = [
       rawData.app_id,
       rawData.app_trans_id,
@@ -85,6 +87,7 @@ export class ZalopayService {
         orderId: app_trans_id,
       };
     } catch (error) {
+      console.error("ZaloPay API error:", error);
       throw new Error(
         "ZaloPay API failed: " +
         (error.response?.data?.sub_return_message || error.message),
