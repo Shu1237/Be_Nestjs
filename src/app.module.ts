@@ -53,7 +53,7 @@ import { ProductModule } from './modules/product/product.module';
         password: configService.get<string>('database.password'),
         database: configService.get<string>('database.name'),
         entities: allEntities,
-        synchronize: true,
+        synchronize: false,
         autoLoadEntities: true,
       }),
       inject: [ConfigService],

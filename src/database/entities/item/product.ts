@@ -19,6 +19,9 @@ export abstract class Product {
   @Column({ type: 'varchar' })
   type: string;
 
+  @Column({ default: false })
+  is_deleted: boolean;
+
 
   @OneToMany(() => OrderExtra, orderExtra => orderExtra.product)
   orderExtras: OrderExtra[];

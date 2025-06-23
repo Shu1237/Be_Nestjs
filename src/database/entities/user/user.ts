@@ -19,7 +19,7 @@ export class User {
   @Column({ type: 'varchar', length: 255 })
   username: string;
 
-  @Column({ type: 'varchar', length: 255, unique: true })
+  @Column({ type: 'varchar', length: 255 })
   sub: string;
 
   @Column({ type: 'varchar', length: 255, unique: true })
