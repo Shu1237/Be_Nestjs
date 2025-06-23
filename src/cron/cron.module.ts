@@ -8,8 +8,8 @@ import { RefreshToken } from 'src/typeorm/entities/user/refresh-token';
 import { RefreshTokenService } from './refresh-token/refresh-token.service';
 import { MovieExpireCheckService } from './movie/movieExpireCheck.service';
 import { Movie } from 'src/typeorm/entities/cinema/movie';
-import { ScheduleExpireCheckService } from './schedule/ScheduleExpireCheck.service';
 import { Schedule } from 'src/typeorm/entities/cinema/schedule';
+import { ScheduleExpireCheckService } from './schedule/scheduleExpireCheck.service';
 
 @Module({
   imports: [

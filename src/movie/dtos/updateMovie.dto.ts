@@ -33,6 +33,7 @@ export class UpdateMovieDto {
   @IsString()
   @ApiProperty({ description: 'Quốc gia sản xuất phim', example: 'USA' })
   nation?: string;
+  
   @IsOptional()
   @IsArray()
   @IsInt({ each: true })

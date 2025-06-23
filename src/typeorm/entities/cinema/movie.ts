@@ -29,10 +29,10 @@ export class Movie {
   @Column({ type: 'int' })
   duration: number;
 
-  @Column({ type: 'date' })
+  @Column({ type: 'datetime' })
   from_date: Date;
 
-  @Column({ type: 'date' })
+  @Column({ type: 'datetime' })
   to_date: Date;
 
   @Column({ type: 'varchar', length: 100 })
@@ -44,7 +44,7 @@ export class Movie {
   @Column({ type: 'varchar', length: 255 })
   banner: string;
 
-  @Column({ type: 'int', nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   limited_age: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
