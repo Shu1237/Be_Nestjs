@@ -449,7 +449,7 @@ export class OrderService {
 
     const keys = await this.redisClient.keys(`seat-hold-${scheduleId}-*`);
 
-    if (!keys.length) return false;
+    if (!keys.length) return true;
 
     const redisData = await Promise.all(keys.map((key) => this.redisClient.get(key)));
 
