@@ -178,7 +178,7 @@ export class MomoService {
     order.status = StatusOrder.SUCCESS;
 
     await this.transactionRepository.save(transaction);
-    const savedOrder = await this.orderRepository.save(order);
+
 
     // generate QR code , jwt orderid
     const endScheduleTime = order.orderDetails[0].ticket.schedule.end_movie_time;
@@ -194,14 +194,15 @@ export class MomoService {
       throw new ForbiddenException('JWT QR Code secret is not set');
     }
     const jwtOrderID = jwt.sign(
-      { orderId: savedOrder.id },
+      { orderId: order.id },
       qrSecret,
       {
         expiresIn: expiresInSeconds > 0 ? expiresInSeconds : 60 * 60,
       }
     );
     const qrCode = await this.qrCodeService.generateQrCode(jwtOrderID);
-
+    order.qr_code = qrCode;
+    const savedOrder = await this.orderRepository.save(order);
     // Cộng điểm cho người dùng
     if (order.user?.role.role_id === Role.USER) {
       const orderScore = Math.floor(Number(order.total_prices) / 1000);
