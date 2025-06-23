@@ -429,17 +429,17 @@ export class OrderService {
   ): Promise<void> {
 
     const redisKey = `seat-hold-${scheduleId}-${userId}`;
-    // const data = await this.redisClient.get(redisKey);
+    const data = await this.redisClient.get(redisKey);
 
-    // if (!data) {
-    //   // socket seat return not yet
-    //   this.gateway.server.to(`schedule-${scheduleId}`).emit('seat_cancel_hold_update', {
-    //     seatIds: requestSeatIds,
-    //     schedule_id: scheduleId,
-    //     status: StatusSeat.NOT_YET,
-    //   });
-    //   throw new BadRequestException('Your seat hold has expired. Please select seats again.');
-    // }
+    if (!data) {
+      // socket seat return not yet
+      this.gateway.server.to(`schedule-${scheduleId}`).emit('seat_cancel_hold_update', {
+        seatIds: requestSeatIds,
+        schedule_id: scheduleId,
+        status: StatusSeat.NOT_YET,
+      });
+      throw new BadRequestException('Your seat hold has expired. Please select seats again.');
+    }
 
     const keys = await this.redisClient.keys(`seat-hold-${scheduleId}-*`);
 
