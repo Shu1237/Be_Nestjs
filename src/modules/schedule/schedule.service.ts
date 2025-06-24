@@ -9,6 +9,7 @@ import { CreateScheduleDto } from './dto/create-schedule.dto';
 import { ISchedule } from 'src/common/utils/type';
 import { NotFoundException } from 'src/common/exceptions/not-found.exception';
 import { Version } from 'src/database/entities/cinema/version';
+import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
 
 @Injectable()
 export class ScheduleService {
@@ -87,7 +88,7 @@ export class ScheduleService {
       (v) => v.id === id_Version,
     );
     if (!versionBelongsToMovie) {
-      throw new Error(
+      throw new BadRequestException(
         `Version ID ${id_Version} không thuộc movie ID ${movie_id}`,
       );
     }
@@ -103,7 +104,7 @@ export class ScheduleService {
       .getOne();
 
     if (overlappingSchedule) {
-      throw new Error('Phòng chiếu đã có lịch chiếu trùng thời gian');
+      throw new BadRequestException('Phòng chiếu đã có lịch chiếu trùng thời gian');
     }
 
     // Tạo mới Schedule
