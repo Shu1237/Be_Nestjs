@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Schedule } from 'src/typeorm/entities/cinema/schedule';
+import { Schedule } from 'src/database/entities/cinema/schedule';
 import { Repository, LessThan } from 'typeorm';
 
 @Injectable()
