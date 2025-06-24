@@ -1,7 +1,7 @@
-import { Injectable} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Schedule } from 'src/database/entities/cinema/schedule';
-import {  Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { UpdateScheduleDto } from './dto/update-schedule.dto';
 import { Movie } from 'src/database/entities/cinema/movie';
 import { CinemaRoom } from 'src/database/entities/cinema/cinema-room';
@@ -81,6 +81,29 @@ export class ScheduleService {
     });
     if (!version) {
       throw new NotFoundException(`Version with ID ${id_Version} not found`);
+    }
+    // ✅ Kiểm tra version thuộc movie
+    const versionBelongsToMovie = movie.versions.some(
+      (v) => v.id === id_Version,
+    );
+    if (!versionBelongsToMovie) {
+      throw new Error(
+        `Version ID ${id_Version} không thuộc movie ID ${movie_id}`,
+      );
+    }
+
+    // ✅ Kiểm tra trùng lịch chiếu
+    const overlappingSchedule = await this.scheduleRepository
+      .createQueryBuilder('schedule')
+      .where('schedule.cinemaRoom = :cinemaRoomId', {
+        cinemaRoomId: cinema_room_id,
+      })
+      .andWhere('schedule.start_movie_time < :end', { end: end_movie_time })
+      .andWhere('schedule.end_movie_time > :start', { start: start_movie_time })
+      .getOne();
+
+    if (overlappingSchedule) {
+      throw new Error('Phòng chiếu đã có lịch chiếu trùng thời gian');
     }
 
     // Tạo mới Schedule
