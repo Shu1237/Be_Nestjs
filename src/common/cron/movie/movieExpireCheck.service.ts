@@ -12,6 +12,7 @@ export class MovieExpireCheckService {
     @InjectRepository(Movie)
     private readonly movieRepository: Repository<Movie>,
   ) {}
+  
 
   // Chạy mỗi ngày lúc 0h
   @Cron('0 0 * * *', { name: 'expire-movies' })
