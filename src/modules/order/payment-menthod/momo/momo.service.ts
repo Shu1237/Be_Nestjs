@@ -17,6 +17,7 @@ import { MyGateWay } from 'src/common/gateways/seat.gateway';
 import { QrCodeService } from 'src/common/qrcode/qrcode.service';
 import * as jwt from 'jsonwebtoken';
 import { ConfigService } from '@nestjs/config';
+import { TimeUtil } from 'src/common/utils/time.util';
 @Injectable()
 export class MomoService {
   constructor(
@@ -50,7 +51,7 @@ export class MomoService {
       throw new Error('Momo configuration is missing');
     }
 
-    const requestId = partnerCode + Date.now();
+    const requestId = partnerCode + TimeUtil.now();
     const orderId = requestId;
     const orderInfo = 'Momo payment';
     const redirectUrl = this.configService.get<string>('momo.redirectUrl');
@@ -182,22 +183,23 @@ export class MomoService {
 
     // generate QR code , jwt orderid
     const endScheduleTime = order.orderDetails[0].ticket.schedule.end_movie_time;
-    if (!this.configService.get<string>('jwt.qrSecret')) {
-      throw new ForbiddenException('JWT QR Code secret is not set');
-    }
-    const endTime = new Date(endScheduleTime).getTime();
+    const endTime = TimeUtil.toVietnamDate(endScheduleTime).getTime();
     const now = Date.now();
     const expiresInSeconds = Math.floor((endTime - now) / 1000);
+
+    // fallback: 1 tiếng nếu thời gian đã hết hạn
+    const validExpiresIn = expiresInSeconds > 0 ? expiresInSeconds : 60 * 60;
 
     const qrSecret = this.configService.get<string>('jwt.qrSecret');
     if (!qrSecret) {
       throw new ForbiddenException('JWT QR Code secret is not set');
     }
+
     const jwtOrderID = jwt.sign(
       { orderId: order.id },
       qrSecret,
       {
-        expiresIn: expiresInSeconds > 0 ? expiresInSeconds : 60 * 60,
+        expiresIn: validExpiresIn,
       }
     );
     const qrCode = await this.qrCodeService.generateQrCode(jwtOrderID);
@@ -214,6 +216,7 @@ export class MomoService {
         score_change: addScore,
         user: order.user,
         order: savedOrder,
+        created_at: TimeUtil.now()
       });
     }
 
@@ -286,18 +289,16 @@ export class MomoService {
     await this.mailerService.sendMail({
       to: order.user.email,
       subject: 'Your Order Successful',
-      template: 'order-confirmation',
-      context: {
+      template: 'order-confirmation',      context: {
         user: order.user.username,
         transactionCode: transaction.transaction_code,
-        order_date: order.order_date,
+        order_date: TimeUtil.format(order.order_date, 'DD/MM/YYYY HH:mm'),
         total: Number(order.total_prices).toLocaleString('vi-VN'),
-        paymentMethod: transaction.paymentMethod.name,
-        year: new Date().getFullYear(),
+        paymentMethod: transaction.paymentMethod.name,year: new Date().getFullYear(),
         movieName: firstTicket?.schedule.movie.name,
         roomName: firstTicket?.schedule.cinemaRoom.cinema_room_name,
-        start_movie_time: firstTicket?.schedule.start_movie_time,
-        end_movie_time: firstTicket?.schedule.end_movie_time,
+        start_movie_time: firstTicket?.schedule.start_movie_time ? TimeUtil.format(firstTicket.schedule.start_movie_time, 'DD/MM/YYYY HH:mm') : '',
+        end_movie_time: firstTicket?.schedule.end_movie_time ? TimeUtil.format(firstTicket.schedule.end_movie_time, 'DD/MM/YYYY HH:mm') : '',
         seats: order.orderDetails.map(detail => ({
           row: detail.ticket.seat.seat_row,
           column: detail.ticket.seat.seat_column,

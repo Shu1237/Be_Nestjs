@@ -33,7 +33,10 @@ import { BadRequestException } from 'src/common/exceptions/bad-request.exception
 import { ConflictException } from 'src/common/exceptions/conflict.exception';
 import { ConfigService } from '@nestjs/config';
 import { TicketService } from '../ticket/ticket.service';
-
+import dayjs from 'dayjs';
+import timezone from 'dayjs/plugin/timezone';
+import utc from 'dayjs/plugin/utc';
+import { TimeUtil } from 'src/common/utils/time.util';
 
 
 @Injectable()
@@ -175,6 +178,8 @@ export class OrderService {
   }
 
   async createOrder(userData: JWTUserType, orderBill: OrderBillType, clientIp: string) {
+    dayjs.extend(utc);
+    dayjs.extend(timezone);
     try {
       const user = await this.getUserById(userData.account_id);
       // check products
@@ -190,6 +195,8 @@ export class OrderService {
         this.getScheduleById(orderBill.schedule_id),
       ]);
 
+  
+    
 
       // Fetch seat IDs
       const seatIds = orderBill.seats.map((seat: SeatInfo) => seat.id);
@@ -285,11 +292,12 @@ export class OrderService {
         status: Number(orderBill.payment_method_id) === Method.CASH ? StatusOrder.SUCCESS : StatusOrder.PENDING,
         user,
         promotion,
+        order_date: TimeUtil.toVietnamDate(new Date()),
       });
 
       const transaction = await this.transactionRepository.save({
         transaction_code: paymentCode.orderId,
-        transaction_date: new Date(),
+        transaction_date: TimeUtil.toVietnamDate(new Date()),
         prices: orderBill.total_prices,
         status: Number(orderBill.payment_method_id) === Method.CASH ? StatusOrder.SUCCESS : StatusOrder.PENDING,
         paymentMethod,
@@ -588,12 +596,11 @@ export class OrderService {
           id: detail.ticket.seat.id,
           seat_row: detail.ticket.seat.seat_row,
           seat_column: detail.ticket.seat.seat_column,
-        },
-        ticketType: {
+        },        ticketType: {
           ticket_name: detail.ticket.ticketType.ticket_name,
         },
-        start_movie_time: detail.schedule.start_movie_time,
-        end_movie_time: detail.schedule.end_movie_time,
+        start_movie_time: TimeUtil.toVietnamDate(detail.schedule.start_movie_time),
+        end_movie_time: TimeUtil.toVietnamDate(detail.schedule.end_movie_time),
 
         movie: {
           id: detail.schedule.movie.id,

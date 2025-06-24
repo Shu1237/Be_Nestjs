@@ -9,6 +9,7 @@ import { CreatePromotionDto } from './dto/create-promotion.dto';
 import { UpdatePromotionDto } from './dto/update-promotion.dto';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
 import { NotFoundException } from 'src/common/exceptions/not-found.exception';
+import { TimeUtil } from 'src/common/utils/time.util';
 
 @Injectable()
 export class PromotionService {
@@ -35,7 +36,11 @@ export class PromotionService {
       throw new BadRequestException('Promotion code already exists');
     }
 
-    const promotion = this.promotionRepository.create(createPromotionDto);
+    const promotion = this.promotionRepository.create({
+      ...createPromotionDto,
+      start_time: TimeUtil.toUTCDateFromVietnamTime(createPromotionDto.start_time|| new Date()),
+      end_time: TimeUtil.toUTCDateFromVietnamTime(createPromotionDto.end_time|| new Date()),
+    });
     await this.promotionRepository.save(promotion);
     return { msg: 'Promotion created successfully' };
   }
@@ -63,7 +68,15 @@ export class PromotionService {
     }
 
     Object.assign(promotion, updatePromotionDto);
-    await this.promotionRepository.save(promotion);
+    await this.promotionRepository.save({
+      ...promotion,
+      start_time: TimeUtil.toUTCDateFromVietnamTime(
+        updatePromotionDto.start_time ?? promotion.start_time ?? new Date()
+      ),
+      end_time: TimeUtil.toUTCDateFromVietnamTime(
+        updatePromotionDto.end_time ?? promotion.end_time ?? new Date()
+      ),
+    });
     return { msg: 'Promotion updated successfully' };
   }
 

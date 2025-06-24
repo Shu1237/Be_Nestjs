@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { User } from 'src/database/entities/user/user';
 import { NotFoundException } from 'src/common/exceptions/not-found.exception';
+import { TimeUtil } from 'src/common/utils/time.util';
 
 @Injectable()
 export class TicketService {
@@ -11,7 +12,6 @@ export class TicketService {
     @InjectRepository(Ticket) private ticketRepository: Repository<Ticket>,
     @InjectRepository(User) private userRepository: Repository<User>,
   ) { }
-
   private summaryTicket(ticket: Ticket) {
     return {
       id: ticket.id,
@@ -23,8 +23,8 @@ export class TicketService {
         audience_type: ticket.ticketType.audience_type,
       },
       schedule: {
-        start_movie_time: ticket.schedule.start_movie_time,
-        end_movie_time: ticket.schedule.end_movie_time,
+        start_movie_time: TimeUtil.toVietnamDate(ticket.schedule.start_movie_time),
+        end_movie_time: TimeUtil.toVietnamDate(ticket.schedule.end_movie_time),
         movie: {
           id: ticket.schedule.movie.id,
           name: ticket.schedule.movie.name,
@@ -85,10 +85,9 @@ export class TicketService {
               id: ticket.ticketType.id,
               name: ticket.ticketType.ticket_name,
               audience_type: ticket.ticketType.audience_type,
-            },
-            schedule: {
-              start_movie_time: ticket.schedule.start_movie_time,
-              end_movie_time: ticket.schedule.end_movie_time,
+            },            schedule: {
+              start_movie_time: TimeUtil.toVietnamDate(ticket.schedule.start_movie_time),
+              end_movie_time: TimeUtil.toVietnamDate(ticket.schedule.end_movie_time),
               movie: {
                 id: ticket.schedule.movie.id,
                 name: ticket.schedule.movie.name,
