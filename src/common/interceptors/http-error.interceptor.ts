@@ -20,10 +20,6 @@ export class HttpErrorInterceptor implements NestInterceptor {
             catchError((error) => {
                 if (error instanceof HttpException) {
                     const status = error.getStatus();
-
-                    if (status === 400) {
-                        return throwError(() => new BadRequestException(error.message));
-                    }
                     if (status === 403) {
                         return throwError(() => new ForbiddenException(error.message));
                     }
