@@ -7,6 +7,7 @@ import { OrderBillType} from "src/common/utils/type";
 import { MomoService } from "../momo/momo.service";
 import { StatusOrder } from "src/common/enums/status-order.enum";
 import { ConfigService } from "@nestjs/config";
+import { TimeUtil } from "src/common/utils/time.util";
 @Injectable()
 export class ZalopayService {
   constructor(
@@ -32,9 +33,9 @@ export class ZalopayService {
       throw new Error("No seat selected");
     }
 
-    const transID = Date.now();
-    const app_trans_id = `${moment().format("YYMMDD")}_${transID}`;
-    const app_time = dayjs().valueOf();
+    const transID = TimeUtil.now();
+    const app_trans_id = `${TimeUtil.formatDate(transID, "YYMMDD")}_${transID}`;
+    const app_time = TimeUtil.now().valueOf();
     const embed_data = { redirecturl: callback_url };
 
     const rawData = {
