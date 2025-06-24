@@ -21,7 +21,6 @@ import { Food } from './entities/item/food';
 import { RefreshToken } from './entities/user/refresh-token';
 import { Role } from './entities/user/roles';
 import { User } from './entities/user/user';
-import { ComboDetail } from './entities/item/combo_detail';
 import { Product } from './entities/item/product';
 import { OrderExtra } from './entities/order/order-extra';
 
@@ -32,7 +31,6 @@ export const allEntities = [
   Food,
   Drink,
   Combo,
-  ComboDetail,
   Promotion,
   Order,
   OrderDetail,

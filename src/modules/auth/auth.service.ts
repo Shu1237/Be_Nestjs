@@ -16,6 +16,7 @@ import { Role } from 'src/database/entities/user/roles';
 import { NotFoundException } from 'src/common/exceptions/not-found.exception';
 import { ForbiddenException } from 'src/common/exceptions/forbidden.exception';
 import { ConfigService } from '@nestjs/config';
+import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
 
 
 
@@ -181,7 +182,13 @@ export class AuthService {
   async loginAzureAndGoogle(body: LoginAzureType) {
     const { sub, name, email, picture } = body;
     const roleId = body.role_id ?? 1;
+    if (!sub || sub.trim() === '') {
+      throw new BadRequestException('Sub is required');
+    }
 
+    if (!email || email.trim() === '') {
+      throw new BadRequestException('Email is required');
+    }
     let user = await this.userRepository.findOne({
       where: { email: email },
       relations: ['role'],

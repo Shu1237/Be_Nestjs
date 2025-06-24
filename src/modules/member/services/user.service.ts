@@ -39,11 +39,11 @@ export class UserService {
     return await this.userRepository.save(user);
   }
 
-  async changeStatus(id: string): Promise<User> {
-    const user = await this.findOne(id);
-    user.status = !user.status;
-    return await this.userRepository.save(user);
-  }
+  // async changeStatus(id: string): Promise<User> {
+  //   const user = await this.findOne(id);
+  //   user.status = !user.status;
+  //   return await this.userRepository.save(user);
+  // }
 
   async softDelete(id: string): Promise<void> {
     const user = await this.findOne(id);

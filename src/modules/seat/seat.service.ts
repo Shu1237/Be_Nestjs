@@ -1,5 +1,4 @@
-
-import { Injectable,Inject} from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Seat } from 'src/database/entities/cinema/seat';
 import { HoldSeatType, JWTUserType } from 'src/common/utils/type';
@@ -14,8 +13,7 @@ import { StatusSeat } from 'src/common/enums/status_seat.enum';
 import Redis from 'ioredis/built/Redis';
 import { NotFoundException } from 'src/common/exceptions/not-found.exception';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
-
-
+import { BulkCreateSeatDto } from './dto/BulkCreateSeatDto';
 
 @Injectable()
 export class SeatService {
@@ -30,9 +28,8 @@ export class SeatService {
     @InjectRepository(ScheduleSeat)
     private scheduleSeatRepository: Repository<ScheduleSeat>,
 
-
     @Inject('REDIS_CLIENT') private readonly redisClient: Redis,
-  ) { }
+  ) {}
 
   async getAllSeats() {
     return this.seatRepository.find({
@@ -60,7 +57,7 @@ export class SeatService {
   }
 
   async createSeat(createSeatDto: CreateSeatDto) {
-    const { seat_type_id, cinema_room_id, ...seatDetails } = createSeatDto;
+    const { seat_type_id, cinema_room_id } = createSeatDto;
 
     const seatType = await this.seatTypeRepository.findOne({
       where: { id: parseInt(seat_type_id) },
@@ -85,6 +82,77 @@ export class SeatService {
     // });
     // await this.seatRepository.save(seat);
     return { msg: 'Seat created successfully' };
+  }
+  async createSeatsBulk(dto: BulkCreateSeatDto) {
+    const { seat_rows, seat_column } = dto;
+
+    // 🔸 Gán mặc định loại ghế "thường"
+    const defaultSeatType = await this.seatTypeRepository.findOne({
+      where: { id: 1 }, // Hoặc: where: { id: 1 }
+    });
+
+    if (!defaultSeatType) {
+      throw new NotFoundException(
+        'Loại ghế mặc định "Ghế thường" không tồn tại',
+      );
+    }
+    // Ma trận kết quả trả về (2D layout)
+    const layout: { id: string; seat_row: string; seat_column: string }[][] =
+      [];
+
+    // Danh sách ghế cần lưu vào DB
+    const seatsToCreate: Seat[] = [];
+
+    // Danh sách ID để check trùng
+    const ids: string[] = [];
+
+    for (let y = 0; y < seat_rows; y++) {
+      const rowChar = String.fromCharCode(65 + y); // A, B, C...
+      const row: { id: string; seat_row: string; seat_column: string }[] = [];
+
+      for (let x = 0; x < seat_column; x++) {
+        const col = (x + 1).toString(); // 1 → n
+        const id = `${rowChar}${col}`;
+
+        ids.push(id);
+        row.push({ id, seat_row: rowChar, seat_column: col });
+      }
+
+      layout.push(row);
+    }
+
+    // Kiểm tra ghế đã tồn tại chưa
+    const existingIds = new Set(
+      (await this.seatRepository.findBy({ id: In(ids) })).map((s) => s.id),
+    );
+
+    for (const row of layout) {
+      for (const s of row) {
+        if (!existingIds.has(s.id)) {
+          const seatData: Partial<Seat> = {
+            id: s.id,
+            seat_row: s.seat_row,
+            seat_column: s.seat_column,
+            is_deleted: false,
+            seatType: defaultSeatType, // ✅ Gắn mặc định ở đây
+            // cinemaRoom: null,
+          };
+
+          seatsToCreate.push(this.seatRepository.create(seatData));
+        }
+      }
+    }
+
+    if (seatsToCreate.length) {
+      await this.seatRepository.save(seatsToCreate);
+    }
+
+    return {
+      msg: 'Create Seat Successfully',
+      total: seatsToCreate.length,
+      duplicate: ids.length - seatsToCreate.length,
+      layout,
+    };
   }
 
   async updateSeat(id: string, updateSeatDto: UpdateSeatDto) {
@@ -128,7 +196,10 @@ export class SeatService {
 
     return { msg: 'Change status successfully' };
   }
-  private async getScheduleSeats(scheduleId: number, seatIds: string[]): Promise<ScheduleSeat[]> {
+  private async getScheduleSeats(
+    scheduleId: number,
+    seatIds: string[],
+  ): Promise<ScheduleSeat[]> {
     const scheduleSeats = await this.scheduleSeatRepository.find({
       where: {
         schedule: { id: scheduleId },
@@ -137,11 +208,12 @@ export class SeatService {
       },
     });
     if (!scheduleSeats || scheduleSeats.length === 0) {
-      throw new NotFoundException(`No available seats found for schedule ID ${scheduleId} or seats booked`);
+      throw new NotFoundException(
+        `No available seats found for schedule ID ${scheduleId} or seats booked`,
+      );
     }
     return scheduleSeats;
   }
-
 
   async holdSeat(data: HoldSeatType, req: JWTUserType): Promise<void> {
     const { seatIds, schedule_id } = data;
@@ -183,9 +255,4 @@ export class SeatService {
 
     await this.redisClient.del(redisKey);
   }
-
-
-
-
-
 }

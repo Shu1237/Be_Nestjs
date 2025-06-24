@@ -1,17 +1,26 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsNumber, IsOptional, IsString } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class LoginAzureDto {
   @ApiProperty()
   @IsString()
+  @IsNotEmpty()
   sub: string;
 
   @ApiProperty()
   @IsEmail()
+  @IsNotEmpty()
   email: string;
 
   @ApiProperty()
   @IsString()
+  @IsNotEmpty()
   name: string;
 
   @ApiProperty()
