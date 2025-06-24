@@ -194,9 +194,22 @@ export class OrderService {
         this.getPromotionById(orderBill.promotion_id),
         this.getScheduleById(orderBill.schedule_id),
       ]);
+      // check promotion
+      if(promotion.id !==1){
+        if (!promotion || !promotion.is_active) {
+          throw new BadRequestException('Promotion is not active or does not exist');
+        }
+        // check promotion time
+        const currentTime = TimeUtil.now();
+        if (currentTime < promotion.start_time! || currentTime > promotion.end_time!) {
+          throw new BadRequestException('Promotion is not valid at this time');
+        }
+      }
 
-  
-    
+      // Fetch schedule
+      if (!schedule || !schedule.is_deleted) {
+        throw new BadRequestException('Schedule is not active or does not exist');
+      }
 
       // Fetch seat IDs
       const seatIds = orderBill.seats.map((seat: SeatInfo) => seat.id);
