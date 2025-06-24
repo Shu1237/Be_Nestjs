@@ -3,8 +3,8 @@ import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { RefreshToken } from "src/database/entities/user/refresh-token";
 import { LessThan } from "typeorm/find-options/operator/LessThan";
-
 import { Repository } from "typeorm/repository/Repository";
+import { TimeUtil } from "src/common/utils/time.util";
 
 
 @Injectable()
@@ -16,10 +16,9 @@ export class RefreshTokenService {
 
     @Cron('0 0 * * *', {
         name: 'clear-expired-refresh-tokens'
-    })
-    async handleCron() {
+    })    async handleCron() {
         this.logger.log('Called when the current second is 0');
-        const currentDate = new Date();
+        const currentDate = TimeUtil.now();
         const expiredTokens = await this.refreshTokenRepository.find({
             where: {
                 expires_at: LessThan(currentDate),

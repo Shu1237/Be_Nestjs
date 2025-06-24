@@ -3,6 +3,7 @@ import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Schedule } from 'src/database/entities/cinema/schedule';
 import { Repository, LessThan } from 'typeorm';
+import { TimeUtil } from 'src/common/utils/time.util';
 
 @Injectable()
 export class ScheduleExpireCheckService {
@@ -12,11 +13,10 @@ export class ScheduleExpireCheckService {
     @InjectRepository(Schedule)
     private readonly scheduleRepository: Repository<Schedule>,
   ) {}
-
   // Chạy mỗi ngày lúc 0h
   @Cron('0 0 * * *', { name: 'expire-schedules' })
   async handleExpireSchedules() {
-    const now = new Date();
+    const now = new Date(); // UTC time for database comparison
     const expiredSchedules = await this.scheduleRepository.find({
       where: {
         end_movie_time: LessThan(now),

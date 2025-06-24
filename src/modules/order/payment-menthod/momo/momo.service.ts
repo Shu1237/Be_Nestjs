@@ -210,13 +210,12 @@ export class MomoService {
       const orderScore = Math.floor(Number(order.total_prices) / 1000);
       const addScore = orderScore - (order.promotion?.exchange ?? 0);
       order.user.score += addScore;
-      await this.userRepository.save(order.user);
-      // history score
+      await this.userRepository.save(order.user);      // history score
       await this.historyScoreRepository.save({
         score_change: addScore,
         user: order.user,
         order: savedOrder,
-        created_at: TimeUtil.now()
+        created_at: new Date() // Save as UTC in database
       });
     }
 

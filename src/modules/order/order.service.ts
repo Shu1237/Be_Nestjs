@@ -292,12 +292,12 @@ export class OrderService {
         status: Number(orderBill.payment_method_id) === Method.CASH ? StatusOrder.SUCCESS : StatusOrder.PENDING,
         user,
         promotion,
-        order_date: TimeUtil.toVietnamDate(new Date()),
+        order_date: TimeUtil.now(), // Save as UTC in database
       });
 
       const transaction = await this.transactionRepository.save({
         transaction_code: paymentCode.orderId,
-        transaction_date: TimeUtil.toVietnamDate(new Date()),
+        transaction_date: TimeUtil.now(), // Save as UTC in database
         prices: orderBill.total_prices,
         status: Number(orderBill.payment_method_id) === Method.CASH ? StatusOrder.SUCCESS : StatusOrder.PENDING,
         paymentMethod,
@@ -572,11 +572,10 @@ export class OrderService {
     const bookingSummaries = orderByUser.map(order => this.mapToBookingSummaryLite(order));
     return bookingSummaries;
   }
-
   private mapToBookingSummaryLite(order: Order) {
     return {
       id: order.id,
-      order_date: order.order_date,
+      order_date: TimeUtil.toVietnamDate(order.order_date), // Convert to Vietnam timezone for display
       total_prices: order.total_prices,
       status: order.status,
       qr_code: order.qr_code,
@@ -606,9 +605,9 @@ export class OrderService {
           id: detail.schedule.movie.id,
           name: detail.schedule.movie.name,
         },
-      })),
-      transaction: {
+      })),      transaction: {
         transaction_code: order.transaction.transaction_code,
+        transaction_date: TimeUtil.toVietnamDate(order.transaction.transaction_date), // Convert to Vietnam timezone for display
         status: order.transaction.status,
         PaymentMethod: {
           method_name: order.transaction.paymentMethod.name
