@@ -8,13 +8,6 @@ import { CinemaRoom } from 'src/typeorm/entities/cinema/cinema-room';
 import { CreateScheduleDto } from './dto/create-schedule.dto';
 import { ISchedule } from 'src/utils/type';
 import { Version } from 'src/typeorm/entities/cinema/version';
-import dayjs from 'dayjs';
-import utc from 'dayjs/plugin/utc';
-import timezone from 'dayjs/plugin/timezone';
-
-
-dayjs.extend(utc);
-dayjs.extend(timezone);
 
 @Injectable()
 export class ScheduleService {
@@ -60,9 +53,6 @@ export class ScheduleService {
       end_movie_time,
       id_Version,
     } = createScheduleDto;
-    
-    const startVN = dayjs(start_movie_time).tz('Asia/Ho_Chi_Minh').toDate();
-    const endVN = dayjs(end_movie_time).tz('Asia/Ho_Chi_Minh').toDate();
 
     // Kiểm tra sự tồn tại của Movie
     const movie = await this.movieRepository.findOne({
@@ -94,8 +84,8 @@ export class ScheduleService {
 
     // Tạo mới Schedule
     const schedule = this.scheduleRepository.create({
-      start_movie_time: startVN,
-      end_movie_time: endVN,
+      start_movie_time,
+      end_movie_time,
       movie,
       cinemaRoom,
       version, // Liên kết phiên bản cụ thể
