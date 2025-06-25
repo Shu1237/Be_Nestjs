@@ -39,15 +39,15 @@ export class TicketController {
     return this.ticketService.getTicketsByUserId(id);
   }
 
-  @Patch('tickets/mark-used')
-  @ApiOperation({ summary: 'Mark tickets as used' })
-  @ApiBearerAuth()
-  @ApiBody({ type: TicketMarkUsedDto })
-  markTicketsAsUsed(@Body() body: TicketMarkUsedDto, @Req() req) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException('Only admin or employee can mark tickets as used');
-    }
-    return this.ticketService.markTicketsAsUsed(body.ticketIds);
-  }
+  // @Patch('tickets/mark-used')
+  // @ApiOperation({ summary: 'Mark tickets as used' })
+  // @ApiBearerAuth()
+  // @ApiBody({ type: TicketMarkUsedDto })
+  // markTicketsAsUsed(@Body() body: TicketMarkUsedDto, @Req() req) {
+  //   const user = req.user as JWTUserType;
+  //   if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
+  //     throw new ForbiddenException('Only admin or employee can mark tickets as used');
+  //   }
+  //   return this.ticketService.markTicketsAsUsed(body.ticketIds);
+  // }
 }

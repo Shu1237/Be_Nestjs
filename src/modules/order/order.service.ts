@@ -32,6 +32,7 @@ import { NotFoundException } from 'src/common/exceptions/not-found.exception';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
 import { ConflictException } from 'src/common/exceptions/conflict.exception';
 import { ConfigService } from '@nestjs/config';
+import { TicketService } from '../ticket/ticket.service';
 
 
 
@@ -73,6 +74,7 @@ export class OrderService {
     private readonly vnpayService: VnpayService,
     private readonly zalopayService: ZalopayService,
     private readonly gateway: MyGateWay,
+    private readonly ticketService: TicketService,
     private readonly configService: ConfigService,
 
 
@@ -194,7 +196,10 @@ export class OrderService {
       const scheduleId = orderBill.schedule_id.toString();
 
       // check redis
-      await this.validateBeforeOrder(scheduleId, user.id, seatIds);
+      const check = await this.validateBeforeOrder(scheduleId, user.id, seatIds);
+      if (!check) {
+        throw new ConflictException('Seats are being held by another user. Please try again later.');
+      }
 
       const scheduleSeats = await this.getScheduleSeatsByIds(seatIds, orderBill.schedule_id);
 
@@ -416,6 +421,7 @@ export class OrderService {
           seatIds: orderBill.seats.map(seat => seat.id)
         });
       }
+
       return { payUrl: paymentCode.payUrl };
     } catch (error) {
       throw error;
@@ -426,24 +432,24 @@ export class OrderService {
     scheduleId: string,
     userId: string,
     requestSeatIds: string[],
-  ): Promise<void> {
+  ): Promise<boolean> {
 
     const redisKey = `seat-hold-${scheduleId}-${userId}`;
-    // const data = await this.redisClient.get(redisKey);
+    const data = await this.redisClient.get(redisKey);
 
-    // if (!data) {
-    //   // socket seat return not yet
-    //   this.gateway.server.to(`schedule-${scheduleId}`).emit('seat_cancel_hold_update', {
-    //     seatIds: requestSeatIds,
-    //     schedule_id: scheduleId,
-    //     status: StatusSeat.NOT_YET,
-    //   });
-    //   throw new BadRequestException('Your seat hold has expired. Please select seats again.');
-    // }
+    if (!data) {
+      // socket seat return not yet
+      this.gateway.server.to(`schedule-${scheduleId}`).emit('seat_cancel_hold_update', {
+        seatIds: requestSeatIds,
+        schedule_id: scheduleId,
+        status: StatusSeat.NOT_YET,
+      });
+      throw new BadRequestException('Your seat hold has expired. Please select seats again.');
+    }
 
     const keys = await this.redisClient.keys(`seat-hold-${scheduleId}-*`);
 
-    if (!keys.length) return;
+    if (!keys.length) return true;
 
     const redisData = await Promise.all(keys.map((key) => this.redisClient.get(key)));
 
@@ -468,12 +474,13 @@ export class OrderService {
       // Check trùng ghế
       const isSeatHeld = requestSeatIds.some((seatId) => parsed.seatIds.includes(seatId));
       if (isSeatHeld) {
-        throw new ConflictException('Some seats are already held by another user. Please try again later.');
+        return false;
       }
     }
 
     // Xóa Redis key của người dùng hiện tại sau khi đặt đơn thành công
     await this.redisClient.del(redisKey);
+    return true;
   }
 
 
@@ -564,6 +571,7 @@ export class OrderService {
       order_date: order.order_date,
       total_prices: order.total_prices,
       status: order.status,
+      qr_code: order.qr_code,
       user: {
         id: order.user.id,
         username: order.user.username,
@@ -610,6 +618,12 @@ export class OrderService {
       if (!order) {
         throw new NotFoundException('Order not found');
       }
+      //  use all ticket in order by qr code
+      const ticketIds = order.orderDetails.map(detail => detail.ticketId);
+      if (ticketIds.length === 0) {
+        throw new NotFoundException('No tickets found for this order');
+      }
+      await this.ticketService.markTicketsAsUsed(ticketIds);
 
       return order;
     } catch (error) {

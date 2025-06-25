@@ -20,6 +20,9 @@ export class Order {
   @CreateDateColumn({ type: 'timestamp' })
   order_date: Date;
 
+  @Column({ type: 'varchar', length: 256, nullable: true })
+  qr_code: string;
+
   @ManyToOne(() => User, (user) => user.orders, { nullable: false })
   @JoinColumn({ name: 'user_id' })
   user: User;
