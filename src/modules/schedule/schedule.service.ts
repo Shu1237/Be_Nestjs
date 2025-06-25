@@ -10,7 +10,6 @@ import { ISchedule } from 'src/common/utils/type';
 import { NotFoundException } from 'src/common/exceptions/not-found.exception';
 import { Version } from 'src/database/entities/cinema/version';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
-
 @Injectable()
 export class ScheduleService {
   constructor(
@@ -76,14 +75,14 @@ export class ScheduleService {
       );
     }
 
-    // Kiểm tra sự tồn tại của Version
+   
     const version = await this.versionRepository.findOne({
       where: { id: id_Version },
     });
     if (!version) {
       throw new NotFoundException(`Version with ID ${id_Version} not found`);
     }
-    // ✅ Kiểm tra version thuộc movie
+    
     const versionBelongsToMovie = movie.versions.some(
       (v) => v.id === id_Version,
     );
@@ -93,7 +92,7 @@ export class ScheduleService {
       );
     }
 
-    // ✅ Kiểm tra trùng lịch chiếu
+   
     const overlappingSchedule = await this.scheduleRepository
       .createQueryBuilder('schedule')
       .where('schedule.cinemaRoom = :cinemaRoomId', {

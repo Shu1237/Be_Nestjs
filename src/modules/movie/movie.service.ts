@@ -1,4 +1,4 @@
-import { Injectable} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Movie } from 'src/database/entities/cinema/movie';
 import { ApiTags } from '@nestjs/swagger';
 import { In, Repository } from 'typeorm';
@@ -25,7 +25,7 @@ export class MovieService {
     @InjectRepository(Version)
     private readonly versionRepository: Repository<Version>,
     // Injec // Inject Actor repository
-  ) { }
+  ) {}
   private getMovieSummary(movie: IMovie) {
     return {
       id: movie.id,
@@ -77,60 +77,83 @@ export class MovieService {
   }
 
   async createMovie(movieDto: CreateMovieDto): Promise<{ msg: string }> {
-    const existingMovie = await this.movieRepository.findOne({
-      where: { name: movieDto.name },
-    });
+    try {
+      const existingMovie = await this.movieRepository.findOne({
+        where: { name: movieDto.name },
+      });
 
-    if (existingMovie) {
+      if (existingMovie) {
+        throw new BadRequestException(
+          `Movie with name "${movieDto.name}" already exists.`,
+        );
+      }
+      const movie = this.movieRepository.create(movieDto);
+
+      // Nếu có danh sách id_Actor, thêm diễn viên vào bộ phim
+      if (movieDto.id_Actor) {
+        const actors = await this.actorRepository.find({
+          where: { id: In(movieDto.id_Actor) },
+          select: ['id', 'name'],
+        });
+        if (actors.length === 0) {
+          throw new NotFoundException(
+            `No actors found with the provided IDs: [${movieDto.id_Actor.join(', ')}]`,
+          );
+        }
+        movie.actors = actors;
+      }
+
+      // Nếu có danh sách id_Gerne, thêm thể loại vào bộ phim
+      if (movieDto.id_Gerne) {
+        const gernes = await this.gerneRepository.find({
+          where: { id: In(movieDto.id_Gerne) },
+          select: ['id', 'genre_name'],
+        });
+        if (gernes.length === 0) {
+          throw new NotFoundException(
+            `No genres found with the provided IDs: [${movieDto.id_Gerne.join(', ')}]`,
+          );
+        }
+        movie.gernes = gernes;
+      }
+
+      // Nếu có danh sách id_Version, thêm phiên bản vào bộ phim
+      if (movieDto.id_Version) {
+        const versions = await this.versionRepository.find({
+          where: { id: In(movieDto.id_Version) },
+          select: ['id', 'name'],
+        });
+        if (versions.length === 0) {
+          throw new NotFoundException(
+            `No versions found with the provided IDs: [${movieDto.id_Version.join(', ')}]`,
+          );
+        }
+        movie.versions = versions;
+      }
+
+      await this.movieRepository.save(movie);
+      return {
+        msg: 'Movie created successfully',
+      };
+    } catch (error) {
+      // Nếu là lỗi đã throw ở trên thì trả về luôn
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+      // Nếu là lỗi validate hoặc lỗi DB khác
       throw new BadRequestException(
-        `Movie with name "${movieDto.name}" already exists.`,
+        error.message || 'Unknown error when creating movie',
       );
     }
-    const movie = this.movieRepository.create(movieDto);
-
-    // Nếu có danh sách id_Actor, thêm diễn viên vào bộ phim
-    if (movieDto.id_Actor) {
-      const actors = await this.actorRepository.find({
-        where: { id: In(movieDto.id_Actor) },
-        select: ['id', 'name'], // Chỉ lấy id và name
-      });
-      if (actors.length === 0) {
-        throw new NotFoundException(`No actors found with the provided IDs`);
-      }
-      movie.actors = actors;
-    }
-
-    // Nếu có danh sách id_Gerne, thêm thể loại vào bộ phim
-    if (movieDto.id_Gerne) {
-      const gernes = await this.gerneRepository.find({
-        where: { id: In(movieDto.id_Gerne) },
-        select: ['id', 'genre_name'], // Chỉ lấy id và genre_name
-      });
-      if (gernes.length === 0) {
-        throw new NotFoundException(`No genres found with the provided IDs`);
-      }
-      movie.gernes = gernes;
-    }
-
-    // Nếu có danh sách id_Version, thêm phiên bản vào bộ phim
-    if (movieDto.id_Version) {
-      const versions = await this.versionRepository.find({
-        where: { id: In(movieDto.id_Version) },
-        select: ['id', 'name'], // Chỉ lấy id và name
-      });
-      if (versions.length === 0) {
-        throw new NotFoundException(`No versions found with the provided IDs`);
-      }
-      movie.versions = versions;
-    }
-    await this.movieRepository.save(movie);
-    // Trả về dữ liệu đã gói gọn
-    return {
-      msg: 'Movie created successfully',
-    };
   }
 
-  async updateMovie(id: number, movieDto: UpdateMovieDto): Promise<{ msg: string }> {
+  async updateMovie(
+    id: number,
+    movieDto: UpdateMovieDto,
+  ): Promise<{ msg: string }> {
     const existingMovie = await this.movieRepository.findOne({
       where: { id },
       relations: ['gernes', 'actors', 'versions'],
@@ -242,7 +265,6 @@ export class MovieService {
     return await this.movieRepository.save(movie);
   }
 
-
   async getGernesOfMovie(movieId: number): Promise<Gerne[]> {
     const movie = await this.movieRepository.findOne({
       where: { id: movieId },
@@ -289,38 +311,6 @@ export class MovieService {
     );
     return await this.movieRepository.save(movie);
   }
-  async addVersionToMovie(movieId: number, versionId: number): Promise<Movie> {
-    const movie = await this.movieRepository.findOne({
-      where: { id: movieId },
-      relations: ['versions'], // Lấy danh sách phiên bản liên quan
-    });
-
-    const version = await this.versionRepository.findOne({
-      where: { id: versionId },
-    });
-
-    if (!movie) {
-      throw new NotFoundException(`Movie with ID ${movieId} not found`);
-    }
-
-    if (!version) {
-      throw new NotFoundException(`Version with ID ${versionId} not found`);
-    }
-
-    // Kiểm tra nếu phiên bản đã tồn tại trong danh sách của phim
-    const isVersionAlreadyAdded = movie.versions.some(
-      (existingVersion) => existingVersion.id === versionId,
-    );
-    if (isVersionAlreadyAdded) {
-      throw new BadRequestException(
-        `Version with ID ${versionId} is already added to the movie.`,
-      );
-    }
-
-    // Thêm phiên bản vào danh sách
-    movie.versions.push(version);
-    return await this.movieRepository.save(movie);
-  }
 
   async getVersionsOfMovie(movieId: number): Promise<Version[]> {
     const movie = await this.movieRepository.findOne({
@@ -334,42 +324,23 @@ export class MovieService {
 
     return movie.versions;
   }
-
-  async removeVersionFromMovie(
-    movieId: number,
-    versionId: number,
-  ): Promise<Movie> {
-    const movie = await this.movieRepository.findOne({
-      where: { id: movieId },
-      relations: ['versions'], // Lấy danh sách phiên bản liên quan
+  async getMoviesPaginated(
+    page = 1,
+    limit = 10,
+  ): Promise<{ data: IMovie[]; total: number; page: number; limit: number }> {
+    const [movies, total] = await this.movieRepository.findAndCount({
+      relations: ['gernes', 'actors', 'versions'],
+      skip: (page - 1) * limit,
+      take: limit,
+      order: {
+        id: 'DESC',
+      },
     });
-
-    const version = await this.versionRepository.findOne({
-      where: { id: versionId },
-    });
-
-    if (!movie) {
-      throw new NotFoundException(`Movie with ID ${movieId} not found`);
-    }
-
-    if (!version) {
-      throw new NotFoundException(`Version with ID ${versionId} not found`);
-    }
-
-    // Kiểm tra nếu phiên bản không tồn tại trong danh sách của phim
-    const isVersionInMovie = movie.versions.some(
-      (existingVersion) => existingVersion.id === versionId,
-    );
-    if (!isVersionInMovie) {
-      throw new BadRequestException(
-        `Version with ID ${versionId} is not associated with the movie.`,
-      );
-    }
-
-    // Xóa phiên bản khỏi danh sách
-    movie.versions = movie.versions.filter(
-      (existingVersion) => existingVersion.id !== versionId,
-    );
-    return await this.movieRepository.save(movie);
+    return {
+      data: movies.map((movie) => this.getMovieSummary(movie)),
+      total,
+      page,
+      limit,
+    };
   }
 }
