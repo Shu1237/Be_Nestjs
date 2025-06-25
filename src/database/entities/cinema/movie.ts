@@ -44,7 +44,7 @@ export class Movie {
   @Column({ type: 'varchar', length: 255 })
   banner: string;
 
-  @Column({ type: 'int', nullable: true })
+  @Column({ type: 'varchar', length: 100, nullable: true })
   limited_age: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true })

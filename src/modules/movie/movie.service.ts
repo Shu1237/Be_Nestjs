@@ -1,4 +1,4 @@
-import { Injectable} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Movie } from 'src/database/entities/cinema/movie';
 import { ApiTags } from '@nestjs/swagger';
 import { In, Repository } from 'typeorm';
@@ -77,57 +77,66 @@ export class MovieService {
   }
 
   async createMovie(movieDto: CreateMovieDto): Promise<{ msg: string }> {
-    const existingMovie = await this.movieRepository.findOne({
-      where: { name: movieDto.name },
-    });
-
-    if (existingMovie) {
-      throw new BadRequestException(
-        `Movie with name "${movieDto.name}" already exists.`,
-      );
-    }
-    const movie = this.movieRepository.create(movieDto);
-
-    // Nếu có danh sách id_Actor, thêm diễn viên vào bộ phim
-    if (movieDto.id_Actor) {
-      const actors = await this.actorRepository.find({
-        where: { id: In(movieDto.id_Actor) },
-        select: ['id', 'name'], // Chỉ lấy id và name
+    try {
+      const existingMovie = await this.movieRepository.findOne({
+        where: { name: movieDto.name },
       });
-      if (actors.length === 0) {
-        throw new NotFoundException(`No actors found with the provided IDs`);
-      }
-      movie.actors = actors;
-    }
 
-    // Nếu có danh sách id_Gerne, thêm thể loại vào bộ phim
-    if (movieDto.id_Gerne) {
-      const gernes = await this.gerneRepository.find({
-        where: { id: In(movieDto.id_Gerne) },
-        select: ['id', 'genre_name'], // Chỉ lấy id và genre_name
-      });
-      if (gernes.length === 0) {
-        throw new NotFoundException(`No genres found with the provided IDs`);
+      if (existingMovie) {
+        throw new BadRequestException(
+          `Movie with name "${movieDto.name}" already exists.`,
+        );
       }
-      movie.gernes = gernes;
-    }
+      const movie = this.movieRepository.create(movieDto);
 
-    // Nếu có danh sách id_Version, thêm phiên bản vào bộ phim
-    if (movieDto.id_Version) {
-      const versions = await this.versionRepository.find({
-        where: { id: In(movieDto.id_Version) },
-        select: ['id', 'name'], // Chỉ lấy id và name
-      });
-      if (versions.length === 0) {
-        throw new NotFoundException(`No versions found with the provided IDs`);
+      // Nếu có danh sách id_Actor, thêm diễn viên vào bộ phim
+      if (movieDto.id_Actor) {
+        const actors = await this.actorRepository.find({
+          where: { id: In(movieDto.id_Actor) },
+          select: ['id', 'name'],
+        });
+        if (actors.length === 0) {
+          throw new NotFoundException(`No actors found with the provided IDs: [${movieDto.id_Actor.join(', ')}]`);
+        }
+        movie.actors = actors;
       }
-      movie.versions = versions;
+
+      // Nếu có danh sách id_Gerne, thêm thể loại vào bộ phim
+      if (movieDto.id_Gerne) {
+        const gernes = await this.gerneRepository.find({
+          where: { id: In(movieDto.id_Gerne) },
+          select: ['id', 'genre_name'],
+        });
+        if (gernes.length === 0) {
+          throw new NotFoundException(`No genres found with the provided IDs: [${movieDto.id_Gerne.join(', ')}]`);
+        }
+        movie.gernes = gernes;
+      }
+
+      // Nếu có danh sách id_Version, thêm phiên bản vào bộ phim
+      if (movieDto.id_Version) {
+        const versions = await this.versionRepository.find({
+          where: { id: In(movieDto.id_Version) },
+          select: ['id', 'name'],
+        });
+        if (versions.length === 0) {
+          throw new NotFoundException(`No versions found with the provided IDs: [${movieDto.id_Version.join(', ')}]`);
+        }
+        movie.versions = versions;
+      }
+
+      await this.movieRepository.save(movie);
+      return {
+        msg: 'Movie created successfully',
+      };
+    } catch (error) {
+      // Nếu là lỗi đã throw ở trên thì trả về luôn
+      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+        throw error;
+      }
+      // Nếu là lỗi validate hoặc lỗi DB khác
+      throw new BadRequestException(error.message || 'Unknown error when creating movie');
     }
-    await this.movieRepository.save(movie);
-    // Trả về dữ liệu đã gói gọn
-    return {
-      msg: 'Movie created successfully',
-    };
   }
 
   async updateMovie(id: number, movieDto: UpdateMovieDto): Promise<{ msg: string }> {
