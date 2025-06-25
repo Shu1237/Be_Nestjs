@@ -24,15 +24,12 @@ import { Promotion } from 'src/database/entities/promotion/promotion';
       }),
       inject: [ConfigService],
     }),
-    TypeOrmModule.forFeature([Promotion]), // 🟢 thêm để dùng được repository của Promotion
+    TypeOrmModule.forFeature([Promotion]),
     RedisModule,
     OrderModule,
     QrCodeModule,
   ],
   controllers: [AuthTesterController],
-  providers: [
-    JwtAuthGuard,
-    PromotionCronService, // ✅ đăng service thủ công ở đây
-  ],
+  providers: [JwtAuthGuard, PromotionCronService],
 })
 export class TesterModule {}
