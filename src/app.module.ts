@@ -28,7 +28,6 @@ import { MyGateWayModule } from './common/gateways/seat.gateway.module';
 import { S3Module } from './common/s3/s3.module';
 import { ScheduleSeatModule } from './modules/scheduleseat/scheduleseat.module';
 import { ProductModule } from './modules/product/product.module';
-import { HistoryScoreModule } from './modules/history-score/history-score.module';
 
 @Module({
   imports: [
@@ -100,7 +99,6 @@ import { HistoryScoreModule } from './modules/history-score/history-score.module
     TicketModule,
     ScheduleSeatModule,
     ProductModule,
-    HistoryScoreModule,
 
     // Shared Modules
     CronModule,
