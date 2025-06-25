@@ -6,7 +6,7 @@ import {
   Param,
   ParseIntPipe,
   Patch,
-  Delete,
+  // Delete,
   Put,
   UseGuards,
   Req,
@@ -77,18 +77,18 @@ export class PromotionController {
     throw new ForbiddenException('Only admin can update promotions');
   }
 
-  @Delete(':id')
-  @ApiOperation({ summary: 'Delete promotion by ID (admin only)' })
-  async deletePromotion(
-    @Param('id', ParseIntPipe) id: number,
-    @Req() req: Request,
-  ) {
-    const user = req.user as JWTUserType;
-    if (user.role_id === Role.ADMIN) {
-      return this.promotionService.deletePromotion(id);
-    }
-    throw new ForbiddenException('Only admin can delete promotions');
-  }
+  // @Delete(':id')
+  // @ApiOperation({ summary: 'Delete promotion by ID (admin only)' })
+  // async deletePromotion(
+  //   @Param('id', ParseIntPipe) id: number,
+  //   @Req() req: Request,
+  // ) {
+  //   const user = req.user as JWTUserType;
+  //   if (user.role_id === Role.ADMIN) {
+  //     return this.promotionService.deletePromotion(id);
+  //   }
+  //   throw new ForbiddenException('Only admin can delete promotions');
+  // }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Soft delete promotion by ID (admin only)' })

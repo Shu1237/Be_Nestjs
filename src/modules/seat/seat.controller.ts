@@ -17,7 +17,7 @@ import { UpdateSeatDto } from './dto/update-seat.dto';
 import { Request } from 'express';
 import { JWTUserType } from 'src/common/utils/type';
 import { Role } from 'src/common/enums/roles.enum';
-import { UpdateSeatStatusDto } from './dto/update-seat-status.dto';
+import { BulkCreateSeatDto } from './dto/BulkCreateSeatDto';
 
 @ApiTags('Seats')
 @UseGuards(JwtAuthGuard)
@@ -43,16 +43,7 @@ export class SeatController {
   getSeatsByRoom(@Param('roomId') roomId: string) {
     return this.seatService.getSeatsByRoom(roomId);
   }
-  @Post()
-  @ApiOperation({ summary: 'Create new seat (admin only)' })
-  @ApiBody({ type: CreateSeatDto })
-  createSeat(@Body() createSeatDto: CreateSeatDto, @Req() req: Request) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN) {
-      throw new Error('Only admin can create seats');
-    }
-    return this.seatService.createSeat(createSeatDto);
-  }
+
   @Put(':id')
   @ApiOperation({ summary: 'Update seat by ID (admin only)' })
   @ApiBody({ type: UpdateSeatDto })
@@ -80,7 +71,21 @@ export class SeatController {
   // cancelHoldSeat(@Body() data: HoldSeatDto, @Req() req) {
   //   return this.seatService.cancelHoldSeat(data, req.user);
   // }
-
+  @Post()
+  @ApiOperation({ summary: 'Create new seat (admin only)' })
+  @ApiBody({ type: CreateSeatDto })
+  createSeat(@Body() createSeatDto: CreateSeatDto, @Req() req: Request) {
+    const user = req.user as JWTUserType;
+    if (user.role_id !== Role.ADMIN) {
+      throw new Error('Only admin can create seats');
+    }
+    return this.seatService.createSeat(createSeatDto);
+  }
+  @Post('bulk')
+  @ApiOperation({ summary: 'Create Seat By Row & Col' })
+  createSeatsBulk(@Body() dto: BulkCreateSeatDto) {
+    return this.seatService.createSeatsBulk(dto);
+  }
   @Patch(':id')
   @ApiOperation({ summary: 'Soft delete seat by ID (admin only)' })
   deleteSeat(@Param('id') id: string, @Req() req: Request) {
@@ -91,13 +96,13 @@ export class SeatController {
     return this.seatService.deleteSeat(id);
   }
 
-  @Put(':id/status')
-  @ApiOperation({ summary: 'Toggle seat status by ID (admin only)' })
-  updateSeatStatus(@Param('id') id: string, @Body() updateSeatStatusDto: UpdateSeatStatusDto, @Req() req) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN) {
-      throw new Error('Only admin can update seat status');
-    }
-    return this.seatService.updateSeatStatus(id);
-  }
+  // @Put(':id/status')
+  // @ApiOperation({ summary: 'Toggle seat status by ID (admin only)' })
+  // updateSeatStatus(@Param('id') id: string, @Body() updateSeatStatusDto: UpdateSeatStatusDto, @Req() req) {
+  //   const user = req.user as JWTUserType;
+  //   if (user.role_id !== Role.ADMIN) {
+  //     throw new Error('Only admin can update seat status');
+  //   }
+  //   return this.seatService.updateSeatStatus(id);
+  // }
 }

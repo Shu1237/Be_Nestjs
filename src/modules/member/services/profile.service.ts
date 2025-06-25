@@ -16,7 +16,7 @@ export class ProfileService {
   async getProfile(userId: string, userRole: Role): Promise<Partial<User>> {
     const user = await this.userRepository.findOne({
       where: { id: userId, is_deleted: false },
-      relations: userRole === Role.USER ? ['member'] : ['role'],
+      relations: userRole === Role.USER ? [] : ['role'],
       select: {
         id: true,
         username: true,
@@ -24,9 +24,7 @@ export class ProfileService {
         avatar: true,
         ...(userRole === Role.USER
           ? {
-              member: {
-                score: true,
-              },
+              score: true,
             }
           : {
               role: {
@@ -50,7 +48,7 @@ export class ProfileService {
   ): Promise<Partial<User>> {
     const user = await this.userRepository.findOne({
       where: { id: userId, is_deleted: false },
-      relations: ['role', 'member'],
+      relations: ['role', 'user'],
     });
 
     if (!user) {
