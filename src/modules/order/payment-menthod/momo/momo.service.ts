@@ -182,9 +182,6 @@ export class MomoService {
 
     // generate QR code , jwt orderid
     const endScheduleTime = order.orderDetails[0].ticket.schedule.end_movie_time;
-    if (!this.configService.get<string>('jwt.qrSecret')) {
-      throw new ForbiddenException('JWT QR Code secret is not set');
-    }
     const endTime = new Date(endScheduleTime).getTime();
     const now = Date.now();
     const expiresInSeconds = Math.floor((endTime - now) / 1000);
@@ -204,15 +201,32 @@ export class MomoService {
     order.qr_code = qrCode;
     const savedOrder = await this.orderRepository.save(order);
     // Cộng điểm cho người dùng
-    if (order.user?.role.role_id === Role.USER) {
+
+    let scoreTargetUser: User | null = null;
+
+
+    if (order.customer_id && order.customer_id.trim() !== '') {
+      const customer = await this.userRepository.findOne({
+        where: { id: order.customer_id },
+        relations: ['role'],
+      });
+
+      if (customer && customer.role.role_id === Role.USER) {
+        scoreTargetUser = customer;
+      }
+    } else if (order.user?.role.role_id === Role.USER) {
+      scoreTargetUser = order.user;
+    }
+
+    if (scoreTargetUser) {
       const orderScore = Math.floor(Number(order.total_prices) / 1000);
       const addScore = orderScore - (order.promotion?.exchange ?? 0);
-      order.user.score += addScore;
-      await this.userRepository.save(order.user);
-      // history score
+      scoreTargetUser.score += addScore;
+      await this.userRepository.save(scoreTargetUser);
+
       await this.historyScoreRepository.save({
         score_change: addScore,
-        user: order.user,
+        user: scoreTargetUser,
         order: savedOrder,
       });
     }

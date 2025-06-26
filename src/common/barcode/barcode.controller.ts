@@ -27,11 +27,11 @@ export class BarcodeController {
   constructor(private readonly barcodeService: BarcodeService) {}
 
   @Get('scan')
-  @ApiOperation({ summary: 'Quét barcode để lấy thông tin người dùng' })
+  @ApiOperation({ summary: 'Scan barcode to get user information' })
   @ApiQuery({
     name: 'code',
     required: true,
-    description: 'Giá trị mã vạch cần quét (10 ký tự)',
+    description: 'Code barcode scan',
   })
   async scanBarcode(
     @Query('code') code: string,
@@ -42,7 +42,7 @@ export class BarcodeController {
 
     // ✅ Chỉ cho phép ADMIN và EMPLOYEE quét barcode
     if (![Role.ADMIN, Role.EMPLOYEE].includes(user.role_id)) {
-      throw new ForbiddenException('Bạn không có quyền quét mã vạch');
+      throw new ForbiddenException('You do not have permission to scan barcodes.');
     }
 
     const result = await this.barcodeService.scanBarcode(code);
