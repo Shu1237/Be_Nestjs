@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-
 import { MyGateWayModule } from 'src/common/gateways/seat.gateway.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleSeat } from 'src/database/entities/cinema/schedule_seat';
@@ -10,29 +9,25 @@ import { Movie } from 'src/database/entities/cinema/movie';
 import { Schedule } from 'src/database/entities/cinema/schedule';
 import { MovieExpireCheckService } from './movie/movieExpireCheck.service';
 import { ScheduleExpireCheckService } from './schedule/scheduleExpireCheck.service';
+import { Order } from 'src/database/entities/order/order';
+import { OrderCronService } from './order/orderCron.service';
 import { Promotion } from 'src/database/entities/promotion/promotion';
 import { PromotionCronService } from './promotion/PromotionCron.Service';
+
 
 @Module({
   imports: [
     RedisModule,
     MyGateWayModule,
-    TypeOrmModule.forFeature([
-      RefreshToken,
-      ScheduleSeat,
-      Schedule,
-      Movie,
-      Promotion,
-    ]),
+    TypeOrmModule.forFeature([RefreshToken, ScheduleSeat, Schedule, Movie, Order, Promotion]),
   ],
-
   providers: [
-    RefreshTokenService,
-    MovieExpireCheckService,
+    RefreshTokenService, 
+    MovieExpireCheckService, 
     ScheduleExpireCheckService,
+    OrderCronService,
     PromotionCronService,
   ],
-  exports: [RefreshTokenService],
-  controllers: [],
+ 
 })
 export class CronModule {}

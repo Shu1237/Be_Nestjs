@@ -17,23 +17,29 @@ export class MovieExpireCheckService {
   // Chạy mỗi ngày lúc 0h
   @Cron('0 0 * * *', { name: 'expire-movies' })
   async handleExpireMovies() {
-    const now = new Date();
-    // Tìm các phim chưa bị đánh dấu hết hạn nhưng đã hết hạn
-    const expiredMovies = await this.movieRepository.find({
-      where: {
-        to_date: LessThan(now),
-        is_deleted: false,
-      },
-    });
+    this.logger.log('Starting movie expiration check');
+    
+    try {
+      const now = new Date();
+      // Tìm các phim chưa bị đánh dấu hết hạn nhưng đã hết hạn
+      const expiredMovies = await this.movieRepository.find({
+        where: {
+          to_date: LessThan(now),
+          is_deleted: false,
+        },
+      });
 
-    if (expiredMovies.length > 0) {
-      for (const movie of expiredMovies) {
-        movie.is_deleted = true;
+      if (expiredMovies.length > 0) {
+        for (const movie of expiredMovies) {
+          movie.is_deleted = true;
+        }
+        await this.movieRepository.save(expiredMovies);
+        this.logger.log(`Successfully expired ${expiredMovies.length} movies`);
+      } else {
+        this.logger.log('No movies expired today');
       }
-      await this.movieRepository.save(expiredMovies);
-      this.logger.log(`Expired ${expiredMovies.length} movies`);
-    } else {
-      this.logger.log('No movies expired today');
+    } catch (error) {
+      this.logger.error('Error during movie expiration check:', error);
     }
   }
 }

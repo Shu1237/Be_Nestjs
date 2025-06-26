@@ -16,22 +16,28 @@ export class ScheduleExpireCheckService {
   // Chạy mỗi ngày lúc 0h
   @Cron('0 0 * * *', { name: 'expire-schedules' })
   async handleExpireSchedules() {
-    const now = new Date();
-    const expiredSchedules = await this.scheduleRepository.find({
-      where: {
-        end_movie_time: LessThan(now),
-        is_deleted: false,
-      },
-    });
+    this.logger.log('Starting schedule expiration check');
+    
+    try {
+      const now = new Date();
+      const expiredSchedules = await this.scheduleRepository.find({
+        where: {
+          end_movie_time: LessThan(now),
+          is_deleted: false,
+        },
+      });
 
-    if (expiredSchedules.length > 0) {
-      for (const schedule of expiredSchedules) {
-        schedule.is_deleted = true;
+      if (expiredSchedules.length > 0) {
+        for (const schedule of expiredSchedules) {
+          schedule.is_deleted = true;
+        }
+        await this.scheduleRepository.save(expiredSchedules);
+        this.logger.log(`Successfully expired ${expiredSchedules.length} schedules`);
+      } else {
+        this.logger.log('No schedules expired today');
       }
-      await this.scheduleRepository.save(expiredSchedules);
-      this.logger.log(`Expired ${expiredSchedules.length} schedules`);
-    } else {
-      this.logger.log('No schedules expired today');
+    } catch (error) {
+      this.logger.error('Error during schedule expiration check:', error);
     }
   }
 }

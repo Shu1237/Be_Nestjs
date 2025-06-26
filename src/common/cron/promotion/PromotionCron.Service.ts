@@ -22,7 +22,9 @@ export class PromotionCronService {
     );
   }
 
-  @Cron(CronExpression.EVERY_MINUTE)
+  @Cron(CronExpression.EVERY_12_HOURS, {
+    name: 'promotion-check',
+  })
   async processPromotions(): Promise<void> {
     if (this.isRunning) return;
 
