@@ -13,7 +13,7 @@ export class ScheduleExpireCheckService {
     private readonly scheduleRepository: Repository<Schedule>,
   ) {}
 
-  // Chạy mỗi ngày lúc 0h
+  // Chạy 12h tối
   @Cron('0 0 * * *', { name: 'expire-schedules' })
   async handleExpireSchedules() {
     this.logger.log('Starting schedule expiration check');
