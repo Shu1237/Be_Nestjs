@@ -1,6 +1,5 @@
 import {
   IsArray,
-  IsDate,
   IsEmail,
   IsEnum,
   IsNumber,
@@ -59,10 +58,10 @@ export class CreateOrderBillDto {
   @IsNumber()
   schedule_id: number;
 
-  @ApiProperty({ example: 'customer@example.com', description: 'Customer email' })
+  @ApiPropertyOptional({ example: 'uuid-customer-id', description: 'ID của khách hàng nếu nhân viên đặt giúp' })
   @IsOptional()
-  @IsEmail()
-  email_customer: string;
+  @IsString()
+  customer_id: string;
 
   @ApiProperty({ type: [SeatInfoDto], description: 'List of selected seats' })
   @IsArray()

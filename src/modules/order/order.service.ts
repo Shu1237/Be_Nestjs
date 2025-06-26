@@ -173,12 +173,7 @@ export class OrderService {
     }
     return scheduleSeats;
   }
-  private async getUserByEmail(email: string) {
-    return await this.userRepository.findOne({
-      where: { email },
-      relations: ['role'],
-    });
-  }
+
 
   async createOrder(userData: JWTUserType, orderBill: OrderBillType, clientIp: string) {
     try {
@@ -298,10 +293,7 @@ export class OrderService {
         throw new BadRequestException('Payment method failed to create order');
       }
       // check customer_email
-      let customerUser: User | null = null;
-      if (orderBill.email_customer) {
-        customerUser = await this.getUserByEmail(orderBill.email_customer);
-      }
+
       // Create order
 
       const newOrder = await this.orderRepository.save({
@@ -309,7 +301,7 @@ export class OrderService {
         status: Number(orderBill.payment_method_id) === Method.CASH ? StatusOrder.SUCCESS : StatusOrder.PENDING,
         user,
         promotion,
-        customer_id: customerUser?.id,
+        customer_id: orderBill.customer_id ?? undefined
       });
 
       const transaction = await this.transactionRepository.save({
@@ -447,12 +439,11 @@ export class OrderService {
       });
 
       // add score for user , employee order
-      if (
-        Number(orderBill.payment_method_id) === Method.CASH &&
-        customerUser
-      ) {
-        customerUser.score = (customerUser.score || 0) + Math.floor(Number(orderBill.total_prices) / 1000);
-        await this.userRepository.save(customerUser);
+
+      if (orderBill.customer_id && Number(orderBill.payment_method_id) === Method.CASH) {
+        const customer = await this.getUserById(orderBill.customer_id);
+        customer.score += Math.round(totalPrice / 1000);
+        await this.userRepository.save(customer);
       }
       return { payUrl: paymentCode.payUrl };
     } catch (error) {
