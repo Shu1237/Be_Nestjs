@@ -101,14 +101,22 @@ export class MovieController {
     return { message: 'Movie soft deleted successfully' };
   }
   @Get()
-  @ApiOperation({ summary: 'Get all movies (with pagination)' })
-  @ApiQuery({ required: false })
-  @ApiQuery({ name: 'limit', required: false })
+  @ApiOperation({ summary: 'Get all movies (with pagination or all)' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
   getAllMoviesPaginated(
-    @Query('page') page = 1,
-    @Query('limit') limit = 10,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
   ): Promise<any> {
-    return this.movieService.getMoviesPaginated(Number(page), Number(limit));
+    if (!page && !limit) {
+      // Không truyền page, limit => trả về toàn bộ
+      return this.movieService.getAllMovies();
+    }
+    // Có page, limit => phân trang
+    return this.movieService.getMoviesPaginated(
+      Number(page) || 1,
+      Number(limit) || 10,
+    );
   }
 
   @UseGuards(JwtAuthGuard)

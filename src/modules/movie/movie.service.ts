@@ -60,6 +60,7 @@ export class MovieService {
   async getAllMovies(): Promise<IMovie[]> {
     const movies = await this.movieRepository.find({
       relations: ['gernes', 'actors', 'versions'],
+      order: { id: 'DESC' }, // Sắp xếp mới nhất đến cũ nhất
     });
     return movies.map((movie) => this.getMovieSummary(movie));
   }
