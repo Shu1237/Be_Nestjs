@@ -6,8 +6,8 @@ import { Order } from "src/database/entities/order/order";
 import { Repository, LessThan } from "typeorm";
 
 @Injectable()
-export class OrderService {
-    private readonly logger = new Logger(OrderService.name);
+export class OrderCronService {
+    private readonly logger = new Logger(OrderCronService.name);
     
     constructor(
         @InjectRepository(Order) 

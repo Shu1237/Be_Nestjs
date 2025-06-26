@@ -9,23 +9,25 @@ import { Movie } from 'src/database/entities/cinema/movie';
 import { Schedule } from 'src/database/entities/cinema/schedule';
 import { MovieExpireCheckService } from './movie/movieExpireCheck.service';
 import { ScheduleExpireCheckService } from './schedule/scheduleExpireCheck.service';
-import { Transaction } from 'src/database/entities/order/transaction';
 import { Order } from 'src/database/entities/order/order';
-import { OrderService } from './order/order.service';
+import { OrderCronService } from './order/orderCron.service';
+import { Promotion } from 'src/database/entities/promotion/promotion';
+import { PromotionCronService } from './promotion/PromotionCron.Service';
+
 
 @Module({
   imports: [
     RedisModule,
     MyGateWayModule,
-    TypeOrmModule.forFeature([RefreshToken, ScheduleSeat, Schedule, Movie, Order, Transaction]),
+    TypeOrmModule.forFeature([RefreshToken, ScheduleSeat, Schedule, Movie, Order, Promotion]),
   ],
   providers: [
     RefreshTokenService, 
     MovieExpireCheckService, 
     ScheduleExpireCheckService,
-    OrderService
+    OrderCronService,
+    PromotionCronService,
   ],
-  exports: [RefreshTokenService],
-  controllers: [],
+ 
 })
 export class CronModule {}
