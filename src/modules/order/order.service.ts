@@ -553,6 +553,7 @@ export class OrderService {
         'orderDetails',
         'orderDetails.ticket',
         'orderDetails.schedule',
+        'orderDetails.schedule.cinemaRoom',
         'orderDetails.schedule.movie',
         'orderDetails.ticket.seat',
         'orderDetails.ticket.ticketType',
@@ -574,6 +575,8 @@ export class OrderService {
         'orderDetails', 'orderDetails.ticket',
         'orderDetails.schedule',
         'orderDetails.schedule.movie',
+        'orderDetails.schedule.cinemaRoom',
+        'orderDetails.ticket',
         'orderDetails.ticket.seat',
         'orderDetails.ticket.ticketType'],
     });
@@ -596,6 +599,10 @@ export class OrderService {
       },
       promotion: {
         title: order.promotion?.title,
+      },
+      cinemaroom:{
+        id: order.orderDetails[0].schedule.cinemaRoom.id,
+        name: order.orderDetails[0].schedule.cinemaRoom.cinema_room_name,
       },
       orderDetails: order.orderDetails.map(detail => ({
         id: detail.id,
