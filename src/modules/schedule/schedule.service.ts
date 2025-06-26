@@ -29,6 +29,7 @@ export class ScheduleService {
   private getScheduleSummary(schedule: Schedule): ISchedule {
     return {
       id: schedule.id,
+      is_deleted: schedule.is_deleted,
       cinema_room_id: schedule.cinemaRoom.id,
       start_movie_time: schedule.start_movie_time,
       end_movie_time: schedule.end_movie_time,
@@ -75,14 +76,13 @@ export class ScheduleService {
       );
     }
 
-   
     const version = await this.versionRepository.findOne({
       where: { id: id_Version },
     });
     if (!version) {
       throw new NotFoundException(`Version with ID ${id_Version} not found`);
     }
-    
+
     const versionBelongsToMovie = movie.versions.some(
       (v) => v.id === id_Version,
     );
@@ -92,7 +92,6 @@ export class ScheduleService {
       );
     }
 
-   
     const overlappingSchedule = await this.scheduleRepository
       .createQueryBuilder('schedule')
       .where('schedule.cinemaRoom = :cinemaRoomId', {
@@ -104,7 +103,9 @@ export class ScheduleService {
       .getOne();
 
     if (overlappingSchedule) {
-      throw new BadRequestException('Phòng chiếu đã có lịch chiếu trùng thời gian');
+      throw new BadRequestException(
+        'Phòng chiếu đã có lịch chiếu trùng thời gian',
+      );
     }
 
     // Tạo mới Schedule

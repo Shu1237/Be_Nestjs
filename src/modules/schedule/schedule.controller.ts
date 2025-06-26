@@ -58,6 +58,8 @@ export class ScheduleController {
     return await this.scheduleService.findOut(id);
   }
 
+
+  
   @UseGuards(JwtAuthGuard)
   @Put(':id')
   @ApiOperation({ summary: 'Update schedule by ID (admin, employee only)' })

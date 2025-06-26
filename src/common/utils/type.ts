@@ -134,6 +134,7 @@ export type ISchedule = {
   end_movie_time: Date;
   movie: IMovieBasic;
   cinema_room_id: number;
+  is_deleted: boolean;
    version?: { id: number; name: string } | null; // Cho phép giá trị null
 
  
