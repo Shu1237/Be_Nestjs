@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, LessThan } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Order } from 'src/database/entities/order/order';
 import { OrderDetail } from 'src/database/entities/order/order-detail';
 import { PaymentMethod } from 'src/database/entities/order/payment-method';
@@ -173,6 +173,12 @@ export class OrderService {
     }
     return scheduleSeats;
   }
+  private async getUserByEmail(email: string) {
+    return await this.userRepository.findOne({
+      where: { email },
+      relations: ['role'],
+    });
+  }
 
   async createOrder(userData: JWTUserType, orderBill: OrderBillType, clientIp: string) {
     try {
@@ -195,11 +201,12 @@ export class OrderService {
         if (
           !promotion.start_time ||
           !promotion.end_time ||
-          promotion.start_time < currentTime ||
-          promotion.end_time > currentTime
+          promotion.start_time > currentTime ||
+          promotion.end_time < currentTime
         ) {
           throw new BadRequestException('Promotion is not valid at this time.');
         }
+
       }
 
       // Fetch seat IDs
@@ -290,12 +297,19 @@ export class OrderService {
       if (!paymentCode || !paymentCode.payUrl || !paymentCode.orderId) {
         throw new BadRequestException('Payment method failed to create order');
       }
+      // check customer_email
+      let customerUser: User | null = null;
+      if (orderBill.email_customer) {
+        customerUser = await this.getUserByEmail(orderBill.email_customer);
+      }
       // Create order
+
       const newOrder = await this.orderRepository.save({
         total_prices: orderBill.total_prices,
         status: Number(orderBill.payment_method_id) === Method.CASH ? StatusOrder.SUCCESS : StatusOrder.PENDING,
         user,
         promotion,
+        customer_id: customerUser?.id,
       });
 
       const transaction = await this.transactionRepository.save({
@@ -426,13 +440,20 @@ export class OrderService {
       }
 
       await this.orderExtraRepository.save(orderExtrasToSave);
-      if (Method.CASH) {
-        this.gateway.onBookSeat({
-          schedule_id: orderBill.schedule_id,
-          seatIds: orderBill.seats.map(seat => seat.id)
-        });
-      }
+      // socket
+      this.gateway.onBookSeat({
+        schedule_id: orderBill.schedule_id,
+        seatIds: orderBill.seats.map(seat => seat.id)
+      });
 
+      // add score for user , employee order
+      if (
+        Number(orderBill.payment_method_id) === Method.CASH &&
+        customerUser
+      ) {
+        customerUser.score = (customerUser.score || 0) + Math.floor(Number(orderBill.total_prices) / 1000);
+        await this.userRepository.save(customerUser);
+      }
       return { payUrl: paymentCode.payUrl };
     } catch (error) {
       throw error;
@@ -538,9 +559,7 @@ export class OrderService {
         'orderExtras.product'
       ],
     });
-    console.log(orders);
     const bookingSummaries = orders.map(order => this.mapToBookingSummaryLite(order));
-    // console.log(bookingSummaries);
     return bookingSummaries;
   }
 
