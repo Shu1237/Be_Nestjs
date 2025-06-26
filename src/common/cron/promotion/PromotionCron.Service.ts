@@ -1,29 +1,22 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Promotion } from 'src/database/entities/promotion/promotion';
-import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class PromotionCronService {
   private readonly logger = new Logger(PromotionCronService.name);
-  private readonly timezone: string;
   private isRunning = false;
 
   constructor(
     @InjectRepository(Promotion)
     private readonly promotionRepository: Repository<Promotion>,
-    private readonly configService: ConfigService,
-  ) {
-    this.timezone = this.configService.get<string>(
-      'TIMEZONE',
-      'Asia/Ho_Chi_Minh',
-    );
-  }
+  ) {}
 
-  @Cron(CronExpression.EVERY_12_HOURS, {
+  @Cron('0 */2 * * *', {
     name: 'promotion-check',
+    // timeZone: 'Asia/Ho_Chi_Minh',
   })
   async processPromotions(): Promise<void> {
     if (this.isRunning) return;
@@ -32,7 +25,7 @@ export class PromotionCronService {
     const now = new Date();
 
     try {
-      // Lấy danh sách promotion cần active (is_active = false, start_time <= now, end_time null hoặc > now)
+      // Kích hoạt khuyến mãi đủ điều kiện
       const promotionsToActivate = await this.promotionRepository
         .createQueryBuilder('promo')
         .where('promo.start_time <= :now', { now })
@@ -44,7 +37,6 @@ export class PromotionCronService {
         const ids = promotionsToActivate.map((p) => p.id);
         const codes = promotionsToActivate.map((p) => p.code).join(', ');
 
-        // Cập nhật active
         await this.promotionRepository
           .createQueryBuilder()
           .update(Promotion)
@@ -52,10 +44,10 @@ export class PromotionCronService {
           .whereInIds(ids)
           .execute();
 
-        this.logger.log(`✅ Activated promotions: ${codes}`);
+        this.logger.log(`Activated promotions: ${codes}`);
       }
 
-      // Lấy danh sách promotion cần deactivate (is_active = true, end_time <= now)
+      // Hủy kích hoạt các khuyến mãi đã hết hạn
       const promotionsToDeactivate = await this.promotionRepository
         .createQueryBuilder('promo')
         .where('promo.end_time <= :now', { now })
@@ -66,7 +58,6 @@ export class PromotionCronService {
         const ids = promotionsToDeactivate.map((p) => p.id);
         const codes = promotionsToDeactivate.map((p) => p.code).join(', ');
 
-        // Cập nhật deactivate
         await this.promotionRepository
           .createQueryBuilder()
           .update(Promotion)
@@ -74,10 +65,10 @@ export class PromotionCronService {
           .whereInIds(ids)
           .execute();
 
-        this.logger.log(`⛔ Deactivated promotions: ${codes}`);
+        this.logger.log(` Deactivated promotions: ${codes}`);
       }
     } catch (error) {
-      this.logger.error('❌ Error processing promotions:', error);
+      this.logger.error('Error processing promotions:', error);
     } finally {
       this.isRunning = false;
     }
@@ -91,7 +82,7 @@ export class PromotionCronService {
     return {
       message: 'Manual check completed',
       timestamp: new Date().toLocaleString('vi-VN', {
-        timeZone: this.timezone,
+        // timeZone: 'Asia/Ho_Chi_Minh',
       }),
     };
   }
