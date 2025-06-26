@@ -530,16 +530,17 @@ export class OrderService {
         'orderDetails',
         'orderDetails.ticket',
         'orderDetails.schedule',
+        'orderDetails.schedule.cinemaRoom',
         'orderDetails.schedule.movie',
-        'orderDetails.ticket',
         'orderDetails.ticket.seat',
         'orderDetails.ticket.ticketType',
         'orderExtras',
-        'orderExtras.product',
+        'orderExtras.product'
       ],
     });
-
+    console.log(orders);
     const bookingSummaries = orders.map(order => this.mapToBookingSummaryLite(order));
+    // console.log(bookingSummaries);
     return bookingSummaries;
   }
 
@@ -600,7 +601,7 @@ export class OrderService {
       promotion: {
         title: order.promotion?.title,
       },
-      cinemaroom:{
+      cinemaroom: {
         id: order.orderDetails[0].schedule.cinemaRoom.id,
         name: order.orderDetails[0].schedule.cinemaRoom.cinema_room_name,
       },
