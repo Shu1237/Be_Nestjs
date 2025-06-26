@@ -100,7 +100,7 @@ export class OrderService {
 
   private async getPromotionById(promotionId: number) {
     const promotion = await this.promotionRepository.findOne({
-      where: { id: promotionId ,is_active: true},
+      where: { id: promotionId, is_active: true },
       relations: ['promotionType']
     });
     if (!promotion) {
@@ -111,7 +111,7 @@ export class OrderService {
 
   private async getScheduleById(scheduleId: number) {
     const schedule = await this.scheduleRepository.findOne({
-      where: { id: scheduleId ,is_deleted: false},
+      where: { id: scheduleId, is_deleted: false },
     });
     if (!schedule) {
       throw new NotFoundException(`Schedule with ID ${scheduleId} not found or is deleted`);
@@ -533,7 +533,10 @@ export class OrderService {
         'orderDetails.schedule.movie',
         'orderDetails.ticket',
         'orderDetails.ticket.seat',
-        'orderDetails.ticket.ticketType'],
+        'orderDetails.ticket.ticketType',
+        'orderExtras',
+        'orderExtras.product',
+      ],
     });
 
     const bookingSummaries = orders.map(order => this.mapToBookingSummaryLite(order));
@@ -552,7 +555,10 @@ export class OrderService {
         'orderDetails.schedule',
         'orderDetails.schedule.movie',
         'orderDetails.ticket.seat',
-        'orderDetails.ticket.ticketType'],
+        'orderDetails.ticket.ticketType',
+        'orderExtras',
+        'orderExtras.product'
+      ],
     });
     if (!order) {
       throw new NotFoundException(`Order with ID ${orderId} not found`);
@@ -589,7 +595,7 @@ export class OrderService {
         email: order.user.email,
       },
       promotion: {
-        title: order.promotion?.title
+        title: order.promotion?.title,
       },
       orderDetails: order.orderDetails.map(detail => ({
         id: detail.id,
@@ -605,21 +611,33 @@ export class OrderService {
         },
         start_movie_time: detail.schedule.start_movie_time,
         end_movie_time: detail.schedule.end_movie_time,
-
         movie: {
           id: detail.schedule.movie.id,
           name: detail.schedule.movie.name,
         },
       })),
+      orderExtras: order.orderExtras?.map(extra => ({
+        id: extra.id,
+        quantity: extra.quantity,
+        unit_price: extra.unit_price,
+        status: extra.status,
+        product: {
+          id: extra.product.id,
+          name: extra.product.name,
+          type: extra.product.type,
+          price: extra.product.price,
+        },
+      })) ?? [],
       transaction: {
         transaction_code: order.transaction.transaction_code,
         status: order.transaction.status,
         PaymentMethod: {
-          method_name: order.transaction.paymentMethod.name
-        }
+          method_name: order.transaction.paymentMethod.name,
+        },
       },
     };
   }
+
   async scanQrCode(qrCode: string) {
     try {
       const secret = this.configService.get<string>('jwt.qrSecret')!;
