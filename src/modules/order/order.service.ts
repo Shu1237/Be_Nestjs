@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository, In, LessThan } from 'typeorm';
 import { Order } from 'src/database/entities/order/order';
 import { OrderDetail } from 'src/database/entities/order/order-detail';
 import { PaymentMethod } from 'src/database/entities/order/payment-method';
@@ -100,21 +100,21 @@ export class OrderService {
 
   private async getPromotionById(promotionId: number) {
     const promotion = await this.promotionRepository.findOne({
-      where: { id: promotionId },
+      where: { id: promotionId ,is_active: true},
       relations: ['promotionType']
     });
     if (!promotion) {
-      throw new NotFoundException(`Promotion with ID ${promotionId} not found`);
+      throw new NotFoundException(`Promotion with ID ${promotionId} not found or is not active`);
     }
     return promotion;
   }
 
   private async getScheduleById(scheduleId: number) {
     const schedule = await this.scheduleRepository.findOne({
-      where: { id: scheduleId },
+      where: { id: scheduleId ,is_deleted: false},
     });
     if (!schedule) {
-      throw new NotFoundException(`Schedule with ID ${scheduleId} not found`);
+      throw new NotFoundException(`Schedule with ID ${scheduleId} not found or is deleted`);
     }
     return schedule;
   }
@@ -189,7 +189,18 @@ export class OrderService {
         this.getPromotionById(orderBill.promotion_id),
         this.getScheduleById(orderBill.schedule_id),
       ]);
-
+      // check promtion time
+      if (promotion.id !== 1) {
+        const currentTime = new Date();
+        if (
+          !promotion.start_time ||
+          !promotion.end_time ||
+          promotion.start_time < currentTime ||
+          promotion.end_time > currentTime
+        ) {
+          throw new BadRequestException('Promotion is not valid at this time.');
+        }
+      }
 
       // Fetch seat IDs
       const seatIds = orderBill.seats.map((seat: SeatInfo) => seat.id);
