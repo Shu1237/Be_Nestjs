@@ -27,6 +27,7 @@ import { Drink } from 'src/database/entities/item/drink';
 import { MyGateWayModule } from 'src/common/gateways/seat.gateway.module';
 import { Product } from 'src/database/entities/item/product';
 import { TicketModule } from '../ticket/ticket.module';
+import { HistoryScore } from 'src/database/entities/order/history_score';
 
 
 
@@ -50,7 +51,8 @@ import { TicketModule } from '../ticket/ticket.module';
       Food,
       Drink,
       Combo,
-      OrderExtra
+      OrderExtra,
+      HistoryScore
 
     ]
   ),

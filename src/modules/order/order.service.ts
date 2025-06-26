@@ -33,6 +33,9 @@ import { BadRequestException } from 'src/common/exceptions/bad-request.exception
 import { ConflictException } from 'src/common/exceptions/conflict.exception';
 import { ConfigService } from '@nestjs/config';
 import { TicketService } from '../ticket/ticket.service';
+import { Role } from 'src/common/enums/roles.enum';
+import { ForbiddenException } from 'src/common/exceptions/forbidden.exception';
+import { HistoryScore } from 'src/database/entities/order/history_score';
 
 
 
@@ -63,6 +66,8 @@ export class OrderService {
     private orderExtraRepository: Repository<OrderExtra>,
     @InjectRepository(Product)
     private productRepository: Repository<Product>,
+    @InjectRepository(HistoryScore)
+    private historyScoreRepository: Repository<HistoryScore>,
 
 
 
@@ -190,6 +195,9 @@ export class OrderService {
         this.getPromotionById(orderBill.promotion_id),
         this.getScheduleById(orderBill.schedule_id),
       ]);
+
+
+
       // check promtion time
       if (promotion.id !== 1) {
         const currentTime = new Date();
@@ -201,18 +209,26 @@ export class OrderService {
         ) {
           throw new BadRequestException('Promotion is not valid at this time.');
         }
-
+        // check score 
+        if (promotion.exchange > user.score) {
+          throw new ConflictException('You do not have enough score to use this promotion.');
+        }
+        //check trường hợp nhân viên đặt hàng nhưng lại dùng giảm giá nhưng k gán customer
+        if (user.role.role_id === Role.EMPLOYEE || user.role.role_id === Role.ADMIN && !orderBill.customer_id) {
+          throw new ConflictException('Staff must provide customer ID when using promotion.');
+        }
       }
+
 
       // Fetch seat IDs
       const seatIds = orderBill.seats.map((seat: SeatInfo) => seat.id);
       const scheduleId = orderBill.schedule_id.toString();
 
       // check redis
-      const check = await this.validateBeforeOrder(scheduleId, user.id, seatIds);
-      if (!check) {
-        throw new ConflictException('Seats are being held by another user. Please try again later.');
-      }
+      // const check = await this.validateBeforeOrder(scheduleId, user.id, seatIds);
+      // if (!check) {
+      //   throw new ConflictException('Seats are being held by another user. Please try again later.');
+      // }
 
       const scheduleSeats = await this.getScheduleSeatsByIds(seatIds, orderBill.schedule_id);
 
@@ -439,11 +455,32 @@ export class OrderService {
       });
 
       // add score for user , employee order
+      if (
+        orderBill.customer_id &&
+        orderBill.customer_id.trim() !== '' &&
+        Number(orderBill.payment_method_id) === Method.CASH
+      ) {
+        const customer = await this.userRepository.findOne({
+          where: { id: orderBill.customer_id },
+          relations: ['role'],
+        });
 
-      if (orderBill.customer_id && Number(orderBill.payment_method_id) === Method.CASH) {
-        const customer = await this.getUserById(orderBill.customer_id);
-        customer.score += Math.round(totalPrice / 1000);
+        if (!customer || customer.role.role_id !== Role.USER) {
+          throw new ForbiddenException('Invalid customer for point accumulation');
+        }
+
+        const promotionExchange = promotion?.exchange ?? 0;
+        const orderScore = Math.floor(totalPrice / 1000);
+        const addScore = orderScore - promotionExchange;
+
+        customer.score += addScore;
         await this.userRepository.save(customer);
+
+        await this.historyScoreRepository.save({
+          score_change: addScore,
+          user: customer,
+          order: newOrder,
+        });
       }
       return { payUrl: paymentCode.payUrl };
     } catch (error) {
