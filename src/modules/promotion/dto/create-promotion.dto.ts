@@ -5,74 +5,62 @@ import {
   IsNumber,
   IsBoolean,
   Length,
+  Min,
+  IsInt,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreatePromotionDto {
-  @ApiProperty({
-    description: 'Title of the promotion',
-    example: 'Spring Promotion 2025',
-  })
+  @ApiProperty({ required: false, example: 'Summer Sale 2025' })
+  @IsOptional()
   @IsString()
   @Length(1, 255)
-  title: string;
+  title?: string;
 
-  @ApiProperty({
-    description: 'Detail of the promotion',
-    required: false,
-    example: 'Get 20% off on all spring items',
-  })
+  @ApiProperty({ required: false, example: 'Up to 50% off' })
   @IsOptional()
   @IsString()
   detail?: string;
 
-  @ApiProperty({
-    description: 'Discount level of the promotion',
-    example: '20%',
-  })
+  @ApiProperty({ required: false, example: '50%' })
+  // @IsOptional()
   @IsString()
-  discount: string;
+  discount?: string;
 
-  @ApiProperty({
-    description: 'Promotion code',
-    example: 'SPRING123',
-  })
+  @ApiProperty({ required: false, example: 'SUMMER2025' })
+  @IsOptional()
   @IsString()
   @Length(1, 255)
-  code: string;
+  code?: string;
 
-  @ApiProperty({
-    description: 'Points required to exchange',
-    example: 10,
-  })
+  @ApiProperty({ required: false, example: 10 })
+  // @IsOptional()
   @IsNumber()
-  exchange: number;
+  @Min(0)
+  exchange?: number;
 
   @ApiProperty({
-    description: 'Start time of promotion',
     required: false,
-    example: '2025-06-07',
+    example: 1,
+    description: 'Promotion type ID (1: percentage, 2: amount)',
   })
   @IsOptional()
-  @IsDateString()
-  start_time?: Date;
+  @IsInt()
+  @Min(1)
+  promotion_type_id?: number;
 
-  @ApiProperty({
-    description: 'End time of promotion',
-    required: false,
-    example: '2025-06-10',
-  })
+  @ApiProperty({ required: false, example: '2025-07-01T00:00:00+07:00' })
   @IsOptional()
   @IsDateString()
-  end_time?: Date;
+  start_time?: string;
 
-  @ApiProperty({
-    description: 'Whether promotion is active',
-    required: false,
-    default: true,
-    example: true,
-  })
+  @ApiProperty({ required: false, example: '2025-07-10T00:00:00+07:00' })
+  @IsOptional()
+  @IsDateString()
+  end_time?: string;
+
+  @ApiProperty({ required: false, example: true })
   @IsOptional()
   @IsBoolean()
-  is_active?: boolean = true;
+  is_active?: boolean;
 }

@@ -47,7 +47,7 @@ export class CreateMovieDto {
   @IsOptional()
   @IsString()
   @ApiProperty({ description: 'Tên của bộ phim', example: 'Inception' })
-  name?: string;
+  name: string;
 
   @IsOptional()
   @IsString()
@@ -59,18 +59,19 @@ export class CreateMovieDto {
   @ApiProperty({ description: 'Tên đạo diễn của bộ phim', example: 'Christopher Nolan' })
   director?: string;
 
-  @IsOptional()
+
   @IsInt()
   @ApiProperty({ description: 'Thời lượng của bộ phim (tính bằng phút)', example: 148 })
   duration?: number;
 
-  @IsOptional()
+  
+  @IsString()
   @ApiProperty({ description: 'Ngày bắt đầu chiếu bộ phim', example: '2025-06-01' })
-  from_date?: Date;
+  from_date: Date;
 
-  @IsOptional()
+  @IsString()
   @ApiProperty({ description: 'Ngày kết thúc chiếu bộ phim', example: '2025-06-30' })
-  to_date?: Date;
+  to_date: Date;
 
   @IsOptional()
   @IsString()

@@ -1,4 +1,4 @@
-import {Injectable} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Promotion } from 'src/database/entities/promotion/promotion';
 
@@ -17,7 +17,6 @@ export class PromotionService {
     private readonly promotionRepository: Repository<Promotion>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    
   ) {}
 
   async getAllPromotions() {
@@ -26,17 +25,18 @@ export class PromotionService {
     });
   }
 
-  async createPromotion(createPromotionDto: CreatePromotionDto) {
-    const existingPromotion = await this.promotionRepository.findOne({
-      where: { code: createPromotionDto.code },
+  async createPromotion(dto: CreatePromotionDto) {
+    const exist = await this.promotionRepository.findOne({
+      where: { code: dto.code },
     });
-
-    if (existingPromotion) {
+    if (exist) {
       throw new BadRequestException('Promotion code already exists');
     }
 
-    const promotion = this.promotionRepository.create(createPromotionDto);
-    await this.promotionRepository.save(promotion);
+    this.validateDates(dto.start_time, dto.end_time, dto.is_active);
+
+    const promo = this.promotionRepository.create(dto);
+    await this.promotionRepository.save(promo);
     return { msg: 'Promotion created successfully' };
   }
 
@@ -48,45 +48,51 @@ export class PromotionService {
     return promotion;
   }
 
-  async updatePromotion(id: number, updatePromotionDto: UpdatePromotionDto) {
-    const promotion = await this.getPromotionById(id);
+  async updatePromotion(id: number, dto: UpdatePromotionDto) {
+    const promo = await this.getPromotionById(id);
 
-    if (updatePromotionDto.code) {
-      const existing = await this.promotionRepository.findOne({
-        where: { code: updatePromotionDto.code },
+    if (dto.code) {
+      const exist = await this.promotionRepository.findOne({
+        where: { code: dto.code },
       });
-      if (existing && existing.id !== id) {
+      if (exist && exist.id !== id) {
         throw new BadRequestException(
-          `Promotion code "${updatePromotionDto.code}" already exists`,
+          `Promotion code "${dto.code}" already exists`,
         );
       }
     }
 
-    Object.assign(promotion, updatePromotionDto);
-    await this.promotionRepository.save(promotion);
+    this.validateDates(dto.start_time, dto.end_time, dto.is_active);
+
+    Object.assign(promo, dto);
+    await this.promotionRepository.save(promo);
     return { msg: 'Promotion updated successfully' };
   }
 
-  async deletePromotion(id: number) {
-    const promotion = await this.promotionRepository.findOne({
-      where: { id },
-    });
-    if (!promotion) {
-      throw new NotFoundException('Promotion not found');
-    }
-    await this.promotionRepository.remove(promotion);
-    return { msg: 'Promotion deleted successfully' };
-  }
+  // async deletePromotion(id: number) {
+  //   const promotion = await this.promotionRepository.findOne({
+  //     where: { id },
+  //   });
+  //   if (!promotion) {
+  //     throw new NotFoundException('Promotion not found');
+  //   }
+  //   await this.promotionRepository.remove(promotion);
+  //   return { msg: 'Promotion deleted successfully' };
+  // }
 
   async deleteSoftPromotion(id: number) {
-    const promotion = await this.promotionRepository.findOne({
-      where: { id },
-    });
+    const promotion = await this.promotionRepository.findOne({ where: { id } });
     if (!promotion) {
       throw new NotFoundException('Promotion not found');
     }
+
+    if (!promotion.is_active) {
+      throw new BadRequestException('Promotion is already deleted');
+    }
+
     promotion.is_active = false;
     await this.promotionRepository.save(promotion);
+
     return { msg: 'Promotion deleted successfully' };
   }
 
@@ -96,13 +102,11 @@ export class PromotionService {
     //   relations: ['member'],
     // });
     // if (!userData) throw new NotFoundException('User not found');
-
     // const promotion = await this.promotionRepository.findOne({
     //   where: { id: body.id, is_active: true },
     // });
     // if (!promotion)
     //   throw new NotFoundException('Promotion not found or inactive');
-
     // const now = new Date();
     // if (
     //   (promotion.start_time && now < promotion.start_time) ||
@@ -112,7 +116,6 @@ export class PromotionService {
     //     'Promotion is not active during this period',
     //   );
     // }
-
     // if (!userData.member) {
     //   throw new BadRequestException('User does not have a member account');
     // }
@@ -125,9 +128,29 @@ export class PromotionService {
     // const newScore = Number(userData.member.score) - Number(promotion.exchange);
     // userData.member.score = newScore;
     // await this.memberRepository.save(userData.member);
-
     // return {
     //   msg: 'Exchange successfully',
     // };
+  }
+  private validateDates(
+    start_time?: string,
+    end_time?: string,
+    is_active?: boolean,
+  ) {
+    if (start_time && end_time) {
+      const start = new Date(start_time);
+      const end = new Date(end_time);
+      if (start >= end) {
+        throw new BadRequestException('start_time must be before end_time');
+      }
+    }
+
+    if (is_active !== false && end_time) {
+      const now = new Date();
+      const end = new Date(end_time);
+      if (end <= now) {
+        throw new BadRequestException('end_time must be in the future');
+      }
+    }
   }
 }

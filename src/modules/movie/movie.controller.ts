@@ -10,8 +10,14 @@ import {
   UseGuards,
   Patch,
   Req,
+  Query,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiOperation,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { MovieService } from './movie.service';
 import { CreateMovieDto } from './dtos/createMovie.dto';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
@@ -37,14 +43,13 @@ export class MovieController {
       );
     }
     return this.movieService.createMovie(movieDto);
-     
   }
 
-  @Get()
-  @ApiOperation({ summary: 'Get all movies' })
-  getAllMovies(): Promise<any> {
-    return this.movieService.getAllMovies();
-  }
+  // @Get()
+  // @ApiOperation({ summary: 'Get all movies' })
+  // getAllMovies(): Promise<any> {
+  //   return this.movieService.getAllMovies();
+  // }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get movie by ID' })
@@ -75,7 +80,9 @@ export class MovieController {
   async deleteMovie(@Param('id', ParseIntPipe) id: number, @Req() req) {
     const user = req.user as JWTUserType;
     if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException('Unauthorized: Only admin or employee can delete a movie.');
+      throw new ForbiddenException(
+        'Unauthorized: Only admin or employee can delete a movie.',
+      );
     }
     return this.movieService.deleteMovie(id);
   }
@@ -86,10 +93,22 @@ export class MovieController {
   async softDeleteMovie(@Param('id', ParseIntPipe) id: number, @Req() req) {
     const user = req.user as JWTUserType;
     if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException('Unauthorized: Only admin or employee can soft delete a movie.');
+      throw new ForbiddenException(
+        'Unauthorized: Only admin or employee can soft delete a movie.',
+      );
     }
     await this.movieService.softDeleteMovie(id);
     return { message: 'Movie soft deleted successfully' };
+  }
+  @Get()
+  @ApiOperation({ summary: 'Get all movies (with pagination)' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  getAllMoviesPaginated(
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+  ): Promise<any> {
+    return this.movieService.getMoviesPaginated(Number(page), Number(limit));
   }
 
   @UseGuards(JwtAuthGuard)
