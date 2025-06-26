@@ -57,7 +57,7 @@ export type OrderBillType = {
   total_prices: string;
   promotion_id: number;
   schedule_id: number;
-  email_customer?: string;
+  customer_id?: string;
   seats: SeatInfo[];
   products?: ProductOrderItem[];
 };
