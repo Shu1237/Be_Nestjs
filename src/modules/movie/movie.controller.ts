@@ -102,8 +102,8 @@ export class MovieController {
   }
   @Get()
   @ApiOperation({ summary: 'Get all movies (with pagination)' })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ required: false })
+  @ApiQuery({ name: 'limit', required: false })
   getAllMoviesPaginated(
     @Query('page') page = 1,
     @Query('limit') limit = 10,

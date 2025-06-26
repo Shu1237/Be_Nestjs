@@ -100,6 +100,7 @@ export class ScheduleService {
       })
       .andWhere('schedule.start_movie_time < :end', { end: end_movie_time })
       .andWhere('schedule.end_movie_time > :start', { start: start_movie_time })
+      .andWhere('schedule.is_deleted = false') // Chỉ kiểm tra các lịch chưa bị xóa
       .getOne();
 
     if (overlappingSchedule) {
