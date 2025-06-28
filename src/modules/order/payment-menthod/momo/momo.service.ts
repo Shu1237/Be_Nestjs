@@ -17,6 +17,7 @@ import { MyGateWay } from 'src/common/gateways/seat.gateway';
 import { QrCodeService } from 'src/common/qrcode/qrcode.service';
 import * as jwt from 'jsonwebtoken';
 import { ConfigService } from '@nestjs/config';
+import { InternalServerErrorException } from 'src/common/exceptions/internal-server-error.exception';
 @Injectable()
 export class MomoService {
   constructor(
@@ -47,7 +48,7 @@ export class MomoService {
     const partnerCode = this.configService.get<string>('momo.partnerCode');
 
     if (!accessKey || !secretKey || !partnerCode) {
-      throw new Error('Momo configuration is missing');
+      throw new InternalServerErrorException('Momo configuration is missing');
     }
 
     const requestId = partnerCode + Date.now();
@@ -155,7 +156,36 @@ export class MomoService {
   }
 
   async handleReturn(query: any) {
-    const { orderId, resultCode } = query;
+    const {
+      partnerCode,
+      orderId,
+      requestId,
+      amount,
+      orderInfo,
+      orderType,
+      transId,
+      resultCode,
+      message,
+      payType,
+      responseTime,
+      extraData,
+      signature
+    } = query;
+
+    const accessKey = this.configService.get<string>('momo.accessKey');
+    const secretKey = this.configService.get<string>('momo.secretKey');
+    if (!accessKey || !secretKey) {
+      throw new InternalServerErrorException('Momo configuration is missing');
+    }
+
+
+    const rawSignature = `accessKey=${accessKey}&amount=${amount}&extraData=${extraData}&message=${message}&orderId=${orderId}&orderInfo=${orderInfo}&orderType=${orderType}&partnerCode=${partnerCode}&payType=${payType}&requestId=${requestId}&responseTime=${responseTime}&resultCode=${resultCode}&transId=${transId}`;
+
+    const computedSignature = crypto.createHmac('sha256', secretKey).update(rawSignature).digest('hex');
+
+    if (computedSignature !== signature) {
+      throw new ForbiddenException('Invalid MoMo signature');
+    }
     const transaction = await this.getTransactionByOrderId(orderId);
     if (transaction.status !== StatusOrder.PENDING) {
       throw new NotFoundException('Transaction is not in pending state');
