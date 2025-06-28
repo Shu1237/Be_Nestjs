@@ -225,10 +225,10 @@ export class OrderService {
       const scheduleId = orderBill.schedule_id.toString();
 
       // check redis
-      // const check = await this.validateBeforeOrder(scheduleId, user.id, seatIds);
-      // if (!check) {
-      //   throw new ConflictException('Seats are being held by another user. Please try again later.');
-      // }
+      const check = await this.validateBeforeOrder(scheduleId, user.id, seatIds);
+      if (!check) {
+       throw new ConflictException('Seats are being held by another user. Please try again later.');
+       }
 
       const scheduleSeats = await this.getScheduleSeatsByIds(seatIds, orderBill.schedule_id);
 
