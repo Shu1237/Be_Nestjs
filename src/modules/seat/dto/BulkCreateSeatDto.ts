@@ -1,5 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, Min, Max, IsNumber, IsOptional } from 'class-validator';
+import {
+  IsInt,
+  Min,
+  Max,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class BulkCreateSeatDto {
   @ApiProperty({ example: 4, description: 'Số hàng ghế (theo chiều Y)' })
@@ -19,7 +26,7 @@ export class BulkCreateSeatDto {
   @IsNumber()
   seat_type_id: number;
 
-  //   @ApiProperty({ example: '2' })
-  //   @IsString()
-  //   cinema_room_id: string;
+  @ApiProperty({ example: '2' })
+  @IsString()
+  cinema_room_id: string;
 }

@@ -84,73 +84,76 @@ export class SeatService {
     return { msg: 'Seat created successfully' };
   }
   async createSeatsBulk(dto: BulkCreateSeatDto) {
-    const { seat_rows, seat_column } = dto;
+    const { seat_rows, seat_column, cinema_room_id } = dto;
 
-    // 🔸 Gán mặc định loại ghế "thường"
-    const defaultSeatType = await this.seatTypeRepository.findOne({
-      where: { id: 1 }, // Hoặc: where: { id: 1 }
+    // Validate cinema room
+    const cinemaRoom = await this.cinemaRoomRepository.findOne({
+      where: { id: parseInt(cinema_room_id) },
     });
-
-    if (!defaultSeatType) {
-      throw new NotFoundException(
-        'Loại ghế mặc định "Ghế thường" không tồn tại',
-      );
+    if (!cinemaRoom) {
+      throw new NotFoundException('Cinema room not found');
     }
-    // Ma trận kết quả trả về (2D layout)
-    const layout: { id: string; seat_row: string; seat_column: string }[][] =
-      [];
 
-    // Danh sách ghế cần lưu vào DB
-    const seatsToCreate: Seat[] = [];
+    // Get default seat type
+    const defaultSeatType = await this.seatTypeRepository.findOne({
+      where: { id: 1 },
+    });
+    if (!defaultSeatType) {
+      throw new NotFoundException('Default seat type not found');
+    }
 
-    // Danh sách ID để check trùng
-    const ids: string[] = [];
+    // Generate seat IDs and layout
+    const allSeatIds: string[] = [];
+    const layout: string[][] = [];
 
     for (let y = 0; y < seat_rows; y++) {
       const rowChar = String.fromCharCode(65 + y); // A, B, C...
-      const row: { id: string; seat_row: string; seat_column: string }[] = [];
+      const row: string[] = [];
 
       for (let x = 0; x < seat_column; x++) {
-        const col = (x + 1).toString(); // 1 → n
-        const id = `${rowChar}${col}`;
-
-        ids.push(id);
-        row.push({ id, seat_row: rowChar, seat_column: col });
+        const seatId = `${rowChar}${x + 1}`;
+        allSeatIds.push(seatId);
+        row.push(seatId);
       }
-
       layout.push(row);
     }
 
-    // Kiểm tra ghế đã tồn tại chưa
-    const existingIds = new Set(
-      (await this.seatRepository.findBy({ id: In(ids) })).map((s) => s.id),
-    );
+    // Check existing seats
+    const existingSeats = await this.seatRepository.find({
+      where: {
+        id: In(allSeatIds),
+        cinemaRoom: { id: parseInt(cinema_room_id) },
+      },
+      select: ['id'],
+    });
+    const existingSeatIds = new Set(existingSeats.map((seat) => seat.id));
 
-    for (const row of layout) {
-      for (const s of row) {
-        if (!existingIds.has(s.id)) {
-          const seatData: Partial<Seat> = {
-            id: s.id,
-            seat_row: s.seat_row,
-            seat_column: s.seat_column,
-            is_deleted: false,
-            seatType: defaultSeatType, // ✅ Gắn mặc định ở đây
-            // cinemaRoom: null,
-          };
+    // Create new seats
+    const seatsToCreate = allSeatIds
+      .filter((id) => !existingSeatIds.has(id))
+      .map((id) => {
+        const row = id.charAt(0);
+        const col = id.slice(1);
+        return this.seatRepository.create({
+          id,
+          seat_row: row,
+          seat_column: col,
+          is_deleted: false,
+          seatType: defaultSeatType,
+          cinemaRoom: cinemaRoom,
+        });
+      });
 
-          seatsToCreate.push(this.seatRepository.create(seatData));
-        }
-      }
-    }
-
-    if (seatsToCreate.length) {
+    // Save to database
+    if (seatsToCreate.length > 0) {
       await this.seatRepository.save(seatsToCreate);
     }
 
     return {
-      msg: 'Create Seat Successfully',
-      total: seatsToCreate.length,
-      duplicate: ids.length - seatsToCreate.length,
+      message: 'Seats created successfully',
+      created: seatsToCreate.length,
+      existed: existingSeatIds.size,
+      total: allSeatIds.length,
       layout,
     };
   }
