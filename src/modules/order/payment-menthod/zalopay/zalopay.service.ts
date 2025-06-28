@@ -3,10 +3,11 @@ import * as crypto from "crypto";
 import axios from "axios";
 import * as moment from "moment";
 import * as dayjs from "dayjs";
-import { OrderBillType} from "src/common/utils/type";
+import { OrderBillType, ZaloReturnQuery } from "src/common/utils/type";
 import { MomoService } from "../momo/momo.service";
 import { StatusOrder } from "src/common/enums/status-order.enum";
 import { ConfigService } from "@nestjs/config";
+import { InternalServerErrorException } from "src/common/exceptions/internal-server-error.exception";
 @Injectable()
 export class ZalopayService {
   constructor(
@@ -25,11 +26,11 @@ export class ZalopayService {
     const callback_url = this.configService.get<string>('zalopay.returnUrl');
 
     if (!app_id || !key1 || !endpoint) {
-      throw new Error("ZaloPay configuration is missing");
+      throw new InternalServerErrorException("ZaloPay configuration is missing");
     }
 
     if (!orderItem || !Array.isArray(orderItem.seats) || orderItem.seats.length === 0) {
-      throw new Error("No seat selected");
+      throw new InternalServerErrorException("No seat selected");
     }
 
     const transID = Date.now();
@@ -55,7 +56,7 @@ export class ZalopayService {
       description: "Thanh toan ve xem phim",
       bank_code: "zalopayapp",
     };
-//  console.log(rawData);
+    //  console.log(rawData);
     const dataToMac = [
       rawData.app_id,
       rawData.app_trans_id,
@@ -79,7 +80,7 @@ export class ZalopayService {
       });
 
       if (res.data.return_code !== 1) {
-        throw new Error(`ZaloPay error: ${res.data.sub_return_message}`);
+        throw new InternalServerErrorException(`ZaloPay error: ${res.data.sub_return_message}`);
       }
 
       return {
@@ -88,7 +89,7 @@ export class ZalopayService {
       };
     } catch (error) {
       console.error("ZaloPay API error:", error);
-      throw new Error(
+      throw new InternalServerErrorException(
         "ZaloPay API failed: " +
         (error.response?.data?.sub_return_message || error.message),
       );
@@ -113,7 +114,7 @@ export class ZalopayService {
   }
 
 
-  //   private verifyZaloReturnSignature(query: ZaloReturnQuery): boolean {
+  // private verifyZaloReturnSignature(query: ZaloReturnQuery): boolean {
   //   const {
   //     appid,
   //     apptransid,
@@ -126,10 +127,12 @@ export class ZalopayService {
   //   } = query;
 
   //   const data = `${appid}|${apptransid}|${pmcid}|${bankcode}|${amount}|${discountamount}|${status}`;
-  //   if (!this.key1) {
+  //   const key1 = this.configService.get<string>('zalopay.key1');
+
+  //   if (!key1) {
   //     throw new Error("ZaloPay key1 is not defined");
   //   }
-  //   const hash = crypto.createHmac("sha256", this.key1).update(data).digest("hex");
+  //   const hash = crypto.createHmac("sha256", key1).update(data).digest("hex");
 
   //   return hash === checksum;
   // }

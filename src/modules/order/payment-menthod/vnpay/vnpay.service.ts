@@ -5,6 +5,7 @@ import * as moment from 'moment';
 import { MomoService } from '../momo/momo.service';
 import { StatusOrder } from 'src/common/enums/status-order.enum';
 import { ConfigService } from '@nestjs/config';
+import { InternalServerErrorException } from 'src/common/exceptions/internal-server-error.exception';
 
 
 @Injectable()
@@ -85,7 +86,7 @@ export class VnpayService {
 
     const signData = qs.stringify(sortedParams, { encode: false });
     const secretKey = this.configService.get<string>('vnpay.hashSecret');
-    if (!secretKey) throw new Error('Missing VNP_HASH_SECRET');
+    if (!secretKey) throw new InternalServerErrorException('Missing VNP_HASH_SECRET');
 
     const hmac = crypto.createHmac('sha512', secretKey);
     const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');

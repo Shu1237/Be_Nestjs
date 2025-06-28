@@ -9,7 +9,6 @@ import { HttpException } from '@nestjs/common';
 import { NotFoundException } from '../exceptions/not-found.exception';
 import { ConflictException } from '../exceptions/conflict.exception';
 import { InternalServerErrorException } from '../exceptions/internal-server-error.exception';
-import { BadRequestException } from '../exceptions/bad-request.exception';
 import { ForbiddenException } from '../exceptions/forbidden.exception';
 
 @Injectable()

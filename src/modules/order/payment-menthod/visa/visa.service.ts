@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { InternalServerErrorException } from "src/common/exceptions/internal-server-error.exception";
 import { changeVNtoUSDToCent } from "src/common/utils/helper";
 import { OrderBillType } from "src/common/utils/type";
 import Stripe from "stripe";
@@ -16,10 +17,6 @@ export class VisaService {
     }
 
     async createOrderVisa(orderBill: OrderBillType) {
-
-        if (orderBill.seats.length === 0) {
-            throw new Error("No seats selected for the order");
-        }
         const session = await this.stripe.checkout.sessions.create({
             line_items: [
                 {
