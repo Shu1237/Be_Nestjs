@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, LessThan } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Order } from 'src/database/entities/order/order';
 import { OrderDetail } from 'src/database/entities/order/order-detail';
 import { PaymentMethod } from 'src/database/entities/order/payment-method';
@@ -33,6 +33,9 @@ import { BadRequestException } from 'src/common/exceptions/bad-request.exception
 import { ConflictException } from 'src/common/exceptions/conflict.exception';
 import { ConfigService } from '@nestjs/config';
 import { TicketService } from '../ticket/ticket.service';
+import { Role } from 'src/common/enums/roles.enum';
+import { ForbiddenException } from 'src/common/exceptions/forbidden.exception';
+import { HistoryScore } from 'src/database/entities/order/history_score';
 
 
 
@@ -63,6 +66,8 @@ export class OrderService {
     private orderExtraRepository: Repository<OrderExtra>,
     @InjectRepository(Product)
     private productRepository: Repository<Product>,
+    @InjectRepository(HistoryScore)
+    private historyScoreRepository: Repository<HistoryScore>,
 
 
 
@@ -100,7 +105,7 @@ export class OrderService {
 
   private async getPromotionById(promotionId: number) {
     const promotion = await this.promotionRepository.findOne({
-      where: { id: promotionId ,is_active: true},
+      where: { id: promotionId, is_active: true },
       relations: ['promotionType']
     });
     if (!promotion) {
@@ -111,7 +116,7 @@ export class OrderService {
 
   private async getScheduleById(scheduleId: number) {
     const schedule = await this.scheduleRepository.findOne({
-      where: { id: scheduleId ,is_deleted: false},
+      where: { id: scheduleId, is_deleted: false },
     });
     if (!schedule) {
       throw new NotFoundException(`Schedule with ID ${scheduleId} not found or is deleted`);
@@ -174,6 +179,7 @@ export class OrderService {
     return scheduleSeats;
   }
 
+
   async createOrder(userData: JWTUserType, orderBill: OrderBillType, clientIp: string) {
     try {
       const user = await this.getUserById(userData.account_id);
@@ -189,18 +195,30 @@ export class OrderService {
         this.getPromotionById(orderBill.promotion_id),
         this.getScheduleById(orderBill.schedule_id),
       ]);
+
+
+
       // check promtion time
       if (promotion.id !== 1) {
         const currentTime = new Date();
         if (
           !promotion.start_time ||
           !promotion.end_time ||
-          promotion.start_time < currentTime ||
-          promotion.end_time > currentTime
+          promotion.start_time > currentTime ||
+          promotion.end_time < currentTime
         ) {
           throw new BadRequestException('Promotion is not valid at this time.');
         }
+        // check score 
+        if (promotion.exchange > user.score) {
+          throw new ConflictException('You do not have enough score to use this promotion.');
+        }
+        //check trường hợp nhân viên đặt hàng nhưng lại dùng giảm giá nhưng k gán customer
+        if (user.role.role_id === Role.EMPLOYEE || user.role.role_id === Role.ADMIN && !orderBill.customer_id) {
+          throw new ConflictException('Staff must provide customer ID when using promotion.');
+        }
       }
+
 
       // Fetch seat IDs
       const seatIds = orderBill.seats.map((seat: SeatInfo) => seat.id);
@@ -209,8 +227,8 @@ export class OrderService {
       // check redis
       const check = await this.validateBeforeOrder(scheduleId, user.id, seatIds);
       if (!check) {
-        throw new ConflictException('Seats are being held by another user. Please try again later.');
-      }
+       throw new ConflictException('Seats are being held by another user. Please try again later.');
+       }
 
       const scheduleSeats = await this.getScheduleSeatsByIds(seatIds, orderBill.schedule_id);
 
@@ -290,12 +308,16 @@ export class OrderService {
       if (!paymentCode || !paymentCode.payUrl || !paymentCode.orderId) {
         throw new BadRequestException('Payment method failed to create order');
       }
+      // check customer_email
+
       // Create order
+
       const newOrder = await this.orderRepository.save({
         total_prices: orderBill.total_prices,
         status: Number(orderBill.payment_method_id) === Method.CASH ? StatusOrder.SUCCESS : StatusOrder.PENDING,
         user,
         promotion,
+        customer_id: orderBill.customer_id ?? undefined
       });
 
       const transaction = await this.transactionRepository.save({
@@ -426,13 +448,40 @@ export class OrderService {
       }
 
       await this.orderExtraRepository.save(orderExtrasToSave);
-      if (Method.CASH) {
-        this.gateway.onBookSeat({
-          schedule_id: orderBill.schedule_id,
-          seatIds: orderBill.seats.map(seat => seat.id)
+      // socket
+      this.gateway.onBookSeat({
+        schedule_id: orderBill.schedule_id,
+        seatIds: orderBill.seats.map(seat => seat.id)
+      });
+
+      // add score for user , employee order
+      if (
+        orderBill.customer_id &&
+        orderBill.customer_id.trim() !== '' &&
+        Number(orderBill.payment_method_id) === Method.CASH
+      ) {
+        const customer = await this.userRepository.findOne({
+          where: { id: orderBill.customer_id },
+          relations: ['role'],
+        });
+
+        if (!customer || customer.role.role_id !== Role.USER) {
+          throw new ForbiddenException('Invalid customer for point accumulation');
+        }
+
+        const promotionExchange = promotion?.exchange ?? 0;
+        const orderScore = Math.floor(totalPrice / 1000);
+        const addScore = orderScore - promotionExchange;
+
+        customer.score += addScore;
+        await this.userRepository.save(customer);
+
+        await this.historyScoreRepository.save({
+          score_change: addScore,
+          user: customer,
+          order: newOrder,
         });
       }
-
       return { payUrl: paymentCode.payUrl };
     } catch (error) {
       throw error;
@@ -530,12 +579,14 @@ export class OrderService {
         'orderDetails',
         'orderDetails.ticket',
         'orderDetails.schedule',
+        'orderDetails.schedule.cinemaRoom',
         'orderDetails.schedule.movie',
-        'orderDetails.ticket',
         'orderDetails.ticket.seat',
-        'orderDetails.ticket.ticketType'],
+        'orderDetails.ticket.ticketType',
+        'orderExtras',
+        'orderExtras.product'
+      ],
     });
-
     const bookingSummaries = orders.map(order => this.mapToBookingSummaryLite(order));
     return bookingSummaries;
   }
@@ -550,9 +601,13 @@ export class OrderService {
         'orderDetails',
         'orderDetails.ticket',
         'orderDetails.schedule',
+        'orderDetails.schedule.cinemaRoom',
         'orderDetails.schedule.movie',
         'orderDetails.ticket.seat',
-        'orderDetails.ticket.ticketType'],
+        'orderDetails.ticket.ticketType',
+        'orderExtras',
+        'orderExtras.product'
+      ],
     });
     if (!order) {
       throw new NotFoundException(`Order with ID ${orderId} not found`);
@@ -568,6 +623,8 @@ export class OrderService {
         'orderDetails', 'orderDetails.ticket',
         'orderDetails.schedule',
         'orderDetails.schedule.movie',
+        'orderDetails.schedule.cinemaRoom',
+        'orderDetails.ticket',
         'orderDetails.ticket.seat',
         'orderDetails.ticket.ticketType'],
     });
@@ -589,7 +646,11 @@ export class OrderService {
         email: order.user.email,
       },
       promotion: {
-        title: order.promotion?.title
+        title: order.promotion?.title,
+      },
+      cinemaroom: {
+        id: order.orderDetails[0].schedule.cinemaRoom.id,
+        name: order.orderDetails[0].schedule.cinemaRoom.cinema_room_name,
       },
       orderDetails: order.orderDetails.map(detail => ({
         id: detail.id,
@@ -605,21 +666,33 @@ export class OrderService {
         },
         start_movie_time: detail.schedule.start_movie_time,
         end_movie_time: detail.schedule.end_movie_time,
-
         movie: {
           id: detail.schedule.movie.id,
           name: detail.schedule.movie.name,
         },
       })),
+      orderExtras: order.orderExtras?.map(extra => ({
+        id: extra.id,
+        quantity: extra.quantity,
+        unit_price: extra.unit_price,
+        status: extra.status,
+        product: {
+          id: extra.product.id,
+          name: extra.product.name,
+          type: extra.product.type,
+          price: extra.product.price,
+        },
+      })) ?? [],
       transaction: {
         transaction_code: order.transaction.transaction_code,
         status: order.transaction.status,
         PaymentMethod: {
-          method_name: order.transaction.paymentMethod.name
-        }
+          method_name: order.transaction.paymentMethod.name,
+        },
       },
     };
   }
+
   async scanQrCode(qrCode: string) {
     try {
       const secret = this.configService.get<string>('jwt.qrSecret')!;

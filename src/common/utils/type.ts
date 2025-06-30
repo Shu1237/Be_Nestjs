@@ -1,5 +1,6 @@
 import { Role } from 'src/common/enums/roles.enum';
 import { OrderExtra } from 'src/database/entities/order/order-extra';
+import { AudienceType } from '../enums/audience_type.enum';
 
 export type CreateAccountType = {
   address: string;
@@ -48,7 +49,7 @@ export type SeatInfo = {
   id: string;
   seat_row: string;
   seat_column: string;
-  audience_type: 'adult' | 'student' | 'child';
+  audience_type: AudienceType;
 };
 
 export type OrderBillType = {
@@ -56,6 +57,7 @@ export type OrderBillType = {
   total_prices: string;
   promotion_id: number;
   schedule_id: number;
+  customer_id?: string;
   seats: SeatInfo[];
   products?: ProductOrderItem[];
 };
@@ -134,6 +136,7 @@ export type ISchedule = {
   end_movie_time: Date;
   movie: IMovieBasic;
   cinema_room_id: number;
+  is_deleted: boolean;
    version?: { id: number; name: string } | null; // Cho phép giá trị null
 
  

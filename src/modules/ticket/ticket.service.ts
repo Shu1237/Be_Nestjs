@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { User } from 'src/database/entities/user/user';
 import { NotFoundException } from 'src/common/exceptions/not-found.exception';
+import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
 
 @Injectable()
 export class TicketService {
@@ -41,7 +42,7 @@ export class TicketService {
         row: ticket.seat.seat_row,
         column: ticket.seat.seat_column,
       },
-      seat_type:{
+      seat_type: {
         id: ticket.seat.seatType.id,
         name: ticket.seat.seatType.seat_type_name,
       }
@@ -129,7 +130,7 @@ export class TicketService {
       ]
     });
     if (!tickets) {
-      throw new Error(`User with ID ${userId} not found`);
+      throw new NotFoundException(`User with ID ${userId} not found`);
     }
     return this.mapTicketByUser(tickets)
 
@@ -138,18 +139,20 @@ export class TicketService {
 
   async markTicketsAsUsed(ticketIds: string[]) {
     const tickets = await this.ticketRepository.find({
-      where: { id: In(ticketIds) },
+      where: { id: In(ticketIds), is_used: false }, 
     });
     if (tickets.length === 0) {
-      throw new Error('No tickets found for the provided IDs');
+      throw new NotFoundException('No tickets found for the provided IDs or all tickets are already used.');
+    }
+    const foundTicketIds = tickets.map(ticket => ticket.id);
+    const usedTicketIds = ticketIds.filter(id => !foundTicketIds.includes(id));
+    if (usedTicketIds.length > 0) {
+      throw new BadRequestException(`Tickets with IDs ${usedTicketIds.join(', ')} are already used or invalid.`);
     }
     for (const ticket of tickets) {
       ticket.is_used = true;
     }
     await this.ticketRepository.save(tickets);
-    return {
-      msg: 'Tickets marked as used successfully',
-    };
   }
 }
 

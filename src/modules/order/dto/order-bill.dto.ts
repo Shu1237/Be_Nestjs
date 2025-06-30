@@ -1,14 +1,16 @@
 import {
   IsArray,
-  IsDate,
+  IsEmail,
   IsEnum,
   IsNumber,
   IsOptional,
   IsString,
+  Min,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { AudienceType } from 'src/common/enums/audience_type.enum';
 
 class SeatInfoDto {
   @ApiProperty({ example: 'abc123', description: 'Seat ID' })
@@ -23,9 +25,9 @@ class SeatInfoDto {
   @IsString()
   seat_column: string;
 
-  @ApiProperty({ enum: ['adult', 'student', 'child'], description: 'Audience type' })
-  @IsEnum(['adult', 'student', 'child'])
-  audience_type: 'adult' | 'student' | 'child';
+  @ApiProperty({ enum: AudienceType, description: 'Audience type' })
+  @IsEnum(AudienceType)
+  audience_type: AudienceType;
 }
 
 class ProductItemDto {
@@ -35,6 +37,7 @@ class ProductItemDto {
 
   @ApiProperty({ example: 2, description: 'Quantity' })
   @IsNumber()
+  @Min(1)
   quantity: number;
 }
 
@@ -43,23 +46,22 @@ export class CreateOrderBillDto {
   @IsString()
   payment_method_id: string;
 
-  @ApiProperty({ example: '2025-06-04T10:00:00.000Z', description: 'Booking date' })
-  @IsDate()
-  @Type(() => Date)
-  booking_date: Date;
-
   @ApiProperty({ example: '250000', description: 'Total price as string' })
   @IsString()
   total_prices: string;
 
   @ApiPropertyOptional({ example: 1, description: 'Optional promotion ID' })
-  @IsOptional()
   @IsNumber()
   promotion_id: number;
 
   @ApiProperty({ example: 5, description: 'Schedule ID' })
   @IsNumber()
   schedule_id: number;
+
+  @ApiPropertyOptional({ example: 'uuid-customer-id', description: 'ID của khách hàng nếu nhân viên đặt giúp' })
+  @IsOptional()
+  @IsString()
+  customer_id: string;
 
   @ApiProperty({ type: [SeatInfoDto], description: 'List of selected seats' })
   @IsArray()

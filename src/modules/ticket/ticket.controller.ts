@@ -3,8 +3,7 @@ import { TicketService } from './ticket.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { JWTUserType } from 'src/common/utils/type';
 import { Role } from 'src/common/enums/roles.enum';
-import { ApiBearerAuth, ApiBody, ApiOperation } from '@nestjs/swagger';
-import { TicketMarkUsedDto } from './dto/ticket-mark-used.dto';
+import { ApiBearerAuth,  ApiOperation } from '@nestjs/swagger';
 import { ForbiddenException } from 'src/common/exceptions/forbidden.exception';
 
 @UseGuards(JwtAuthGuard)
