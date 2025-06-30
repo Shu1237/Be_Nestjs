@@ -43,7 +43,7 @@ export class BarcodeController {
     // ✅ Chỉ cho phép ADMIN và EMPLOYEE quét barcode
     if (![Role.ADMIN, Role.EMPLOYEE].includes(user.role_id)) {
       throw new ForbiddenException(
-        'You do not have permission to scan barcodes.',
+        'You do not have permission to scan barcode.',
       );
     }
 
