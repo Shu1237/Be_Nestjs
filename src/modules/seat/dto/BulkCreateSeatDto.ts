@@ -1,25 +1,39 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, Min, Max, IsNumber, IsOptional } from 'class-validator';
+import {
+  IsInt,
+  Min,
+  Max,
+  IsString,
+  IsArray,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import { SeatSectionDto } from './SeatSectionDto';
 
 export class BulkCreateSeatDto {
-  @ApiProperty({ example: 4, description: 'Số hàng ghế (theo chiều Y)' })
-  @IsInt()
-  @Min(1)
-  @Max(26) // A-Z
-  seat_rows: number;
-
-  @ApiProperty({ example: 5, description: 'Số cột ghế (theo chiều X)' })
+  @ApiProperty({
+    example: 6,
+    description: 'Số lượng cột ghế trong phòng (áp dụng khi dùng seat_rows)',
+  })
   @IsInt()
   @Min(1)
   @Max(50)
   seat_column: number;
 
-  @ApiProperty({ example: '1' })
-  @IsOptional()
-  @IsNumber()
-  seat_type_id: number;
+  @ApiProperty({
+    type: [SeatSectionDto],
+    description:
+      'Danh sách các section ghế để tạo theo loại (rows hoặc seat_ids)',
+  })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => SeatSectionDto)
+  sections: SeatSectionDto[];
 
-  //   @ApiProperty({ example: '2' })
-  //   @IsString()
-  //   cinema_room_id: string;
+  @ApiProperty({
+    example: '3',
+    description: 'ID của phòng chiếu',
+  })
+  @IsString()
+  cinema_room_id: string;
 }
