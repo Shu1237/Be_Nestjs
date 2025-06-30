@@ -25,4 +25,7 @@ export class CreateSeatTypeDto {
   @IsNotEmpty()
   @IsString()
   seat_type_description: string;
+  @ApiProperty({ example: '2' })
+  @IsString()
+  cinema_room_id: string;
 }

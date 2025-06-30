@@ -84,80 +84,144 @@ export class SeatService {
     return { msg: 'Seat created successfully' };
   }
   async createSeatsBulk(dto: BulkCreateSeatDto) {
-    const { seat_rows, seat_column, cinema_room_id } = dto;
+    const { sections, seat_column, cinema_room_id } = dto;
+    const roomId = parseInt(cinema_room_id);
 
-    // Validate cinema room
-    const cinemaRoom = await this.cinemaRoomRepository.findOne({
-      where: { id: parseInt(cinema_room_id) },
-    });
-    if (!cinemaRoom) {
-      throw new NotFoundException('Cinema room not found');
+    // Parallel validation
+    const [cinemaRoom, seatTypes] = await Promise.all([
+      this.cinemaRoomRepository.findOne({ where: { id: roomId } }),
+      this.seatTypeRepository.find({
+        where: { id: In(sections.map((s) => s.seat_type_id)) },
+      }),
+    ]);
+
+    if (!cinemaRoom) throw new NotFoundException('Cinema room not found');
+
+    const seatTypeIds = new Set(sections.map((s) => s.seat_type_id));
+    if (seatTypes.length !== seatTypeIds.size) {
+      throw new NotFoundException('Some seat types not found');
     }
 
-    // Get default seat type
-    const defaultSeatType = await this.seatTypeRepository.findOne({
-      where: { id: 1 },
-    });
-    if (!defaultSeatType) {
-      throw new NotFoundException('Default seat type not found');
-    }
+    // Use Map for O(1) lookup
+    const seatTypeMap = new Map(seatTypes.map((st) => [st.id, st]));
 
-    // Generate seat IDs and layout
-    const allSeatIds: string[] = [];
-    const layout: string[][] = [];
+    // Pre-allocate arrays với estimated size
+    const estimatedSize = sections.reduce(
+      (sum, section) =>
+        sum +
+        (section.seat_rows
+          ? section.seat_rows * seat_column
+          : section.seat_ids?.length || 0),
+      0,
+    );
 
-    for (let y = 0; y < seat_rows; y++) {
-      const rowChar = String.fromCharCode(65 + y); // A, B, C...
-      const row: string[] = [];
+    const allSeatIds: string[] = new Array<string>(estimatedSize).fill(''); // Pre-allocate
+    const layout: { type: number; seat: string[][] }[] = [];
+    const seatMap = new Map<
+      string,
+      { row: string; col: string; seatType: SeatType }
+    >();
 
-      for (let x = 0; x < seat_column; x++) {
-        const seatId = `${rowChar}${x + 1}`;
-        allSeatIds.push(seatId);
-        row.push(seatId);
+    let seatIndex = 0;
+    let currentRow = 0;
+
+    // Single loop processing
+    for (const section of sections) {
+      const seatType = seatTypeMap.get(section.seat_type_id)!;
+
+      if (section.seat_rows) {
+        const sectionLayout: string[][] = [];
+        const endRow = currentRow + section.seat_rows;
+
+        for (let row = currentRow; row < endRow; row++) {
+          const rowChar = String.fromCharCode(65 + row);
+          const rowSeats: string[] = Array.from(
+            { length: seat_column },
+            () => '',
+          ); // Pre-allocate with empty strings
+
+          for (let col = 0; col < seat_column; col++) {
+            const seatId = `${rowChar}${col + 1}`;
+            allSeatIds[seatIndex++] = seatId;
+            rowSeats[col] = seatId;
+            seatMap.set(seatId, {
+              row: rowChar,
+              col: (col + 1).toString(),
+              seatType,
+            });
+          }
+          sectionLayout.push(rowSeats);
+        }
+        layout.push({ type: section.seat_type_id, seat: sectionLayout });
+        currentRow = endRow;
       }
-      layout.push(row);
+
+      if (section.seat_ids?.length) {
+        const rowMap = new Map<string, string[]>();
+
+        for (const seatId of section.seat_ids) {
+          allSeatIds[seatIndex++] = seatId;
+          const rowChar = seatId[0];
+          const col = seatId.substring(1);
+
+          seatMap.set(seatId, { row: rowChar, col, seatType });
+
+          if (!rowMap.has(rowChar)) rowMap.set(rowChar, []);
+          rowMap.get(rowChar)!.push(seatId);
+        }
+
+        layout.push({
+          type: section.seat_type_id,
+          seat: Array.from(rowMap.values()),
+        });
+      }
     }
 
-    // Check existing seats
+    // Trim array to actual size
+    allSeatIds.length = seatIndex;
+
+    // Batch check existing seats
     const existingSeats = await this.seatRepository.find({
-      where: {
-        id: In(allSeatIds),
-        cinemaRoom: { id: parseInt(cinema_room_id) },
-      },
+      where: { id: In(allSeatIds), cinemaRoom: { id: roomId } },
       select: ['id'],
     });
+
     const existingSeatIds = new Set(existingSeats.map((seat) => seat.id));
 
-    // Create new seats
+    // Batch create new seats
     const seatsToCreate = allSeatIds
-      .filter((id) => !existingSeatIds.has(id))
-      .map((id) => {
-        const row = id.charAt(0);
-        const col = id.slice(1);
-        return this.seatRepository.create({
-          id,
-          seat_row: row,
-          seat_column: col,
+      .filter((seatId) => !existingSeatIds.has(seatId))
+      .map((seatId) => {
+        const seatData = seatMap.get(seatId)!;
+        return {
+          id: seatId,
+          seat_row: seatData.row,
+          seat_column: seatData.col,
           is_deleted: false,
-          seatType: defaultSeatType,
-          cinemaRoom: cinemaRoom,
-        });
+          seatType: seatData.seatType,
+          cinemaRoom,
+        };
       });
 
-    // Save to database
+    // Use batch insert for better performance
     if (seatsToCreate.length > 0) {
-      await this.seatRepository.save(seatsToCreate);
+      await this.seatRepository
+        .createQueryBuilder()
+        .insert()
+        .into(Seat)
+        .values(seatsToCreate)
+        .execute();
     }
 
     return {
       message: 'Seats created successfully',
+      cinema_room_id,
       created: seatsToCreate.length,
       existed: existingSeatIds.size,
       total: allSeatIds.length,
       layout,
     };
   }
-
   async updateSeat(id: string, updateSeatDto: UpdateSeatDto) {
     const seat = await this.getSeatById(id);
     Object.assign(seat, updateSeatDto);

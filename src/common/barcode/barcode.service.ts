@@ -30,7 +30,7 @@ export class BarcodeService {
     });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException('User not founds');
     }
 
     const shortCode = this.generateShortCode(user.id);
