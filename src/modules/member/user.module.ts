@@ -10,10 +10,11 @@ import { ProfileController } from './controllers/profile.controller';
 import { ProfileService } from './services/profile.service';
 import { BarcodeService } from 'src/common/barcode/barcode.service';
 import { BarcodeController } from 'src/common/barcode/barcode.controller';
+import { R2ConfigService } from 'src/common/config/r2.config';
 
 @Module({
   imports: [TypeOrmModule.forFeature([User, Role])],
-  providers: [UserService, ProfileService, BarcodeService],
+  providers: [UserService, ProfileService, BarcodeService, R2ConfigService],
   controllers: [UserController, ProfileController, BarcodeController],
   exports: [UserService, ProfileService, BarcodeService],
 })
