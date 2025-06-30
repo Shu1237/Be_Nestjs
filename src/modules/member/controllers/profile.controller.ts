@@ -6,7 +6,7 @@ import {
   UseGuards,
   Req,
   ForbiddenException,
-  // Res,
+  Res,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 
@@ -51,20 +51,20 @@ export class ProfileController {
     return this.profileService.updateProfile(user.account_id, updateUserDto);
   }
 
-  // @Get('barcode')
-  // @ApiOperation({ summary: 'Get barcode for current user (image)' })
-  // async getBarcode(@Req() req: Request, @Res() res: Response) {
-  //   const user = req.user as JWTUserType;
-  //   const { barcode } = await this.barcodeService.getUserBarcode(
-  //     user.account_id,
-  //   );
+  @Get('barcode')
+  @ApiOperation({ summary: 'Get barcode for current user (image)' })
+  async getBarcode(@Req() req: Request, @Res() res: Response) {
+    const user = req.user as JWTUserType;
+    const { barcode } = await this.barcodeService.getUserBarcode(
+      user.account_id,
+    );
 
-  //   // Giải mã base64 thành buffer
-  //   const base64Data = barcode.replace(/^data:image\/png;base64,/, '');
-  //   const buffer = Buffer.from(base64Data, 'base64');
+    // Giải mã base64 thành buffer
+    const base64Data = barcode.replace(/^data:image\/png;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
 
-  //   res.setHeader('Content-Type', 'image/png');
-  //   res.setHeader('Content-Disposition', 'inline; filename=barcode.png');
-  //   return res.send(buffer);
-  // }
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Content-Disposition', 'inline; filename=barcode.png');
+    return res.send(buffer);
+  }
 }
