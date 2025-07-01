@@ -227,8 +227,8 @@ export class OrderService {
       // check redis
       const check = await this.validateBeforeOrder(scheduleId, user.id, seatIds);
       if (!check) {
-       throw new ConflictException('Seats are being held by another user. Please try again later.');
-       }
+        throw new ConflictException('Seats are being held by another user. Please try again later.');
+      }
 
       const scheduleSeats = await this.getScheduleSeatsByIds(seatIds, orderBill.schedule_id);
 
@@ -570,8 +570,19 @@ export class OrderService {
 
 
 
-  async getAllOrders() {
-    const orders = await this.orderRepository.find({
+  async getAllOrders({
+    skip,
+    take,
+    page,
+    status,
+  }: {
+    skip: number;
+    take: number;
+    page: number;
+    status?: StatusOrder
+  }) {
+    const [orders, total] = await this.orderRepository.findAndCount({
+      where: status ? { status } : {},
       relations: ['user',
         'promotion',
         'transaction',
@@ -586,9 +597,21 @@ export class OrderService {
         'orderExtras',
         'orderExtras.product'
       ],
+      skip,
+      take,
+      order: {
+        order_date: 'DESC',
+      },
     });
+
     const bookingSummaries = orders.map(order => this.mapToBookingSummaryLite(order));
-    return bookingSummaries;
+    return {
+      data: bookingSummaries,
+      total,
+      page,
+      pageSize: take,
+      totalPages: Math.ceil(total / take),
+    }
   }
 
   async getOrderByIdEmployeeAndAdmin(orderId: number) {
@@ -614,23 +637,52 @@ export class OrderService {
     }
     return this.mapToBookingSummaryLite(order);
   }
-  async getMyOrders(userId: string) {
-    const orderByUser = await this.orderRepository.find({
-      where: { user: { id: userId } },
-      relations: ['user',
-        'promotion', 'transaction',
+  async getMyOrders(
+    userId: string,
+    skip: number,
+    take: number,
+    page: number,
+    status?: StatusOrder
+  ) {
+    const where: any = {
+      user: { id: userId },
+    };
+
+    if (status) {
+      where.status = status;
+    }
+
+    const [orders, total] = await this.orderRepository.findAndCount({
+      where,
+      relations: [
+        'user',
+        'promotion',
+        'transaction',
         'transaction.paymentMethod',
-        'orderDetails', 'orderDetails.ticket',
+        'orderDetails',
+        'orderDetails.ticket',
         'orderDetails.schedule',
         'orderDetails.schedule.movie',
         'orderDetails.schedule.cinemaRoom',
-        'orderDetails.ticket',
         'orderDetails.ticket.seat',
-        'orderDetails.ticket.ticketType'],
+        'orderDetails.ticket.ticketType',
+      ],
+      skip,
+      take,
+      order: {
+        order_date: 'DESC',
+      },
     });
 
-    const bookingSummaries = orderByUser.map(order => this.mapToBookingSummaryLite(order));
-    return bookingSummaries;
+    const bookingSummaries = orders.map((order) => this.mapToBookingSummaryLite(order));
+
+    return {
+      data: bookingSummaries,
+      total,
+      page,
+      pageSize: take,
+      totalPages: Math.ceil(total / take),
+    };
   }
 
   private mapToBookingSummaryLite(order: Order) {
@@ -715,5 +767,4 @@ export class OrderService {
     }
   }
 }
-
 
