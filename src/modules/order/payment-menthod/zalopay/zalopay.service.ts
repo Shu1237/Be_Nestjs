@@ -33,9 +33,9 @@ export class ZalopayService {
       throw new InternalServerErrorException("No seat selected");
     }
 
-    const transID = Date.now();
-    const app_trans_id = `${moment().format("YYMMDD")}_${transID}`;
-    const app_time = dayjs().valueOf();
+    const transID = TimeUtil.now();
+    const app_trans_id = `${TimeUtil.formatDate(transID, "YYMMDD")}_${transID}`;
+    const app_time = TimeUtil.now().valueOf();
     const embed_data = { redirecturl: callback_url };
 
     const rawData = {

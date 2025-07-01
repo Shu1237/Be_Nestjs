@@ -181,6 +181,8 @@ export class OrderService {
 
 
   async createOrder(userData: JWTUserType, orderBill: OrderBillType, clientIp: string) {
+    dayjs.extend(utc);
+    dayjs.extend(timezone);
     try {
       const user = await this.getUserById(userData.account_id);
       // check products
@@ -227,8 +229,8 @@ export class OrderService {
       // check redis
       const check = await this.validateBeforeOrder(scheduleId, user.id, seatIds);
       if (!check) {
-       throw new ConflictException('Seats are being held by another user. Please try again later.');
-       }
+        throw new ConflictException('Seats are being held by another user. Please try again later.');
+      }
 
       const scheduleSeats = await this.getScheduleSeatsByIds(seatIds, orderBill.schedule_id);
 
@@ -322,7 +324,7 @@ export class OrderService {
 
       const transaction = await this.transactionRepository.save({
         transaction_code: paymentCode.orderId,
-        transaction_date: new Date(),
+        transaction_date: TimeUtil.now(), // Save as UTC in database
         prices: orderBill.total_prices,
         status: Number(orderBill.payment_method_id) === Method.CASH ? StatusOrder.SUCCESS : StatusOrder.PENDING,
         paymentMethod,
@@ -570,8 +572,19 @@ export class OrderService {
 
 
 
-  async getAllOrders() {
-    const orders = await this.orderRepository.find({
+  async getAllOrders({
+    skip,
+    take,
+    page,
+    status,
+  }: {
+    skip: number;
+    take: number;
+    page: number;
+    status?: StatusOrder
+  }) {
+    const [orders, total] = await this.orderRepository.findAndCount({
+      where: status ? { status } : {},
       relations: ['user',
         'promotion',
         'transaction',
@@ -586,9 +599,21 @@ export class OrderService {
         'orderExtras',
         'orderExtras.product'
       ],
+      skip,
+      take,
+      order: {
+        order_date: 'DESC',
+      },
     });
+
     const bookingSummaries = orders.map(order => this.mapToBookingSummaryLite(order));
-    return bookingSummaries;
+    return {
+      data: bookingSummaries,
+      total,
+      page,
+      pageSize: take,
+      totalPages: Math.ceil(total / take),
+    }
   }
 
   async getOrderByIdEmployeeAndAdmin(orderId: number) {
@@ -614,29 +639,57 @@ export class OrderService {
     }
     return this.mapToBookingSummaryLite(order);
   }
-  async getMyOrders(userId: string) {
-    const orderByUser = await this.orderRepository.find({
-      where: { user: { id: userId } },
-      relations: ['user',
-        'promotion', 'transaction',
+  async getMyOrders(
+    userId: string,
+    skip: number,
+    take: number,
+    page: number,
+    status?: StatusOrder
+  ) {
+    const where: any = {
+      user: { id: userId },
+    };
+
+    if (status) {
+      where.status = status;
+    }
+
+    const [orders, total] = await this.orderRepository.findAndCount({
+      where,
+      relations: [
+        'user',
+        'promotion',
+        'transaction',
         'transaction.paymentMethod',
-        'orderDetails', 'orderDetails.ticket',
+        'orderDetails',
+        'orderDetails.ticket',
         'orderDetails.schedule',
         'orderDetails.schedule.movie',
         'orderDetails.schedule.cinemaRoom',
-        'orderDetails.ticket',
         'orderDetails.ticket.seat',
-        'orderDetails.ticket.ticketType'],
+        'orderDetails.ticket.ticketType',
+      ],
+      skip,
+      take,
+      order: {
+        order_date: 'DESC',
+      },
     });
 
-    const bookingSummaries = orderByUser.map(order => this.mapToBookingSummaryLite(order));
-    return bookingSummaries;
-  }
+    const bookingSummaries = orders.map((order) => this.mapToBookingSummaryLite(order));
 
+    return {
+      data: bookingSummaries,
+      total,
+      page,
+      pageSize: take,
+      totalPages: Math.ceil(total / take),
+    };
+  }
   private mapToBookingSummaryLite(order: Order) {
     return {
       id: order.id,
-      order_date: order.order_date,
+      order_date: TimeUtil.toVietnamDate(order.order_date), // Convert to Vietnam timezone for display
       total_prices: order.total_prices,
       status: order.status,
       qr_code: order.qr_code,
@@ -660,8 +713,7 @@ export class OrderService {
           id: detail.ticket.seat.id,
           seat_row: detail.ticket.seat.seat_row,
           seat_column: detail.ticket.seat.seat_column,
-        },
-        ticketType: {
+        },        ticketType: {
           ticket_name: detail.ticket.ticketType.ticket_name,
         },
         start_movie_time: detail.schedule.start_movie_time,
@@ -685,6 +737,7 @@ export class OrderService {
       })) ?? [],
       transaction: {
         transaction_code: order.transaction.transaction_code,
+        transaction_date: TimeUtil.toVietnamDate(order.transaction.transaction_date), // Convert to Vietnam timezone for display
         status: order.transaction.status,
         PaymentMethod: {
           method_name: order.transaction.paymentMethod.name,
