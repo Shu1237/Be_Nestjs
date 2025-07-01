@@ -30,8 +30,8 @@ export class ScheduleService {
       id: schedule.id,
       is_deleted: schedule.is_deleted,
       cinema_room_id: schedule.cinemaRoom.id,
-      start_movie_time: TimeUtil.toVietnamDate(schedule.start_movie_time),
-      end_movie_time: TimeUtil.toVietnamDate(schedule.end_movie_time),
+      start_movie_time: schedule.start_movie_time,
+      end_movie_time: schedule.end_movie_time,
       movie: {
         id: schedule.movie.id,
         name: schedule.movie.name,
@@ -109,8 +109,8 @@ export class ScheduleService {
 
     // Tạo mới Schedule
     const schedule = this.scheduleRepository.create({
-      start_movie_time: TimeUtil.toUTCDateFromVietnamTime(start_movie_time),
-      end_movie_time: TimeUtil.toUTCDateFromVietnamTime(end_movie_time),
+      start_movie_time: start_movie_time,
+      end_movie_time: end_movie_time,
       movie,
       cinemaRoom,
       version, // Liên kết phiên bản cụ thể
@@ -162,8 +162,8 @@ export class ScheduleService {
 
     // Cập nhật ngày chiếu nếu có
     if (start_movie_time) {
-      schedule.start_movie_time =  TimeUtil.toUTCDateFromVietnamTime(start_movie_time);
-      schedule.end_movie_time = TimeUtil.toUTCDateFromVietnamTime(end_movie_time);
+      schedule.start_movie_time = new Date(start_movie_time);
+      schedule.end_movie_time = new Date(end_movie_time);
     }
 
     // Cập nhật Movie nếu có

@@ -181,8 +181,6 @@ export class OrderService {
 
 
   async createOrder(userData: JWTUserType, orderBill: OrderBillType, clientIp: string) {
-    dayjs.extend(utc);
-    dayjs.extend(timezone);
     try {
       const user = await this.getUserById(userData.account_id);
       // check products
@@ -229,8 +227,6 @@ export class OrderService {
       // check redis
       const check = await this.validateBeforeOrder(scheduleId, user.id, seatIds);
       if (!check) {
-        throw new ConflictException('Seats are being held by another user. Please try again later.');
-      }
         throw new ConflictException('Seats are being held by another user. Please try again later.');
       }
 
@@ -326,7 +322,7 @@ export class OrderService {
 
       const transaction = await this.transactionRepository.save({
         transaction_code: paymentCode.orderId,
-        transaction_date: TimeUtil.now(), // Save as UTC in database
+        transaction_date: new Date(), // Save as UTC in database
         prices: orderBill.total_prices,
         status: Number(orderBill.payment_method_id) === Method.CASH ? StatusOrder.SUCCESS : StatusOrder.PENDING,
         paymentMethod,
@@ -587,19 +583,6 @@ export class OrderService {
   }) {
     const [orders, total] = await this.orderRepository.findAndCount({
       where: status ? { status } : {},
-  async getAllOrders({
-    skip,
-    take,
-    page,
-    status,
-  }: {
-    skip: number;
-    take: number;
-    page: number;
-    status?: StatusOrder
-  }) {
-    const [orders, total] = await this.orderRepository.findAndCount({
-      where: status ? { status } : {},
       relations: ['user',
         'promotion',
         'transaction',
@@ -619,22 +602,9 @@ export class OrderService {
       order: {
         order_date: 'DESC',
       },
-      skip,
-      take,
-      order: {
-        order_date: 'DESC',
-      },
     });
 
-
     const bookingSummaries = orders.map(order => this.mapToBookingSummaryLite(order));
-    return {
-      data: bookingSummaries,
-      total,
-      page,
-      pageSize: take,
-      totalPages: Math.ceil(total / take),
-    }
     return {
       data: bookingSummaries,
       total,
@@ -688,43 +658,13 @@ export class OrderService {
         'user',
         'promotion',
         'transaction',
-  async getMyOrders(
-    userId: string,
-    skip: number,
-    take: number,
-    page: number,
-    status?: StatusOrder
-  ) {
-    const where: any = {
-      user: { id: userId },
-    };
-
-    if (status) {
-      where.status = status;
-    }
-
-    const [orders, total] = await this.orderRepository.findAndCount({
-      where,
-      relations: [
-        'user',
-        'promotion',
-        'transaction',
         'transaction.paymentMethod',
-        'orderDetails',
-        'orderDetails.ticket',
         'orderDetails',
         'orderDetails.ticket',
         'orderDetails.schedule',
         'orderDetails.schedule.movie',
         'orderDetails.schedule.cinemaRoom',
         'orderDetails.ticket.seat',
-        'orderDetails.ticket.ticketType',
-      ],
-      skip,
-      take,
-      order: {
-        order_date: 'DESC',
-      },
         'orderDetails.ticket.ticketType',
       ],
       skip,
@@ -743,20 +683,11 @@ export class OrderService {
       pageSize: take,
       totalPages: Math.ceil(total / take),
     };
-    const bookingSummaries = orders.map((order) => this.mapToBookingSummaryLite(order));
-
-    return {
-      data: bookingSummaries,
-      total,
-      page,
-      pageSize: take,
-      totalPages: Math.ceil(total / take),
-    };
   }
   private mapToBookingSummaryLite(order: Order) {
     return {
       id: order.id,
-      order_date: TimeUtil.toVietnamDate(order.order_date), // Convert to Vietnam timezone for display
+      order_date: order.order_date, // Convert to Vietnam timezone for display
       total_prices: order.total_prices,
       status: order.status,
       qr_code: order.qr_code,
@@ -804,7 +735,7 @@ export class OrderService {
       })) ?? [],
       transaction: {
         transaction_code: order.transaction.transaction_code,
-        transaction_date: TimeUtil.toVietnamDate(order.transaction.transaction_date), // Convert to Vietnam timezone for display
+        transaction_date: order.transaction.transaction_date, // Convert to Vietnam timezone for display
         status: order.transaction.status,
         PaymentMethod: {
           method_name: order.transaction.paymentMethod.name,

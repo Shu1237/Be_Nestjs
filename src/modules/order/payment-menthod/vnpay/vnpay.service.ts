@@ -16,9 +16,9 @@ export class VnpayService {
   ) { }
 
   async createOrderVnPay(totalPrice: string, clientIp: string) {
-    const date = TimeUtil.now()
-    const createDate = TimeUtil.formatDate(date, 'YYYYMMDDHHmmss');
-    const orderId = TimeUtil.formatDate(date, 'DDHHmmss');
+    const date = new Date();
+    const createDate = moment(date).format('YYYYMMDDHHmmss');
+    const orderId = moment(date).format('DDHHmmss');
 
     const tmnCode = this.configService.get<string>('vnpay.tmnCode');
     const secretKey = this.configService.get<string>('vnpay.hashSecret');

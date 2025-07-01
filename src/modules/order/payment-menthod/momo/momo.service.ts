@@ -51,7 +51,7 @@ export class MomoService {
       throw new InternalServerErrorException('Momo configuration is missing');
     }
 
-    const requestId = partnerCode + TimeUtil.now();
+    const requestId = partnerCode + new Date().getTime();
     const orderId = requestId;
     const orderInfo = 'Momo payment';
     const redirectUrl = this.configService.get<string>('momo.redirectUrl');
@@ -337,13 +337,14 @@ export class MomoService {
       template: 'order-confirmation',      context: {
         user: order.user.username,
         transactionCode: transaction.transaction_code,
-        order_date: TimeUtil.format(order.order_date, 'DD/MM/YYYY HH:mm'),
+        order_date: order.order_date,
         total: Number(order.total_prices).toLocaleString('vi-VN'),
-        paymentMethod: transaction.paymentMethod.name,year: new Date().getFullYear(),
+        paymentMethod: transaction.paymentMethod.name,
+        year: new Date().getFullYear(),
         movieName: firstTicket?.schedule.movie.name,
         roomName: firstTicket?.schedule.cinemaRoom.cinema_room_name,
-        start_movie_time: firstTicket?.schedule.start_movie_time ? TimeUtil.format(firstTicket.schedule.start_movie_time, 'DD/MM/YYYY HH:mm') : '',
-        end_movie_time: firstTicket?.schedule.end_movie_time ? TimeUtil.format(firstTicket.schedule.end_movie_time, 'DD/MM/YYYY HH:mm') : '',
+        start_movie_time: firstTicket?.schedule.start_movie_time ? firstTicket.schedule.start_movie_time : '',
+        end_movie_time: firstTicket?.schedule.end_movie_time ? firstTicket.schedule.end_movie_time : '',
         seats: order.orderDetails.map(detail => ({
           row: detail.ticket.seat.seat_row,
           column: detail.ticket.seat.seat_column,
