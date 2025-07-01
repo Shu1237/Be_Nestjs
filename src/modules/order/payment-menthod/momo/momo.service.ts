@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException, Redirect } from '@nestjs/common';
 import * as crypto from 'crypto';
 import axios from 'axios';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -287,15 +287,13 @@ export class MomoService {
       schedule_id: order.orderDetails[0].ticket.schedule.id,
       seatIds: order.orderDetails.map(detail => detail.ticket.seat.id),
 
-    })
-    return {
-      message: 'Payment successful',
-      order: savedOrder,
-      qrCode
-    };
-
-
-
+    });
+    // return {
+    //   message: 'Payment successful',
+    //   order: savedOrder,
+    //   qrCode
+    // };
+    return Redirect(`${this.configService.get<string>('redirectUrls.successUrl')}?orderId=${savedOrder.id}&total=${(savedOrder.total_prices)}&paymentMethod=${transaction.paymentMethod.name}`);
   }
   //handle return failed
   async handleReturnFailed(transaction: Transaction) {
@@ -319,7 +317,8 @@ export class MomoService {
       seatIds: order.orderDetails.map(detail => detail.ticket.seat.id),
     });
 
-    return { message: 'Payment failed' };
+    // return { message: 'Payment failed' };
+    return Redirect(`${this.configService.get<string>('redirectUrls.failureUrl')}`);
   }
 
 
