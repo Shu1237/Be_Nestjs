@@ -84,117 +84,131 @@ export class SeatService {
     return { msg: 'Seat created successfully' };
   }
   async createSeatsBulk(dto: BulkCreateSeatDto) {
-    const { sections, seat_column, cinema_room_id } = dto;
-    const roomId = parseInt(cinema_room_id);
+    try {
+      const { sections, seat_column, cinema_room_id } = dto;
+      const roomId = parseInt(cinema_room_id);
 
-    // Parallel validation
-    const [cinemaRoom, seatTypes] = await Promise.all([
-      this.cinemaRoomRepository.findOne({ where: { id: roomId } }),
-      this.seatTypeRepository.find({
-        where: { id: In(sections.map((s) => s.seat_type_id)) },
-      }),
-    ]);
+      // Validation
+      const [cinemaRoom, seatTypes] = await Promise.all([
+        this.cinemaRoomRepository.findOne({ where: { id: roomId } }),
+        this.seatTypeRepository.find({
+          where: { id: In(sections.map((s) => s.seat_type_id)) },
+        }),
+      ]);
 
-    if (!cinemaRoom) throw new NotFoundException('Cinema room not found');
+      if (!cinemaRoom) {
+        throw new NotFoundException('Cinema room not found');
+      }
 
-    const seatTypeIds = new Set(sections.map((s) => s.seat_type_id));
-    if (seatTypes.length !== seatTypeIds.size) {
-      throw new NotFoundException('Some seat types not found');
-    }
+      const seatTypeIds = new Set(sections.map((s) => s.seat_type_id));
+      if (seatTypes.length !== seatTypeIds.size) {
+        throw new NotFoundException('Some seat types not found');
+      }
 
-    // Use Map for O(1) lookup
-    const seatTypeMap = new Map(seatTypes.map((st) => [st.id, st]));
+      const seatTypeMap = new Map(seatTypes.map((st) => [st.id, st]));
+      const allSeatIds = new Set<string>();
+      const layout: { type: number; seat: string[][] }[] = [];
+      const seatMap = new Map<
+        string,
+        { row: string; col: string; seatType: SeatType; originalSeatId: string }
+      >();
+      let currentRow = 0;
 
-    // Pre-allocate arrays với estimated size
-    const estimatedSize = sections.reduce(
-      (sum, section) =>
-        sum +
-        (section.seat_rows
-          ? section.seat_rows * seat_column
-          : section.seat_ids?.length || 0),
-      0,
-    );
+      // Process sections
+      for (const section of sections) {
+        const seatType = seatTypeMap.get(section.seat_type_id)!;
 
-    const allSeatIds: string[] = new Array<string>(estimatedSize).fill(''); // Pre-allocate
-    const layout: { type: number; seat: string[][] }[] = [];
-    const seatMap = new Map<
-      string,
-      { row: string; col: string; seatType: SeatType }
-    >();
+        // Handle seat_rows
+        if (section.seat_rows) {
+          const sectionLayout: string[][] = [];
+          const endRow = currentRow + section.seat_rows;
 
-    let seatIndex = 0;
-    let currentRow = 0;
+          for (let row = currentRow; row < endRow; row++) {
+            const rowChar = String.fromCharCode(65 + row);
+            const rowSeats: string[] = [];
 
-    // Single loop processing
-    for (const section of sections) {
-      const seatType = seatTypeMap.get(section.seat_type_id)!;
+            for (let col = 0; col < seat_column; col++) {
+              const originalSeatId = `${rowChar}${col + 1}`;
+              const uniqueSeatId = `R${roomId}_${originalSeatId}`;
 
-      if (section.seat_rows) {
-        const sectionLayout: string[][] = [];
-        const endRow = currentRow + section.seat_rows;
+              if (allSeatIds.has(uniqueSeatId)) {
+                throw new BadRequestException(
+                  `Duplicate seat ID: ${originalSeatId}`,
+                );
+              }
 
-        for (let row = currentRow; row < endRow; row++) {
-          const rowChar = String.fromCharCode(65 + row);
-          const rowSeats: string[] = Array.from(
-            { length: seat_column },
-            () => '',
-          ); // Pre-allocate with empty strings
-
-          for (let col = 0; col < seat_column; col++) {
-            const seatId = `${rowChar}${col + 1}`;
-            allSeatIds[seatIndex++] = seatId;
-            rowSeats[col] = seatId;
-            seatMap.set(seatId, {
-              row: rowChar,
-              col: (col + 1).toString(),
-              seatType,
-            });
+              allSeatIds.add(uniqueSeatId);
+              rowSeats.push(originalSeatId);
+              seatMap.set(uniqueSeatId, {
+                row: rowChar,
+                col: (col + 1).toString(),
+                seatType,
+                originalSeatId,
+              });
+            }
+            sectionLayout.push(rowSeats);
           }
-          sectionLayout.push(rowSeats);
-        }
-        layout.push({ type: section.seat_type_id, seat: sectionLayout });
-        currentRow = endRow;
-      }
-
-      if (section.seat_ids?.length) {
-        const rowMap = new Map<string, string[]>();
-
-        for (const seatId of section.seat_ids) {
-          allSeatIds[seatIndex++] = seatId;
-          const rowChar = seatId[0];
-          const col = seatId.substring(1);
-
-          seatMap.set(seatId, { row: rowChar, col, seatType });
-
-          if (!rowMap.has(rowChar)) rowMap.set(rowChar, []);
-          rowMap.get(rowChar)!.push(seatId);
+          layout.push({ type: section.seat_type_id, seat: sectionLayout });
+          currentRow = endRow;
         }
 
-        layout.push({
-          type: section.seat_type_id,
-          seat: Array.from(rowMap.values()),
-        });
+        // Handle seat_ids
+        if (section.seat_ids?.length) {
+          const rowMap = new Map<string, string[]>();
+
+          for (const originalSeatId of section.seat_ids) {
+            const uniqueSeatId = `R${roomId}_${originalSeatId}`;
+
+            if (allSeatIds.has(uniqueSeatId)) {
+              throw new BadRequestException(
+                `Duplicate seat ID: ${originalSeatId}`,
+              );
+            }
+
+            allSeatIds.add(uniqueSeatId);
+            const rowChar = originalSeatId[0];
+            const col = originalSeatId.substring(1);
+
+            seatMap.set(uniqueSeatId, {
+              row: rowChar,
+              col,
+              seatType,
+              originalSeatId,
+            });
+
+            if (!rowMap.has(rowChar)) rowMap.set(rowChar, []);
+            rowMap.get(rowChar)!.push(originalSeatId);
+          }
+
+          layout.push({
+            type: section.seat_type_id,
+            seat: Array.from(rowMap.values()),
+          });
+        }
       }
-    }
 
-    // Trim array to actual size
-    allSeatIds.length = seatIndex;
+      const allSeatIdsArray = Array.from(allSeatIds);
 
-    // Batch check existing seats
-    const existingSeats = await this.seatRepository.find({
-      where: { id: In(allSeatIds), cinemaRoom: { id: roomId } },
-      select: ['id'],
-    });
+      // Check existing seats
+      const existingSeats = await this.seatRepository.find({
+        where: { id: In(allSeatIdsArray) },
+        select: ['id'],
+      });
 
-    const existingSeatIds = new Set(existingSeats.map((seat) => seat.id));
+      if (existingSeats.length > 0) {
+        const existingOriginalIds = existingSeats.map(
+          (seat) => seatMap.get(seat.id)?.originalSeatId || seat.id,
+        );
+        throw new BadRequestException(
+          `Some seats already exist: ${existingOriginalIds.join(', ')}`,
+        );
+      }
 
-    // Batch create new seats
-    const seatsToCreate = allSeatIds
-      .filter((seatId) => !existingSeatIds.has(seatId))
-      .map((seatId) => {
-        const seatData = seatMap.get(seatId)!;
+      // Create seats
+      const seatsToCreate = allSeatIdsArray.map((uniqueSeatId) => {
+        const seatData = seatMap.get(uniqueSeatId)!;
         return {
-          id: seatId,
+          id: uniqueSeatId,
           seat_row: seatData.row,
           seat_column: seatData.col,
           is_deleted: false,
@@ -203,24 +217,36 @@ export class SeatService {
         };
       });
 
-    // Use batch insert for better performance
-    if (seatsToCreate.length > 0) {
-      await this.seatRepository
-        .createQueryBuilder()
-        .insert()
-        .into(Seat)
-        .values(seatsToCreate)
-        .execute();
-    }
+      if (seatsToCreate.length > 0) {
+        await this.seatRepository.insert(seatsToCreate);
+      }
 
-    return {
-      message: 'Seats created successfully',
-      cinema_room_id,
-      created: seatsToCreate.length,
-      existed: existingSeatIds.size,
-      total: allSeatIds.length,
-      layout,
-    };
+      return {
+        success: true,
+        message: 'Seats created successfully',
+        data: {
+          cinema_room_id: roomId,
+          created_count: seatsToCreate.length,
+          layout,
+        },
+      };
+    } catch (error: unknown) {
+      // Re-throw known exceptions
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+
+      // Handle unknown errors
+      let errorMessage = 'Unknown error';
+      if (error && typeof error === 'object' && 'message' in error) {
+        errorMessage = String((error as { message?: unknown }).message);
+      }
+
+      throw new BadRequestException(`Failed to create seats: ${errorMessage}`);
+    }
   }
   async updateSeat(id: string, updateSeatDto: UpdateSeatDto) {
     const seat = await this.getSeatById(id);

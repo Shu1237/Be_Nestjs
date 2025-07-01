@@ -38,5 +38,4 @@ export class Seat {
 
   @OneToMany(() => ScheduleSeat, (scheduleSeat) => scheduleSeat.seat)
   scheduleSeats: ScheduleSeat[];
-
 }
