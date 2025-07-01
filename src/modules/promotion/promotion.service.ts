@@ -9,6 +9,7 @@ import { CreatePromotionDto } from './dto/create-promotion.dto';
 import { UpdatePromotionDto } from './dto/update-promotion.dto';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
 import { NotFoundException } from 'src/common/exceptions/not-found.exception';
+import { TimeUtil } from 'src/common/utils/time.util';
 
 @Injectable()
 export class PromotionService {

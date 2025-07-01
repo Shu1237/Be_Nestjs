@@ -12,7 +12,6 @@ export class TicketService {
     @InjectRepository(Ticket) private ticketRepository: Repository<Ticket>,
     @InjectRepository(User) private userRepository: Repository<User>,
   ) { }
-
   private summaryTicket(ticket: Ticket) {
     return {
       id: ticket.id,
