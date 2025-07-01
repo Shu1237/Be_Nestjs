@@ -5,7 +5,7 @@ import { PayPalService } from './payment-menthod/paypal/paypal.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { Response } from 'express';
 import { CreateOrderBillDto } from './dto/order-bill.dto';
-import { ApiOperation, ApiBody, ApiResponse, ApiBearerAuth, ApiExcludeEndpoint } from '@nestjs/swagger';
+import { ApiOperation, ApiBody, ApiResponse, ApiBearerAuth, ApiExcludeEndpoint, ApiQuery } from '@nestjs/swagger';
 import { VnpayService } from './payment-menthod/vnpay/vnpay.service';
 import { ZalopayService } from './payment-menthod/zalopay/zalopay.service';
 import { JWTUserType } from 'src/common/utils/type';
@@ -14,6 +14,7 @@ import { ScanQrCodeDto } from './dto/qrcode.dto';
 import { InternalServerErrorException } from 'src/common/exceptions/internal-server-error.exception';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
 import { ForbiddenException } from 'src/common/exceptions/forbidden.exception';
+import { StatusOrder } from 'src/common/enums/status-order.enum';
 
 
 @ApiBearerAuth()
@@ -116,14 +117,36 @@ export class OrderController {
   @Get('all')
   @ApiOperation({ summary: 'View all orders' })
   @ApiBearerAuth()
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: ['all', ...Object.values(StatusOrder)],
+    example: 'all',
+    default: 'all',
+  })
+
   @ApiResponse({ status: 200, description: 'List of all orders' })
-  async getAllOrders(@Req() req) {
+  async getAllOrders(
+    @Req() req,
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+    @Query('status') status: StatusOrder | 'all' = 'all'
+  ) {
     const user = req.user as JWTUserType;
     if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
       throw new ForbiddenException('You do not have permission to view all orders');
     }
-    return this.orderService.getAllOrders();
+
+    const take = Math.max(1, Math.min(limit, 100));
+    const skip = (Math.max(1, page) - 1) * take;
+
+    const statusValue: StatusOrder | undefined = status === 'all' ? undefined : status as StatusOrder;
+
+    return this.orderService.getAllOrders({ skip, take, page, status: statusValue });
   }
+
 
 
   // // Get Order by Id 
@@ -135,13 +158,37 @@ export class OrderController {
     return this.orderService.getOrderByIdEmployeeAndAdmin(id);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get('getorderbyUserID/:id')
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: ['all', ...Object.values(StatusOrder)],
+    example: 'all',
+    default: 'all',
+  })
   @ApiBearerAuth()
   @ApiOperation({ summary: 'View my orders' })
-  async getMyOrders(@Param('id', ParseIntPipe) id: number, @Req() req) {
+  async getMyOrders(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req,
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+    @Query('status') status: StatusOrder | 'all' = 'all'
+  ) {
     const user = req.user as JWTUserType;
-    return this.orderService.getMyOrders(user.account_id);
+
+
+    if (user.role_id === Role.USER && user.account_id !== id.toString()) {
+      throw new ForbiddenException('You can only view your own orders');
+    }
+
+    const take = Math.max(1, Math.min(limit, 100));
+    const skip = (Math.max(1, page) - 1) * take;
+    const statusValue = status === 'all' ? undefined : (status as StatusOrder);
+
+    return this.orderService.getMyOrders(user.account_id, skip, take, page, statusValue);
   }
 
 
