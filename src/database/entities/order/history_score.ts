@@ -4,8 +4,7 @@ import {
   Column,
   ManyToOne,
   OneToOne,
-  JoinColumn,
-  CreateDateColumn
+  JoinColumn
 } from 'typeorm';
 import { User } from '../user/user';
 import { Order } from './order';
@@ -17,8 +16,7 @@ export class HistoryScore {
 
   @Column({ type: 'integer' })
   score_change: number;
-
-  @CreateDateColumn({ type: 'timestamp' })
+  @Column({ type: 'timestamp' })
   created_at: Date;
 
 

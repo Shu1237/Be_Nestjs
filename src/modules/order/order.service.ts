@@ -181,6 +181,8 @@ export class OrderService {
 
 
   async createOrder(userData: JWTUserType, orderBill: OrderBillType, clientIp: string) {
+    dayjs.extend(utc);
+    dayjs.extend(timezone);
     try {
       const user = await this.getUserById(userData.account_id);
       // check products
@@ -322,7 +324,7 @@ export class OrderService {
 
       const transaction = await this.transactionRepository.save({
         transaction_code: paymentCode.orderId,
-        transaction_date: new Date(),
+        transaction_date: TimeUtil.now(), // Save as UTC in database
         prices: orderBill.total_prices,
         status: Number(orderBill.payment_method_id) === Method.CASH ? StatusOrder.SUCCESS : StatusOrder.PENDING,
         paymentMethod,
@@ -684,11 +686,10 @@ export class OrderService {
       totalPages: Math.ceil(total / take),
     };
   }
-
   private mapToBookingSummaryLite(order: Order) {
     return {
       id: order.id,
-      order_date: order.order_date,
+      order_date: TimeUtil.toVietnamDate(order.order_date), // Convert to Vietnam timezone for display
       total_prices: order.total_prices,
       status: order.status,
       qr_code: order.qr_code,
@@ -712,8 +713,7 @@ export class OrderService {
           id: detail.ticket.seat.id,
           seat_row: detail.ticket.seat.seat_row,
           seat_column: detail.ticket.seat.seat_column,
-        },
-        ticketType: {
+        },        ticketType: {
           ticket_name: detail.ticket.ticketType.ticket_name,
         },
         start_movie_time: detail.schedule.start_movie_time,
@@ -737,6 +737,7 @@ export class OrderService {
       })) ?? [],
       transaction: {
         transaction_code: order.transaction.transaction_code,
+        transaction_date: TimeUtil.toVietnamDate(order.transaction.transaction_date), // Convert to Vietnam timezone for display
         status: order.transaction.status,
         PaymentMethod: {
           method_name: order.transaction.paymentMethod.name,
