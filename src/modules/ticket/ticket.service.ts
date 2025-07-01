@@ -23,8 +23,8 @@ export class TicketService {
         audience_type: ticket.ticketType.audience_type,
       },
       schedule: {
-        start_movie_time: TimeUtil.toVietnamDate(ticket.schedule.start_movie_time),
-        end_movie_time: TimeUtil.toVietnamDate(ticket.schedule.end_movie_time),
+        start_movie_time: ticket.schedule.start_movie_time,
+        end_movie_time: ticket.schedule.end_movie_time,
         movie: {
           id: ticket.schedule.movie.id,
           name: ticket.schedule.movie.name,
