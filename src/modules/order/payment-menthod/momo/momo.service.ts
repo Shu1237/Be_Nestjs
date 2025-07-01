@@ -201,7 +201,7 @@ export class MomoService {
   }
 
   //handle return success 
-  async handleReturnSuccess(transaction: Transaction) {
+  async handleReturnSuccess(transaction: Transaction): Promise<string> {
     const order = transaction.order;
     // Giao dịch thành công
     transaction.status = StatusOrder.SUCCESS;
@@ -293,10 +293,10 @@ export class MomoService {
     //   order: savedOrder,
     //   qrCode
     // };
-    return Redirect(`${this.configService.get<string>('redirectUrls.successUrl')}?orderId=${savedOrder.id}&total=${(savedOrder.total_prices)}&paymentMethod=${transaction.paymentMethod.name}`);
+    return `${this.configService.get<string>('redirectUrls.successUrl')}?orderId=${savedOrder.id}&total=${(savedOrder.total_prices)}&paymentMethod=${transaction.paymentMethod.name}`;
   }
   //handle return failed
-  async handleReturnFailed(transaction: Transaction) {
+  async handleReturnFailed(transaction: Transaction) : Promise<string> {
     const order = transaction.order;
     // Reset trạng thái ghế nếu cần
     for (const detail of order.orderDetails) {
@@ -318,7 +318,7 @@ export class MomoService {
     });
 
     // return { message: 'Payment failed' };
-    return Redirect(`${this.configService.get<string>('redirectUrls.failureUrl')}`);
+    return `${this.configService.get<string>('redirectUrls.failureUrl')}`;
   }
 
 

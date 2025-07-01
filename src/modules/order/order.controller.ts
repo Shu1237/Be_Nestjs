@@ -44,7 +44,7 @@ export class OrderController {
   @Get('momo/return')
   async handleMomoReturn(@Query() query: any, @Res() res: Response) {
     const result = await this.momoService.handleReturn(query);
-    return res.send(result);
+    return res.redirect(result);
   }
   @ApiExcludeEndpoint()
   @Get('paypal/success/return')
@@ -56,7 +56,7 @@ export class OrderController {
     if (!result) {
       throw new BadRequestException('Invalid order ID or Payer ID');
     }
-    return res.send(result);
+    return res.redirect(result);
   }
   @ApiExcludeEndpoint()
   @Get('paypal/cancel/return')
@@ -65,7 +65,7 @@ export class OrderController {
     // if (!result) {
     //   throw new BadRequestException('Invalid order ID');
     // }
-    return res.send(result);
+    return res.redirect(result);
   }
 
 
@@ -79,7 +79,7 @@ export class OrderController {
     if (!result) {
       throw new BadRequestException('Invalid order ID or Payer ID');
     }
-    return res.send(result);
+    return res.redirect(result);
   }
   @ApiExcludeEndpoint()
   @Get('visa/cancel/return')
@@ -88,7 +88,7 @@ export class OrderController {
     // if (!result) {
     //   throw new BadRequestException('Invalid order ID');
     // }
-    return res.send(result);
+    return res.redirect(result);
   }
 
 
@@ -97,7 +97,7 @@ export class OrderController {
   @Get('vnpay/return')
   async handleVnPayReturn(@Query() query: any, @Res() res: Response) {
     const result = await this.vnpayService.handleReturnVnPay(query);
-    return res.send(result);
+    return res.redirect(result);
   }
 
 
@@ -106,7 +106,7 @@ export class OrderController {
   @Get('zalopay/return')
   async handleZaloPayReturn(@Query() query: any, @Res() res: Response) {
     const result = await this.zalopayService.handleReturnZaloPay(query);
-    return res.send(result);
+    return res.redirect(result);
   }
 
 
