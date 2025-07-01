@@ -48,7 +48,7 @@ export class ProfileService {
   ): Promise<Partial<User>> {
     const user = await this.userRepository.findOne({
       where: { id: userId, is_deleted: false },
-      relations: ['role', 'user'],
+      relations: ['role'],
     });
 
     if (!user) {
