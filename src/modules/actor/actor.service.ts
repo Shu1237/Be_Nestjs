@@ -37,12 +37,12 @@ export class ActorService {
   }
 
   async findAllActors(): Promise<Actor[]> {
-    return await this.actorRepository.find({ where: { is_deleted: false } });
+    return await this.actorRepository.find();
   }
 
   async findActorById(id: number): Promise<Actor> {
     const actor = await this.actorRepository.findOne({
-      where: { id, is_deleted: false },
+      where: { id },
     });
     if (!actor) {
       throw new NotFoundException(`Actor with ID ${id} not found`);
