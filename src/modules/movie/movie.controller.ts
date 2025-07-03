@@ -21,10 +21,8 @@ import {
 import { MovieService } from './movie.service';
 import { CreateMovieDto } from './dtos/createMovie.dto';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
-import { Role } from 'src/common/enums/roles.enum';
-import { JWTUserType } from 'src/common/utils/type';
 import { UpdateMovieDto } from './dtos/updateMovie.dto';
-import { ForbiddenException } from 'src/common/exceptions/forbidden.exception';
+import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 
 @ApiTags('Movies')
 @ApiBearerAuth()
@@ -36,12 +34,7 @@ export class MovieController {
   @Post()
   @ApiOperation({ summary: 'Create a new movie' })
   async createMovie(@Body() movieDto: CreateMovieDto, @Req() req) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException(
-        'Unauthorized: Only admin or employee can create a movie.',
-      );
-    }
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can create a movie.');
     return this.movieService.createMovie(movieDto);
   }
 
@@ -65,12 +58,7 @@ export class MovieController {
     @Body() movieDTO: UpdateMovieDto,
     @Req() req,
   ): Promise<any> {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException(
-        'Unauthorized: Only admin or employee can update a movie.',
-      );
-    }
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can update a movie.');
     return this.movieService.updateMovie(id, movieDTO);
   }
 
@@ -78,12 +66,7 @@ export class MovieController {
   @Delete(':id')
   @ApiOperation({ summary: 'Hard delete a movie by ID (admin, employee only)' })
   async deleteMovie(@Param('id', ParseIntPipe) id: number, @Req() req) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException(
-        'Unauthorized: Only admin or employee can delete a movie.',
-      );
-    }
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can delete a movie.');
     return this.movieService.deleteMovie(id);
   }
 
@@ -91,12 +74,7 @@ export class MovieController {
   @Patch(':id')
   @ApiOperation({ summary: 'Soft delete a movie by ID (admin, employee only)' })
   async softDeleteMovie(@Param('id', ParseIntPipe) id: number, @Req() req) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException(
-        'Unauthorized: Only admin or employee can soft delete a movie.',
-      );
-    }
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can soft delete a movie.');
     await this.movieService.softDeleteMovie(id);
     return { message: 'Movie soft deleted successfully' };
   }
