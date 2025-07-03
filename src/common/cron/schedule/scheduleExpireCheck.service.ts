@@ -3,7 +3,6 @@ import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Schedule } from 'src/database/entities/cinema/schedule';
 import { Repository, LessThan } from 'typeorm';
-import { TimeUtil } from 'src/common/utils/time.util';
 
 @Injectable()
 export class ScheduleExpireCheckService {

@@ -5,20 +5,18 @@ import {
   Body,
   UseGuards,
   Req,
-  ForbiddenException,
   Res,
   Post,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiBody } from '@nestjs/swagger';
-
 import { UpdateUserDto } from '../dtos/update-user.dto';
 import { Request, Response } from 'express';
-import { Role } from 'src/common/enums/roles.enum';
 import { ProfileService } from '../services/profile.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { JWTUserType } from 'src/common/utils/type';
 import { BarcodeService } from 'src/common/barcode/barcode.service';
 import { ScanQrCodeDto } from 'src/modules/order/dto/qrcode.dto';
+import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 
 @ApiTags('Profile')
 @ApiBearerAuth()
@@ -34,7 +32,6 @@ export class ProfileController {
   @ApiOperation({ summary: 'Get user profile' })
   async getProfile(@Req() req: Request) {
     const user = req.user as JWTUserType;
-
     return this.profileService.getProfile(user.account_id, user.role_id);
   }
 
@@ -45,11 +42,7 @@ export class ProfileController {
     @Body() updateUserDto: UpdateUserDto,
   ) {
     const user = req.user as JWTUserType;
-
-    if (user.role_id === Role.EMPLOYEE) {
-      throw new ForbiddenException('Employee cannot update profile');
-    }
-
+    checkAdminEmployeeRole(user, 'Unauthorized: Only admin can update profile.');
     return this.profileService.updateProfile(user.account_id, updateUserDto);
   }
 
@@ -72,11 +65,8 @@ export class ProfileController {
   @Post('qrcode')
   @ApiOperation({ summary: 'Get QR code for current user (image)' })
   @ApiBody({ type: ScanQrCodeDto, description: 'QR code data' })
-  async getQrCode(@Body() body: ScanQrCodeDto, @Req() req: Request) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.EMPLOYEE && user.role_id !== Role.ADMIN) {
-      throw new ForbiddenException('Only admin or employee can access QR code');
-    }
+  async getQrCode(@Body() body: ScanQrCodeDto, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can access QR code.');
     return this.profileService.getQrCode(body.qrCode);
 
   }

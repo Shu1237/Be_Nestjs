@@ -26,24 +26,19 @@ import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { Actor } from 'src/database/entities/cinema/actor';
 import { Role } from 'src/common/enums/roles.enum';
 import { JWTUserType } from 'src/common/utils/type';
+import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 
 @ApiTags('Actors')
 @ApiBearerAuth()
 @Controller('actor')
 export class ActorController {
-  constructor(private readonly actorService: ActorService) {}
+  constructor(private readonly actorService: ActorService) { }
 
   @UseGuards(JwtAuthGuard)
   @Post()
   @ApiOperation({ summary: 'Create a new actor' })
   async createActor(@Req() req, @Body() createActorDto: CreateActorDto) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      return {
-        statusCode: 403,
-        message: 'Unauthorized: Only admin or employee can create an actor.',
-      };
-    }
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can create an actor.');
     return await this.actorService.createActor(createActorDto);
   }
 
@@ -73,13 +68,7 @@ export class ActorController {
     @Param('id') id: string,
     @Body() updateActorDto: UpdateActorDto,
   ) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      return {
-        statusCode: 403,
-        message: 'Unauthorized: Only admin or employee can update an actor.',
-      };
-    }
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can update an actor.');
     return await this.actorService.updateActor(+id, updateActorDto);
   }
 
@@ -88,11 +77,7 @@ export class ActorController {
   @ApiOperation({ summary: 'Soft delete an actor (admin, employee only)' })
   async softDeleteActor(@Param('id', ParseIntPipe) id: number, @Req() req) {
     const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException(
-        'Unauthorized: Only admin or employee can soft delete an actor.',
-      );
-    }
+    checkAdminEmployeeRole(user, 'Unauthorized: Only admin or employee can soft delete an actor.');
     return await this.actorService.softDeleteActor(id);
   }
 
@@ -100,13 +85,7 @@ export class ActorController {
   @Delete(':id')
   @ApiOperation({ summary: 'Permanently delete an actor' })
   async removeActor(@Req() req, @Param('id') id: string) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      return {
-        statusCode: 403,
-        message: 'Unauthorized: Only admin can permanently delete an actor.',
-      };
-    }
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin can permanently delete an actor.');
     return await this.actorService.removeActor(+id);
   }
 

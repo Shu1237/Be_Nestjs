@@ -1,11 +1,11 @@
-import { Controller, Get, Body, Patch, Param, UseGuards, Req, Query } from '@nestjs/common';
+import { Controller, Get, Param, UseGuards, Req, Query } from '@nestjs/common';
 import { TicketService } from './ticket.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { JWTUserType } from 'src/common/utils/type';
-import { Role } from 'src/common/enums/roles.enum';
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
-import { ForbiddenException } from 'src/common/exceptions/forbidden.exception';
+import { ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { GetAllTicketsDto } from './dto/get-all-tickets.dto';
+import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
+import { checkUserRole } from 'src/common/role/user';
 
 @UseGuards(JwtAuthGuard)
 @Controller('ticket')
@@ -24,11 +24,7 @@ export class TicketController {
   @ApiQuery({ name: 'endDate', required: false, type: String, example: '2025-07-03' })
   @ApiBearerAuth()
   async getAllTickets(@Req() req, @Query() query: GetAllTicketsDto) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException('Only admin or employee can view all tickets');
-    }
-
+     checkAdminEmployeeRole(req.user, 'You do not have permission to view all tickets');
     const { page = 1, limit = 10, ...filters } = query;
     const take = Math.min(limit, 100);
     const skip = (page - 1) * take;
@@ -65,12 +61,7 @@ export class TicketController {
     @Query() query: GetAllTicketsDto,
   ) {
     const user = req.user as JWTUserType;
-
-
-    if (user.role_id === Role.USER && user.account_id !== id.toString()) {
-      throw new ForbiddenException('You can only view your own orders');
-    }
-
+    checkUserRole(user, 'You can only view your own tickets', id.toString());
     const { page = 1, limit = 10, ...filters } = query;
     const take = Math.min(limit, 100);
     const skip = (page - 1) * take;

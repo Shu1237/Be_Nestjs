@@ -9,13 +9,13 @@ import { ApiOperation, ApiBody, ApiResponse, ApiBearerAuth, ApiExcludeEndpoint, 
 import { VnpayService } from './payment-menthod/vnpay/vnpay.service';
 import { ZalopayService } from './payment-menthod/zalopay/zalopay.service';
 import { JWTUserType } from 'src/common/utils/type';
-import { Role } from 'src/common/enums/roles.enum';
 import { ScanQrCodeDto } from './dto/qrcode.dto';
 import { InternalServerErrorException } from 'src/common/exceptions/internal-server-error.exception';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
-import { ForbiddenException } from 'src/common/exceptions/forbidden.exception';
 import { StatusOrder } from 'src/common/enums/status-order.enum';
 import { GetAllOrdersDto } from './dto/getAllOrder.dto';
+import { checkUserRole } from 'src/common/role/user';
+import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 
 
 @ApiBearerAuth()
@@ -114,7 +114,7 @@ export class OrderController {
 
 
   // View All Orders
-  // @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard)
   @Get('all')
   @ApiOperation({ summary: 'View all orders' })
   @ApiBearerAuth()
@@ -132,11 +132,7 @@ export class OrderController {
     @Req() req,
     @Query() query: GetAllOrdersDto,
   ) {
-    // const user = req.user as JWTUserType;
-    // if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-    //   throw new ForbiddenException('You do not have permission to view all orders');
-    // }
-
+    checkAdminEmployeeRole(req.user, 'You do not have permission to view all orders');
     const { page = 1, limit = 10, status, ...restFilters } = query;
     const take = Math.min(limit, 100);
     const skip = (page - 1) * take;
@@ -165,6 +161,7 @@ export class OrderController {
     return this.orderService.getOrderByIdEmployeeAndAdmin(id);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get('getorderbyUserID/:id')
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
@@ -178,17 +175,13 @@ export class OrderController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'View my orders' })
   async getMyOrders(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
     @Req() req,
     @Query() query: GetAllOrdersDto,
 
   ) {
     const user = req.user as JWTUserType;
-
-
-    if (user.role_id === Role.USER && user.account_id !== id.toString()) {
-      throw new ForbiddenException('You can only view your own orders');
-    }
+    checkUserRole(user, 'You can only view your own orders', id.toString());
     const { page = 1, limit = 10, status, ...restFilters } = query;
     const take = Math.min(limit, 100);
     const skip = (page - 1) * take;
@@ -199,7 +192,7 @@ export class OrderController {
 
 
     return this.orderService.getMyOrders({
-      userId: req.user.id,
+      userId: user.account_id,
       skip,
       take,
       page,
@@ -215,7 +208,8 @@ export class OrderController {
   @ApiBody({ type: ScanQrCodeDto })
   @ApiBearerAuth()
   @Post('scan-qr')
-  scanQrCode(@Body() data: ScanQrCodeDto) {
+  scanQrCode(@Body() data: ScanQrCodeDto,@Req() req) {
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can scan QR code.');
     return this.orderService.scanQrCode(data.qrCode);
   }
 

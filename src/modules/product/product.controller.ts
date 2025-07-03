@@ -1,11 +1,10 @@
-import { Body, Controller, Delete, ForbiddenException, Get, Param, ParseIntPipe, Post, Put, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put, Req, UseGuards } from "@nestjs/common";
 import { ProductService } from "./product.service";
 import { JwtAuthGuard } from "src/common/guards/jwt.guard";
 import { ApiBearerAuth, ApiOperation } from "@nestjs/swagger";
-import { Role } from "src/common/enums/roles.enum";
-import { JWTUserType } from "src/common/utils/type";
 import { CreateProductDto } from "./dto/createProdcut.dto";
 import { UpdateProductDto } from "./dto/updateProduct.dto";
+import { checkAdminEmployeeRole } from "src/common/role/admin_employee";
 
 
 @UseGuards(JwtAuthGuard)
@@ -33,12 +32,7 @@ export class ProductController {
     @Post()
     @ApiOperation({ summary: 'Create a new product' })
     async createProduct(@Body() dto: CreateProductDto, @Req() req) {
-        const user = req.user as JWTUserType;
-        if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-            throw new ForbiddenException(
-                'Unauthorized: Only admin or employee can create a product.',
-            );
-        }
+        checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can create a product.');
         return this.productService.createProduct(dto);
     }
     @Put(':id')
@@ -48,24 +42,14 @@ export class ProductController {
         @Body() dto: UpdateProductDto,
         @Req() req,
     ) {
-        const user = req.user as JWTUserType;
-        if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-            throw new ForbiddenException(
-                'Unauthorized: Only admin or employee can update a product.',
-            );
-        }
+        checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can update a product.');
         return this.productService.updateProduct(id, dto);
     }
 
     @Delete(':id')
     @ApiOperation({ summary: 'Hard delete a product by ID (admin, employee only)' })
     async deleteProduct(@Param('id', ParseIntPipe) id: number, @Req() req) {
-        const user = req.user as JWTUserType;
-        if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-            throw new ForbiddenException(
-                'Unauthorized: Only admin or employee can delete a product.',
-            );
-        }
+        checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can delete a product.');
         return this.productService.deleteProduct(id);
     }
 

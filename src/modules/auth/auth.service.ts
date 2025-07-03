@@ -17,7 +17,6 @@ import { NotFoundException } from 'src/common/exceptions/not-found.exception';
 import { ForbiddenException } from 'src/common/exceptions/forbidden.exception';
 import { ConfigService } from '@nestjs/config';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
-import { TimeUtil } from 'src/common/utils/time.util';
 import { QrCodeService } from 'src/common/qrcode/qrcode.service';
 
 
@@ -68,7 +67,7 @@ export class AuthService {
       relations: ['user', 'user.role'],
     });
 
-    if (!record || record.expires_at < TimeUtil.now()) {
+    if (!record || record.expires_at.getTime() < Date.now()) {
       return null;
     }
 
@@ -290,7 +289,7 @@ export class AuthService {
       access_token: access_token,
       user: user,
       revoked: false,
-      expires_at: TimeUtil.addDaysVietnamTime(3),
+      expires_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), //3 days
     });
     return {
       access_token,
