@@ -30,6 +30,7 @@ export class TicketService {
           name: ticket.schedule.movie.name,
           duration: ticket.schedule.movie.duration,
           thumbnail: ticket.schedule.movie.thumbnail,
+          version: ticket.schedule.version.name,
         },
         cinemaRoom: {
           id: ticket.schedule.cinemaRoom.id,
@@ -54,38 +55,88 @@ export class TicketService {
     page,
     is_used,
     active = true,
+    search,
+    startDate,
+    endDate,
+    sortBy = 'order.order_date',
+    sortOrder = 'DESC',
   }: {
     skip: number;
     take: number;
     page: number;
     is_used?: boolean;
     active?: boolean;
+    search?: string;
+    startDate?: string;
+    endDate?: string;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
   }) {
     const query = this.ticketRepository
       .createQueryBuilder('ticket')
       .leftJoinAndSelect('ticket.schedule', 'schedule')
       .leftJoinAndSelect('schedule.movie', 'movie')
+      .leftJoinAndSelect('schedule.version', 'version')
       .leftJoinAndSelect('schedule.cinemaRoom', 'cinemaRoom')
       .leftJoinAndSelect('ticket.seat', 'seat')
       .leftJoinAndSelect('seat.seatType', 'seatType')
       .leftJoinAndSelect('ticket.ticketType', 'ticketType')
       .leftJoinAndSelect('ticket.orderDetail', 'orderDetail')
       .leftJoinAndSelect('orderDetail.order', 'order')
-      .orderBy('order.order_date', 'DESC')
       .skip(skip)
       .take(take);
 
-    // 
+    // Search theo tên phim, loại ghế, tên phòng, loại vé
+    if (search) {
+      query.andWhere(
+        `
+        movie.name LIKE :search OR
+        seatType.seat_type_name LIKE :search OR
+        cinemaRoom.cinema_room_name LIKE :search OR
+        ticketType.ticket_name LIKE :search
+      `,
+        { search: `%${search}%` },
+      );
+    }
+
+    // Filter is_used
     if (typeof is_used === 'boolean') {
       query.andWhere('ticket.is_used = :is_used', { is_used });
     }
+
+    // Filter active
     if (typeof active === 'boolean') {
       query.andWhere('ticket.status = :active', { active });
     }
 
+    // Filter theo khoảng thời gian order_date
+    if (startDate && endDate) {
+      query.andWhere('order.order_date BETWEEN :start AND :end', {
+        start: startDate,
+        end: endDate,
+      });
+    } else if (startDate) {
+      query.andWhere('order.order_date >= :start', { start: startDate });
+    } else if (endDate) {
+      query.andWhere('order.order_date <= :end', { end: endDate });
+    }
+
+    // Chỉ cho phép sort theo các trường được định nghĩa
+    const allowedSortFields = [
+      'order.order_date',
+      'movie.name',
+      'ticketType.ticket_name',
+      'cinemaRoom.cinema_room_name',
+    ];
+    const finalSortBy = allowedSortFields.includes(sortBy)
+      ? sortBy
+      : 'order.order_date';
+
+    query.orderBy(finalSortBy, sortOrder);
+
     const [tickets, total] = await query.getManyAndCount();
 
-    const summaries = tickets.map(ticket => this.summaryTicket(ticket));
+    const summaries = tickets.map((ticket) => this.summaryTicket(ticket));
 
     return {
       data: summaries,
@@ -95,6 +146,7 @@ export class TicketService {
       totalPages: Math.ceil(total / take),
     };
   }
+
 
 
   async getTicketById(id: string) {
@@ -111,108 +163,111 @@ export class TicketService {
 
 
 
-  // private mapTicketByUser(user: User) {
-  //   return {
-  //     id: user.id,
-  //     name: user.username,
-  //     email: user.email,
-  //     tickets: user.orders.flatMap(order =>
-  //       order.orderDetails.map(detail => {
-  //         const ticket = detail.ticket;
-  //         return {
-  //           id: ticket.id,
-  //           is_used: ticket.is_used,
-  //           status: ticket.status,
-  //           ticketType: {
-  //             id: ticket.ticketType.id,
-  //             name: ticket.ticketType.ticket_name,
-  //             audience_type: ticket.ticketType.audience_type,
-  //           },
-  //           schedule: {
-  //             start_movie_time: ticket.schedule.start_movie_time,
-  //             end_movie_time: ticket.schedule.end_movie_time,
-  //             movie: {
-  //               id: ticket.schedule.movie.id,
-  //               name: ticket.schedule.movie.name,
-  //               duration: ticket.schedule.movie.duration,
-  //               thumbnail: ticket.schedule.movie.thumbnail,
-  //             },
-  //             cinemaRoom: {
-  //               id: ticket.schedule.cinemaRoom.id,
-  //               name: ticket.schedule.cinemaRoom.cinema_room_name,
-  //             },
-  //           },
-  //           seat: {
-  //             id: ticket.seat.id,
-  //             row: ticket.seat.seat_row,
-  //             column: ticket.seat.seat_column,
-  //           },
-  //           seat_type: {
-  //             id: ticket.seat.seatType.id,
-  //             name: ticket.seat.seatType.seat_type_name,
-  //           }
-  //         };
-  //       })
-  //     )
-  //   };
-  // }
-
-  async getTicketsByUserId(userId: string, {
+async getTicketsByUserId(
+  userId: string,
+  {
     skip,
     take,
     page,
     is_used,
     active = true,
+    search,
+    startDate,
+    endDate,
+    sortBy = 'order.order_date',
+    sortOrder = 'DESC',
   }: {
     skip: number;
     take: number;
     page: number;
     is_used?: boolean;
     active?: boolean;
-  }) {
-    // First, check if user exists
-    const user = await this.userRepository.findOne({
-      where: { id: userId }
-    });
-
-    if (!user) {
-      throw new NotFoundException(`User with ID ${userId} not found`);
-    }
-
-    // Create query for tickets with pagination and filters
-    const query = this.ticketRepository
-      .createQueryBuilder('ticket')
-      .leftJoinAndSelect('ticket.schedule', 'schedule')
-      .leftJoinAndSelect('schedule.movie', 'movie')
-      .leftJoinAndSelect('schedule.cinemaRoom', 'cinemaRoom')
-      .leftJoinAndSelect('ticket.seat', 'seat')
-      .leftJoinAndSelect('seat.seatType', 'seatType')
-      .leftJoinAndSelect('ticket.ticketType', 'ticketType')
-      .leftJoinAndSelect('ticket.orderDetail', 'orderDetail')
-      .leftJoinAndSelect('orderDetail.order', 'order')
-      .where('order.user_id = :userId', { userId })
-      .orderBy('order.order_date', 'DESC')
-      .skip(skip)
-      .take(take);
-
-    // Apply filters
-    if (typeof is_used === 'boolean') {
-      query.andWhere('ticket.is_used = :is_used', { is_used });
-    }
-    if (typeof active === 'boolean') {
-      query.andWhere('ticket.status = :active', { active });
-    }
-
-    const [tickets, total] = await query.getManyAndCount();
-    return {
-      data: tickets.map(ticket => this.summaryTicket(ticket)),
-      total,
-      page,
-      pageSize: take,
-      totalPages: Math.ceil(total / take),
-    };
+    search?: string;
+    startDate?: string;
+    endDate?: string;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+  }
+) {
+  // Kiểm tra user tồn tại
+  const user = await this.userRepository.findOne({ where: { id: userId } });
+  if (!user) {
+    throw new NotFoundException(`User with ID ${userId} not found`);
   }
 
+  const query = this.ticketRepository
+    .createQueryBuilder('ticket')
+    .leftJoinAndSelect('ticket.schedule', 'schedule')
+    .leftJoinAndSelect('schedule.movie', 'movie')
+    .leftJoinAndSelect('schedule.version', 'version')
+    .leftJoinAndSelect('schedule.cinemaRoom', 'cinemaRoom')
+    .leftJoinAndSelect('ticket.seat', 'seat')
+    .leftJoinAndSelect('seat.seatType', 'seatType')
+    .leftJoinAndSelect('ticket.ticketType', 'ticketType')
+    .leftJoinAndSelect('ticket.orderDetail', 'orderDetail')
+    .leftJoinAndSelect('orderDetail.order', 'order')
+    .where('order.user_id = :userId', { userId })
+    .skip(skip)
+    .take(take);
+
+  // 🔍 Search
+  if (search) {
+    query.andWhere(
+      `
+      LOWER(movie.name) LIKE LOWER(:search) OR
+      LOWER(seatType.seat_type_name) LIKE LOWER(:search) OR
+      LOWER(cinemaRoom.cinema_room_name) LIKE LOWER(:search) OR
+      LOWER(ticketType.ticket_name) LIKE LOWER(:search)
+    `,
+      { search: `%${search}%` },
+    );
+  }
+
+  // ✅ Filter is_used
+  if (typeof is_used === 'boolean') {
+    query.andWhere('ticket.is_used = :is_used', { is_used });
+  }
+
+  // ✅ Filter status
+  if (typeof active === 'boolean') {
+    query.andWhere('ticket.status = :active', { active });
+  }
+
+  // ⏱ Filter thời gian order.order_date
+  if (startDate && endDate) {
+    query.andWhere('order.order_date BETWEEN :start AND :end', {
+      start: startDate,
+      end: endDate,
+    });
+  } else if (startDate) {
+    query.andWhere('order.order_date >= :start', { start: startDate });
+  } else if (endDate) {
+    query.andWhere('order.order_date <= :end', { end: endDate });
+  }
+
+  // ⬆⬇ Sắp xếp
+  const allowedSortFields = [
+    'order.order_date',
+    'movie.name',
+    'ticketType.ticket_name',
+    'cinemaRoom.cinema_room_name',
+  ];
+  const finalSortBy = allowedSortFields.includes(sortBy)
+    ? sortBy
+    : 'order.order_date';
+
+  query.orderBy(finalSortBy, sortOrder);
+
+  const [tickets, total] = await query.getManyAndCount();
+
+  return {
+    data: tickets.map(ticket => this.summaryTicket(ticket)),
+    total,
+    page,
+    pageSize: take,
+    totalPages: Math.ceil(total / take),
+  };
+}
 
 
 

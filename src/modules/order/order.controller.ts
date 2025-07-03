@@ -176,6 +176,7 @@ export class OrderController {
     @Query('page') page = 1,
     @Query('limit') limit = 10,
     @Query('status') status: StatusOrder | 'all' = 'all'
+    
   ) {
     const user = req.user as JWTUserType;
 
