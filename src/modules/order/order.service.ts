@@ -593,18 +593,7 @@ export class OrderService {
     sortOrder?: 'ASC' | 'DESC';
     paymentMethod?: string;
   }) {
-    console.log('getAllOrders called with params:', {
-      skip,
-      take,
-      page,
-      status,
-      search,
-      startDate,
-      endDate,
-      sortBy,
-      sortOrder,
-      paymentMethod,
-    });
+    
     const query = this.orderRepository
       .createQueryBuilder('order')
       .leftJoinAndSelect('order.user', 'user')
