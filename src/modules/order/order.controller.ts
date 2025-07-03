@@ -15,6 +15,7 @@ import { InternalServerErrorException } from 'src/common/exceptions/internal-ser
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
 import { ForbiddenException } from 'src/common/exceptions/forbidden.exception';
 import { StatusOrder } from 'src/common/enums/status-order.enum';
+import { GetAllOrdersDto } from './dto/getAllOrder.dto';
 
 
 @ApiBearerAuth()
@@ -113,38 +114,44 @@ export class OrderController {
 
 
   // View All Orders
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard)
   @Get('all')
   @ApiOperation({ summary: 'View all orders' })
   @ApiBearerAuth()
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
-  @ApiQuery({
-    name: 'status',
-    required: false,
-    enum: ['all', ...Object.values(StatusOrder)],
-    example: 'all',
-    default: 'all',
-  })
-
+  @ApiQuery({ name: 'status', required: false, enum: ['all', ...Object.values(StatusOrder)], example: 'all', default: 'all', })
+  @ApiQuery({ name: 'search', required: false, type: String, example: 'search term' })
+  @ApiQuery({ name: 'startDate', required: false, type: String, example: '2025-07-01' })
+  @ApiQuery({ name: 'endDate', required: false, type: String, example: '2025-07-03' })
+  @ApiQuery({ name: 'sortBy', required: false, type: String, example: 'createdAt' })
+  @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], example: 'ASC' })
+  @ApiQuery({ name: 'paymentMethod', required: false, type: String, example: 'momo' })
   @ApiResponse({ status: 200, description: 'List of all orders' })
   async getAllOrders(
     @Req() req,
-    @Query('page') page = 1,
-    @Query('limit') limit = 10,
-    @Query('status') status: StatusOrder | 'all' = 'all'
+    @Query() query: GetAllOrdersDto,
   ) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException('You do not have permission to view all orders');
-    }
+    // const user = req.user as JWTUserType;
+    // if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
+    //   throw new ForbiddenException('You do not have permission to view all orders');
+    // }
 
-    const take = Math.max(1, Math.min(limit, 100));
-    const skip = (Math.max(1, page) - 1) * take;
+    const { page = 1, limit = 10, status, ...restFilters } = query;
+    const take = Math.min(limit, 100);
+    const skip = (page - 1) * take;
 
-    const statusValue: StatusOrder | undefined = status === 'all' ? undefined : status as StatusOrder;
+    const statusValue: StatusOrder | undefined = status === 'all'
+      ? undefined
+      : status as StatusOrder;
 
-    return this.orderService.getAllOrders({ skip, take, page, status: statusValue });
+    return this.orderService.getAllOrders({
+      skip,
+      take,
+      page,
+      ...restFilters,
+      status: statusValue,
+    });
   }
 
 
@@ -161,22 +168,20 @@ export class OrderController {
   @Get('getorderbyUserID/:id')
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
-  @ApiQuery({
-    name: 'status',
-    required: false,
-    enum: ['all', ...Object.values(StatusOrder)],
-    example: 'all',
-    default: 'all',
-  })
+  @ApiQuery({ name: 'status', required: false, enum: ['all', ...Object.values(StatusOrder)], example: 'all', default: 'all', })
+  @ApiQuery({ name: 'search', required: false, type: String, example: 'search term' })
+  @ApiQuery({ name: 'startDate', required: false, type: String, example: '2025-07-01' })
+  @ApiQuery({ name: 'endDate', required: false, type: String, example: '2025-07-03' })
+  @ApiQuery({ name: 'sortBy', required: false, type: String, example: 'createdAt' })
+  @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], example: 'ASC' })
+  @ApiQuery({ name: 'paymentMethod', required: false, type: String, example: 'momo' })
   @ApiBearerAuth()
   @ApiOperation({ summary: 'View my orders' })
   async getMyOrders(
     @Param('id', ParseIntPipe) id: number,
     @Req() req,
-    @Query('page') page = 1,
-    @Query('limit') limit = 10,
-    @Query('status') status: StatusOrder | 'all' = 'all'
-    
+    @Query() query: GetAllOrdersDto,
+
   ) {
     const user = req.user as JWTUserType;
 
@@ -184,12 +189,23 @@ export class OrderController {
     if (user.role_id === Role.USER && user.account_id !== id.toString()) {
       throw new ForbiddenException('You can only view your own orders');
     }
+    const { page = 1, limit = 10, status, ...restFilters } = query;
+    const take = Math.min(limit, 100);
+    const skip = (page - 1) * take;
 
-    const take = Math.max(1, Math.min(limit, 100));
-    const skip = (Math.max(1, page) - 1) * take;
-    const statusValue = status === 'all' ? undefined : (status as StatusOrder);
+    const statusValue: StatusOrder | undefined = status === 'all'
+      ? undefined
+      : status as StatusOrder;
 
-    return this.orderService.getMyOrders(user.account_id, skip, take, page, statusValue);
+
+    return this.orderService.getMyOrders({
+      userId: req.user.id,
+      skip,
+      take,
+      page,
+      ...restFilters,
+      status: statusValue,
+    });
   }
 
 

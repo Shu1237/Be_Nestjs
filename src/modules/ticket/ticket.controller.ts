@@ -22,8 +22,6 @@ export class TicketController {
   @ApiQuery({ name: 'search', required: false, type: String, example: 'Avengers' })
   @ApiQuery({ name: 'startDate', required: false, type: String, example: '2025-07-01' })
   @ApiQuery({ name: 'endDate', required: false, type: String, example: '2025-07-03' })
-  @ApiQuery({ name: 'sortBy', required: false, type: String, example: 'order.order_date' })
-  @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], example: 'DESC' })
   @ApiBearerAuth()
   async getAllTickets(@Req() req, @Query() query: GetAllTicketsDto) {
     const user = req.user as JWTUserType;
@@ -51,42 +49,39 @@ export class TicketController {
   }
 
   @Get('user/:id')
-@ApiOperation({ summary: 'Get tickets by user ID with filters, search, sort' })
-@ApiBearerAuth()
-
-@ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
-@ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
-@ApiQuery({ name: 'is_used', required: false, type: Boolean, example: true, default: false })
-@ApiQuery({ name: 'active', required: false, type: Boolean, example: true, default: true })
-@ApiQuery({ name: 'search', required: false, type: String, example: 'Avengers' })
-@ApiQuery({ name: 'startDate', required: false, type: String, example: '2025-07-01' })
-@ApiQuery({ name: 'endDate', required: false, type: String, example: '2025-07-03' })
-@ApiQuery({ name: 'sortBy', required: false, type: String, example: 'order.order_date' })
-@ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], example: 'DESC' })
-
-async getTicketsByUserId(
-  @Param('id') id: string,
-  @Req() req,
-  @Query() query: GetAllTicketsDto,
-) {
-  const user = req.user as JWTUserType;
+  @ApiOperation({ summary: 'Get tickets by user ID with filters, search, sort' })
+  @ApiOperation({ summary: 'Get all tickets with pagination, search, filter, sort' })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
+  @ApiQuery({ name: 'is_used', required: false, type: Boolean, example: false })
+  @ApiQuery({ name: 'active', required: false, type: Boolean, example: true })
+  @ApiQuery({ name: 'search', required: false, type: String, example: 'Avengers' })
+  @ApiQuery({ name: 'startDate', required: false, type: String, example: '2025-07-01' })
+  @ApiQuery({ name: 'endDate', required: false, type: String, example: '2025-07-03' })
+  @ApiBearerAuth()
+  async getTicketsByUserId(
+    @Param('id') id: string,
+    @Req() req,
+    @Query() query: GetAllTicketsDto,
+  ) {
+    const user = req.user as JWTUserType;
 
 
-  if (user.role_id === Role.USER && user.account_id !== id.toString()) {
-    throw new ForbiddenException('You can only view your own orders');
+    if (user.role_id === Role.USER && user.account_id !== id.toString()) {
+      throw new ForbiddenException('You can only view your own orders');
+    }
+
+    const { page = 1, limit = 10, ...filters } = query;
+    const take = Math.min(limit, 100);
+    const skip = (page - 1) * take;
+
+    return this.ticketService.getTicketsByUserId(id, {
+      skip,
+      take,
+      page,
+      ...filters,
+    });
   }
-
-  const { page = 1, limit = 10, ...filters } = query;
-  const take = Math.min(limit, 100);
-  const skip = (page - 1) * take;
-
-  return this.ticketService.getTicketsByUserId(id, {
-    skip,
-    take,
-    page,
-    ...filters,
-  });
-}
 
   // @Patch('tickets/mark-used')
   // @ApiOperation({ summary: 'Mark tickets as used' })

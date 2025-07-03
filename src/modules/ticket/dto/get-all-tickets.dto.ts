@@ -1,7 +1,6 @@
 import { Transform } from 'class-transformer';
 import {
   IsBoolean,
-  IsEnum,
   IsNumber,
   IsOptional,
   IsString,
@@ -22,13 +21,13 @@ export class GetAllTicketsDto {
   limit: number = 10;
 
   @Transform(({ value }) => value === 'true' || value === true)
-  @IsBoolean()
   @IsOptional()
+  @IsBoolean()
   is_used?: boolean;
 
   @Transform(({ value }) => value === 'true' || value === true)
-  @IsBoolean()
   @IsOptional()
+  @IsBoolean()
   active?: boolean;
 
   @IsOptional()
@@ -37,19 +36,10 @@ export class GetAllTicketsDto {
 
   @IsOptional()
   @IsString()
-  startDate?: string; // ISO date
+  startDate?: string;
 
   @IsOptional()
   @IsString()
-  endDate?: string; // ISO date
+  endDate?: string;
 
-  @IsOptional()
-  @IsString()
-  sortBy?: string;
-
-  @IsOptional()
-  @IsEnum(['ASC', 'DESC'], {
-    message: 'sortOrder must be ASC or DESC',
-  })
-  sortOrder?: 'ASC' | 'DESC';
 }

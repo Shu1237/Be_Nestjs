@@ -12,6 +12,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { RedisModule } from 'src/common/redis/redis.module';
+import { QrCodeModule } from 'src/common/qrcode/qr.module';
 
 
 
@@ -29,7 +30,8 @@ import { RedisModule } from 'src/common/redis/redis.module';
     }),
   }),
   MailerModule,
-  RedisModule
+  RedisModule,
+  QrCodeModule,
 ],
   controllers: [AuthController],
   providers: [AuthService, LocalStrategy, JwtStrategy, GoogleStrategy]

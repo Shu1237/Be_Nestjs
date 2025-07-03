@@ -18,6 +18,7 @@ import { ForbiddenException } from 'src/common/exceptions/forbidden.exception';
 import { ConfigService } from '@nestjs/config';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
 import { TimeUtil } from 'src/common/utils/time.util';
+import { QrCodeService } from 'src/common/qrcode/qrcode.service';
 
 
 
@@ -32,7 +33,8 @@ export class AuthService {
 
     private jwtService: JwtService,
     private mailerService: MailerService,
-    private configService: ConfigService
+    private configService: ConfigService,
+    private qrcodeService: QrCodeService,
     // @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) { }
 
@@ -199,9 +201,11 @@ export class AuthService {
       // Tạo mới user với id uuid4 sinh mới
       const role = await this.roleRepository.findOneBy({ role_id: roleId });
       if (!role) throw new NotFoundException('Role not found');
-
+      //qr code
+      const id = uuidv4();
+      const qrCode = await this.qrcodeService.generateQrCode(id);
       user = this.userRepository.create({
-        id: uuidv4(),
+        id: id,
         sub: sub,
         username: name,
         email: email,
@@ -210,6 +214,7 @@ export class AuthService {
         status: true,
         is_deleted: false,
         role: role,
+        qr_code: qrCode,
       });
 
       await this.userRepository.save(user);
