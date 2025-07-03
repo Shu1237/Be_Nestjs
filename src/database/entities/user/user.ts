@@ -37,6 +37,9 @@ export class User {
   @Column({ type: 'boolean', default: false })
   is_deleted: boolean;
 
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  qr_code: string;
+
   @ManyToOne(() => Role, (role) => role.users)
   @JoinColumn({ name: 'role_id' })
   role: Role;

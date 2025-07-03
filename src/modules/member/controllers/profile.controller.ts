@@ -7,8 +7,9 @@ import {
   Req,
   ForbiddenException,
   Res,
+  Post,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiBody } from '@nestjs/swagger';
 
 import { UpdateUserDto } from '../dtos/update-user.dto';
 import { Request, Response } from 'express';
@@ -17,6 +18,7 @@ import { ProfileService } from '../services/profile.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { JWTUserType } from 'src/common/utils/type';
 import { BarcodeService } from 'src/common/barcode/barcode.service';
+import { ScanQrCodeDto } from 'src/modules/order/dto/qrcode.dto';
 
 @ApiTags('Profile')
 @ApiBearerAuth()
@@ -26,7 +28,7 @@ export class ProfileController {
   constructor(
     private readonly profileService: ProfileService,
     private readonly barcodeService: BarcodeService,
-  ) {}
+  ) { }
 
   @Get()
   @ApiOperation({ summary: 'Get user profile' })
@@ -66,5 +68,16 @@ export class ProfileController {
     res.setHeader('Content-Type', 'image/png');
     res.setHeader('Content-Disposition', 'inline; filename=barcode.png');
     return res.send(buffer);
+  }
+  @Post('qrcode')
+  @ApiOperation({ summary: 'Get QR code for current user (image)' })
+  @ApiBody({ type: ScanQrCodeDto, description: 'QR code data' })
+  async getQrCode(@Body() body: ScanQrCodeDto, @Req() req: Request) {
+    const user = req.user as JWTUserType;
+    if (user.role_id !== Role.EMPLOYEE && user.role_id !== Role.ADMIN) {
+      throw new ForbiddenException('Only admin or employee can access QR code');
+    }
+    return this.profileService.getQrCode(body.qrCode);
+
   }
 }

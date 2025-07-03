@@ -39,6 +39,7 @@ import { HistoryScore } from 'src/database/entities/order/history_score';
 
 
 
+
 @Injectable()
 export class OrderService {
   constructor(
@@ -569,50 +570,113 @@ export class OrderService {
   }
 
 
-
   async getAllOrders({
     skip,
     take,
     page,
     status,
+    search,
+    startDate,
+    endDate,
+    sortBy = 'order.order_date',
+    sortOrder = 'DESC',
+    paymentMethod,
   }: {
     skip: number;
     take: number;
     page: number;
-    status?: StatusOrder
+    status?: StatusOrder;
+    search?: string;
+    startDate?: string;
+    endDate?: string;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+    paymentMethod?: string;
   }) {
-    const [orders, total] = await this.orderRepository.findAndCount({
-      where: status ? { status } : {},
-      relations: ['user',
-        'promotion',
-        'transaction',
-        'transaction.paymentMethod',
-        'orderDetails',
-        'orderDetails.ticket',
-        'orderDetails.schedule',
-        'orderDetails.schedule.cinemaRoom',
-        'orderDetails.schedule.movie',
-        'orderDetails.ticket.seat',
-        'orderDetails.ticket.ticketType',
-        'orderExtras',
-        'orderExtras.product'
-      ],
+    console.log('getAllOrders called with params:', {
       skip,
       take,
-      order: {
-        order_date: 'DESC',
-      },
+      page,
+      status,
+      search,
+      startDate,
+      endDate,
+      sortBy,
+      sortOrder,
+      paymentMethod,
     });
+    const query = this.orderRepository
+      .createQueryBuilder('order')
+      .leftJoinAndSelect('order.user', 'user')
+      .leftJoinAndSelect('order.promotion', 'promotion')
+      .leftJoinAndSelect('order.transaction', 'transaction')
+      .leftJoinAndSelect('transaction.paymentMethod', 'paymentMethod')
+      .leftJoinAndSelect('order.orderDetails', 'orderDetail')
+      .leftJoinAndSelect('orderDetail.ticket', 'ticket')
+      .leftJoinAndSelect('ticket.seat', 'seat')
+      .leftJoinAndSelect('ticket.ticketType', 'ticketType')
+      .leftJoinAndSelect('orderDetail.schedule', 'schedule')
+      .leftJoinAndSelect('schedule.movie', 'movie')
+      .leftJoinAndSelect('schedule.cinemaRoom', 'cinemaRoom')
+      .leftJoinAndSelect('order.orderExtras', 'orderExtra')
+      .leftJoinAndSelect('orderExtra.product', 'product')
+      .skip(skip)
+      .take(take);
 
-    const bookingSummaries = orders.map(order => this.mapToBookingSummaryLite(order));
+    // Filter: status
+    if (status) {
+      query.andWhere('order.status = :status', { status });
+    }
+
+    // Filter: search by username or movie name
+    if (search?.trim()) {
+      query.andWhere(
+        '(user.username LIKE :search OR movie.name LIKE :search)',
+        { search: `%${search.trim()}%` },
+      );
+    }
+
+    // Filter: payment method name
+    if (paymentMethod?.trim()) {
+      query.andWhere('paymentMethod.name LIKE :method', {
+        method: `%${paymentMethod.trim()}%`,
+      });
+    }
+
+    // Filter: date range
+    if (startDate && endDate) {
+      query.andWhere('order.order_date BETWEEN :start AND :end', {
+        start: `${startDate} 00:00:00`,
+        end: `${endDate} 23:59:59`,
+      });
+    } else if (startDate) {
+      query.andWhere('order.order_date >= :start', { start: `${startDate} 00:00:00` });
+    } else if (endDate) {
+      query.andWhere('order.order_date <= :end', { end: `${endDate} 23:59:59` });
+    }
+
+    // Sort: only allow predefined fields
+    const allowedSortFields = [
+      'order.order_date',
+      'user.username',
+      'movie.name',
+    ];
+    const finalSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'order.order_date';
+    query.orderBy(finalSortBy, sortOrder);
+
+    const [orders, total] = await query.getManyAndCount();
+    const summaries = orders.map(order => this.mapToBookingSummaryLite(order));
+
     return {
-      data: bookingSummaries,
+      data: summaries,
       total,
       page,
       pageSize: take,
       totalPages: Math.ceil(total / take),
-    }
+    };
   }
+
+
 
   async getOrderByIdEmployeeAndAdmin(orderId: number) {
     const order = await this.orderRepository.findOne({
@@ -637,42 +701,74 @@ export class OrderService {
     }
     return this.mapToBookingSummaryLite(order);
   }
-  async getMyOrders(
-    userId: string,
-    skip: number,
-    take: number,
-    page: number,
-    status?: StatusOrder
-  ) {
-    const where: any = {
-      user: { id: userId },
-    };
+  async getMyOrders({
+    userId,
+    skip,
+    take,
+    page,
+    status,
+    search,
+    startDate,
+    endDate,
+    sortBy = 'order.order_date',
+    sortOrder = 'DESC',
+  }: {
+    userId: string;
+    skip: number;
+    take: number;
+    page: number;
+    status?: StatusOrder;
+    search?: string;
+    startDate?: string;
+    endDate?: string;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+  }) {
+    const query = this.orderRepository
+      .createQueryBuilder('order')
+      .leftJoinAndSelect('order.user', 'user')
+      .leftJoinAndSelect('order.promotion', 'promotion')
+      .leftJoinAndSelect('order.transaction', 'transaction')
+      .leftJoinAndSelect('transaction.paymentMethod', 'paymentMethod')
+      .leftJoinAndSelect('order.orderDetails', 'orderDetail')
+      .leftJoinAndSelect('orderDetail.ticket', 'ticket')
+      .leftJoinAndSelect('ticket.seat', 'seat')
+      .leftJoinAndSelect('ticket.ticketType', 'ticketType')
+      .leftJoinAndSelect('orderDetail.schedule', 'schedule')
+      .leftJoinAndSelect('schedule.movie', 'movie')
+      .leftJoinAndSelect('schedule.cinemaRoom', 'cinemaRoom')
+      .where('user.id = :userId', { userId })
+      .skip(skip)
+      .take(take);
 
     if (status) {
-      where.status = status;
+      query.andWhere('order.status = :status', { status });
     }
 
-    const [orders, total] = await this.orderRepository.findAndCount({
-      where,
-      relations: [
-        'user',
-        'promotion',
-        'transaction',
-        'transaction.paymentMethod',
-        'orderDetails',
-        'orderDetails.ticket',
-        'orderDetails.schedule',
-        'orderDetails.schedule.movie',
-        'orderDetails.schedule.cinemaRoom',
-        'orderDetails.ticket.seat',
-        'orderDetails.ticket.ticketType',
-      ],
-      skip,
-      take,
-      order: {
-        order_date: 'DESC',
-      },
-    });
+    if (search && search.trim() !== '') {
+      query.andWhere(
+        `(movie.name LIKE :search OR cinemaRoom.cinema_room_name LIKE :search)`,
+        { search: `%${search.trim()}%` },
+      );
+    }
+
+    if (startDate && endDate) {
+      query.andWhere('order.order_date BETWEEN :start AND :end', {
+        start: `${startDate} 00:00:00`,
+        end: `${endDate} 23:59:59`,
+      });
+    } else if (startDate) {
+      query.andWhere('order.order_date >= :start', { start: `${startDate} 00:00:00` });
+    } else if (endDate) {
+      query.andWhere('order.order_date <= :end', { end: `${endDate} 23:59:59` });
+    }
+
+    const allowedSortFields = ['order.order_date', 'movie.name', 'cinemaRoom.cinema_room_name'];
+    const finalSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'order.order_date';
+
+    query.orderBy(finalSortBy, sortOrder);
+
+    const [orders, total] = await query.getManyAndCount();
 
     const bookingSummaries = orders.map((order) => this.mapToBookingSummaryLite(order));
 
@@ -684,10 +780,11 @@ export class OrderService {
       totalPages: Math.ceil(total / take),
     };
   }
+
   private mapToBookingSummaryLite(order: Order) {
     return {
       id: order.id,
-      order_date: order.order_date, 
+      order_date: order.order_date,
       total_prices: order.total_prices,
       status: order.status,
       qr_code: order.qr_code,
@@ -711,7 +808,7 @@ export class OrderService {
           id: detail.ticket.seat.id,
           seat_row: detail.ticket.seat.seat_row,
           seat_column: detail.ticket.seat.seat_column,
-        },        ticketType: {
+        }, ticketType: {
           ticket_name: detail.ticket.ticketType.ticket_name,
         },
         start_movie_time: detail.schedule.start_movie_time,
@@ -735,7 +832,7 @@ export class OrderService {
       })) ?? [],
       transaction: {
         transaction_code: order.transaction.transaction_code,
-        transaction_date: order.transaction.transaction_date, 
+        transaction_date: order.transaction.transaction_date,
         status: order.transaction.status,
         PaymentMethod: {
           method_name: order.transaction.paymentMethod.name,
