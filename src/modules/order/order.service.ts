@@ -687,7 +687,7 @@ export class OrderService {
   private mapToBookingSummaryLite(order: Order) {
     return {
       id: order.id,
-      order_date: order.order_date, // Convert to Vietnam timezone for display
+      order_date: order.order_date, 
       total_prices: order.total_prices,
       status: order.status,
       qr_code: order.qr_code,
@@ -735,7 +735,7 @@ export class OrderService {
       })) ?? [],
       transaction: {
         transaction_code: order.transaction.transaction_code,
-        transaction_date: order.transaction.transaction_date, // Convert to Vietnam timezone for display
+        transaction_date: order.transaction.transaction_date, 
         status: order.transaction.status,
         PaymentMethod: {
           method_name: order.transaction.paymentMethod.name,
