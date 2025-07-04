@@ -68,18 +68,6 @@ export class TicketService {
     startDate?: string;
     endDate?: string;
   }) {
-    console.log('getAllTickets called with params:', {
-      skip,
-      take,
-      page,
-      is_used,
-      active,
-      search,
-      startDate,
-      endDate,
-    });
-
-
     const query = this.ticketRepository
       .createQueryBuilder('ticket')
       .leftJoinAndSelect('ticket.schedule', 'schedule')
@@ -122,15 +110,29 @@ export class TicketService {
     }
 
 
-
     const [tickets, total] = await query.getManyAndCount();
-
+    const [totalAvailable, totalUsedActive] = await Promise.all([
+      this.ticketRepository.count({
+        where: {
+          status: true,
+          is_used: false,
+        },
+      }),
+      this.ticketRepository.count({
+        where: {
+          status: true,
+          is_used: true,
+        },
+      }),
+    ]);
     const summaries = tickets.map((ticket) => this.summaryTicket(ticket));
 
     return {
       data: summaries,
       total,
       page,
+      totalAvailable,
+      totalUsedActive,
       pageSize: take,
       totalPages: Math.ceil(total / take),
     };
@@ -174,7 +176,7 @@ export class TicketService {
       endDate?: string;
     }
   ) {
-    
+
     // Kiểm tra user tồn tại
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
@@ -225,13 +227,28 @@ export class TicketService {
 
 
     const [tickets, total] = await query.getManyAndCount();
-
+    const [totalAvailable, totalUsedActive] = await Promise.all([
+      this.ticketRepository.count({
+        where: {
+          status: true,
+          is_used: false,
+        },
+      }),
+      this.ticketRepository.count({
+        where: {
+          status: true,
+          is_used: true,
+        },
+      }),
+    ]);
     const summaries = tickets.map((ticket) => this.summaryTicket(ticket));
 
     return {
       data: summaries,
       total,
       page,
+      totalAvailable,
+      totalUsedActive,
       pageSize: take,
       totalPages: Math.ceil(total / take),
     };
