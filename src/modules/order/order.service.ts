@@ -92,7 +92,12 @@ export class OrderService {
 
 
   ) { }
-
+  async getAllOrderTest() {
+    const orders = await this.orderRepository.find({
+      relations: ['orderDetails.schedule'],
+    });
+    return orders
+  }
   private async getUserById(userId: string) {
     const user = await this.userRepository.findOne({
       where: { id: userId }
@@ -596,6 +601,7 @@ export class OrderService {
     paymentMethod?: string;
   }) {
 
+
     const query = this.orderRepository
       .createQueryBuilder('order')
       .leftJoinAndSelect('order.user', 'user')
@@ -658,10 +664,26 @@ export class OrderService {
     const [orders, total] = await query.getManyAndCount();
     const summaries = orders.map(order => this.mapToBookingSummaryLite(order));
 
+    // --- Tính tổng trạng thái ---
+    const [totalSuccess, totalFailed, totalPending, revenueResult] = await Promise.all([
+      this.orderRepository.count({ where: { status: StatusOrder.SUCCESS } }),
+      this.orderRepository.count({ where: { status: StatusOrder.FAILED } }),
+      this.orderRepository.count({ where: { status: StatusOrder.PENDING } }),
+      this.orderRepository
+        .createQueryBuilder('order')
+        .select('SUM(order.total_prices)', 'revenue')
+        .where('order.status = :status', { status: StatusOrder.SUCCESS })
+        .getRawOne<{ revenue: string }>(),
+    ]);
+
     return {
       data: summaries,
       total,
       page,
+      totalSuccess,
+      totalFailed,
+      totalPending,
+      revenue: revenueResult?.revenue ? parseFloat(revenueResult.revenue) : 0,
       pageSize: take,
       totalPages: Math.ceil(total / take),
     };
@@ -762,11 +784,24 @@ export class OrderService {
     const [orders, total] = await query.getManyAndCount();
 
     const bookingSummaries = orders.map((order) => this.mapToBookingSummaryLite(order));
-
+    const [totalSuccess, totalFailed, totalPending, revenueResult] = await Promise.all([
+      this.orderRepository.count({ where: { status: StatusOrder.SUCCESS } }),
+      this.orderRepository.count({ where: { status: StatusOrder.FAILED } }),
+      this.orderRepository.count({ where: { status: StatusOrder.PENDING } }),
+      this.orderRepository
+        .createQueryBuilder('order')
+        .select('SUM(order.total_prices)', 'revenue')
+        .where('order.status = :status', { status: StatusOrder.SUCCESS })
+        .getRawOne<{ revenue: string }>(),
+    ]);
     return {
       data: bookingSummaries,
       total,
       page,
+      totalSuccess,
+      totalFailed,
+      totalPending,
+      revenue: revenueResult?.revenue ? parseFloat(revenueResult.revenue) : 0,
       pageSize: take,
       totalPages: Math.ceil(total / take),
     };
@@ -834,7 +869,7 @@ export class OrderService {
 
   async scanQrCode(qrCode: string) {
     try {
-      const rawDecoded = this.jwtService.verify(qrCode, { secret: this.configService.get<string>('jwt.qrSecret')});
+      const rawDecoded = this.jwtService.verify(qrCode, { secret: this.configService.get<string>('jwt.qrSecret') });
       const decoded = rawDecoded as { orderId: number };
       const order = await this.getOrderByIdEmployeeAndAdmin(decoded.orderId);
       if (!order) {

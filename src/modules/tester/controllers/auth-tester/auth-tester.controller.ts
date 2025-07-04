@@ -101,7 +101,7 @@ export class AuthTesterController {
 
   @Post('products')
   testProduct() {
-    return this.orderService.getOrderExtraByIds([1, 2, 3, 4, 5]);
+    return this.orderService.getAllOrderTest()
   }
 
   @Post('s3')

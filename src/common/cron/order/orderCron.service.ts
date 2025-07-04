@@ -1,61 +1,100 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { Cron } from "@nestjs/schedule";
-import { InjectRepository } from "@nestjs/typeorm";
-import { StatusOrder } from "src/common/enums/status-order.enum";
-import { Order } from "src/database/entities/order/order";
-import { Repository, LessThan } from "typeorm";
+import { Injectable, Logger } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
+import { InjectRepository } from '@nestjs/typeorm';
+import { StatusOrder } from 'src/common/enums/status-order.enum';
+import { StatusSeat } from 'src/common/enums/status_seat.enum';
+import { ScheduleSeat } from 'src/database/entities/cinema/schedule_seat';
+import { Order } from 'src/database/entities/order/order';
+import { Repository, LessThan } from 'typeorm';
 
 @Injectable()
 export class OrderCronService {
-    private readonly logger = new Logger(OrderCronService.name);
-    
-    constructor(
-        @InjectRepository(Order) 
-        private readonly orderRepository: Repository<Order>,
-    ) {}
+  private readonly logger = new Logger(OrderCronService.name);
 
-    @Cron('0 */8 * * *', { // Chạy mỗi 8 tiếng 
-        name: 'pending-order-check-to-fail',
-    })
-    async handleExpiredOrders() {
-        this.logger.log('Starting check for expired pending orders');
-        
-        try {
-            // Tìm các order pending quá 48h
-            const expireThreshold = new Date();
-            expireThreshold.setHours(expireThreshold.getHours() - 48);
-            
-            const expiredOrders = await this.orderRepository.find({
-                where: {
-                    status: StatusOrder.PENDING,
-                    order_date: LessThan(expireThreshold),
-                },
-                relations: ['transaction'],
+  constructor(
+    @InjectRepository(Order)
+    private readonly orderRepository: Repository<Order>,
+    @InjectRepository(ScheduleSeat)
+    private readonly scheduleSeatRepository: Repository<ScheduleSeat>,
+  ) {}
+
+  // Cron chạy mỗi 15 phút
+  @Cron('*/20 * * * *', {
+    name: 'check-pending-orders-to-fail',
+  })
+  async handleExpiredPendingOrders() {
+    this.logger.log('Checking for expired PENDING orders every 15 minutes');
+
+    try {
+      const now = new Date();
+      const holdMinutes = 20; // thời gian giữ chỗ tối đa
+      const holdThreshold = new Date(now.getTime() - holdMinutes * 60 * 1000); // now - 20 phút
+
+      // Lấy các order PENDING, được tạo trước ngưỡng giữ chỗ, và suất chiếu vẫn chưa bắt đầu
+      const expiredOrders = await this.orderRepository.find({
+        where: {
+          status: StatusOrder.PENDING,
+          order_date: LessThan(holdThreshold),
+        },
+        relations: [
+          'transaction',
+          'orderDetails',
+          'orderDetails.ticket',
+          'orderDetails.ticket.seat',
+          'orderDetails.schedule',
+        ],
+      });
+
+      const ordersToFail: Order[] = [];
+
+      for (const order of expiredOrders) {
+        // Kiểm tra xem suất chiếu vẫn chưa bắt đầu
+        const firstSchedule = order.orderDetails?.[0]?.schedule;
+        if (!firstSchedule || new Date(firstSchedule.start_movie_time) <= now) continue;
+
+        this.logger.log(`Order ${order.id} is expired and eligible to be failed.`);
+
+        // Cập nhật trạng thái ghế thành NOT_YET
+        for (const detail of order.orderDetails) {
+          const schedule = detail.ticket?.schedule;
+          const seat = detail.ticket?.seat;
+
+          if (schedule && seat) {
+            const scheduleSeat = await this.scheduleSeatRepository.findOne({
+              where: {
+                schedule: { id: schedule.id },
+                seat: { id: seat.id },
+              },
             });
 
-            if (expiredOrders.length > 0) {
-                const updatedOrders: Order[] = [];
-                
-                for (const order of expiredOrders) {
-                    // Chỉ update nếu có transaction
-                    if (order.transaction) {
-                        order.status = StatusOrder.FAILED;
-                        order.transaction.status = StatusOrder.FAILED;
-                        updatedOrders.push(order);
-                        
-                        this.logger.log(`Order ${order.id} marked as failed (expired after 48h)`);
-                    }
-                }
-                
-                if (updatedOrders.length > 0) {
-                    await this.orderRepository.save(updatedOrders);
-                    this.logger.log(`Successfully failed ${updatedOrders.length} expired orders`);
-                }
-            } else {
-                this.logger.log('No expired pending orders found');
+            if (scheduleSeat) {
+              scheduleSeat.status = StatusSeat.NOT_YET;
+              await this.scheduleSeatRepository.save(scheduleSeat);
+              this.logger.log(
+                `Seat ${seat.id} in schedule ${schedule.id} marked as NOT_YET`,
+              );
             }
-        } catch (error) {
-            this.logger.error('Error during expired orders check:', error);
+          }
         }
+
+        // Cập nhật trạng thái order
+        order.status = StatusOrder.FAILED;
+        if (order.transaction) {
+          order.transaction.status = StatusOrder.FAILED;
+        }
+
+        ordersToFail.push(order);
+      }
+
+      // Lưu tất cả đơn hàng đã bị cập nhật
+      if (ordersToFail.length > 0) {
+        await this.orderRepository.save(ordersToFail);
+        this.logger.log(`Marked ${ordersToFail.length} orders as FAILED`);
+      } else {
+        this.logger.log('No orders to update');
+      }
+    } catch (error) {
+      this.logger.error('Error while checking expired pending orders', error);
     }
+  }
 }
