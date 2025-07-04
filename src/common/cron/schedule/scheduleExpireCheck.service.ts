@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
+import { StatusSeat } from 'src/common/enums/status_seat.enum';
 import { Schedule } from 'src/database/entities/cinema/schedule';
+import { ScheduleSeat } from 'src/database/entities/cinema/schedule_seat';
 import { Repository, LessThan } from 'typeorm';
 
 @Injectable()
@@ -11,13 +13,15 @@ export class ScheduleExpireCheckService {
   constructor(
     @InjectRepository(Schedule)
     private readonly scheduleRepository: Repository<Schedule>,
-  ) {}
+    @InjectRepository(ScheduleSeat)
+    private readonly scheduleSeatRepository: Repository<ScheduleSeat>,
+  ) { }
 
   // Chạy 12h tối
   @Cron('0 0 * * *', { name: 'expire-schedules' })
   async handleExpireSchedules() {
     this.logger.log('Starting schedule expiration check');
-    
+
     try {
       const now = new Date();
       const expiredSchedules = await this.scheduleRepository.find({
@@ -27,9 +31,19 @@ export class ScheduleExpireCheckService {
         },
       });
 
+
+
+
       if (expiredSchedules.length > 0) {
         for (const schedule of expiredSchedules) {
           schedule.is_deleted = true;
+          // schedule seats 1 xuất chiếu 
+          const scheduleSeats = await this.scheduleSeatRepository.find({
+            where: { schedule: { id: schedule.id }, status: StatusSeat.NOT_YET },
+          });
+          if (scheduleSeats.length > 0) {
+            await this.scheduleSeatRepository.remove(scheduleSeats);
+          }
         }
         await this.scheduleRepository.save(expiredSchedules);
         this.logger.log(`Successfully expired ${expiredSchedules.length} schedules`);
