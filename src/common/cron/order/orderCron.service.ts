@@ -23,7 +23,7 @@ export class OrderCronService {
     name: 'check-pending-orders-to-fail',
   })
   async handleExpiredPendingOrders() {
-    this.logger.log('Checking for expired PENDING orders every 15 minutes');
+    this.logger.log('Checking for expired PENDING orders every 20 minutes');
 
     try {
       const now = new Date();
