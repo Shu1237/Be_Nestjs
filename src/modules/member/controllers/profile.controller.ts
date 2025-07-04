@@ -42,7 +42,6 @@ export class ProfileController {
     @Body() updateUserDto: UpdateUserDto,
   ) {
     const user = req.user as JWTUserType;
-    checkAdminEmployeeRole(user, 'Unauthorized: Only admin can update profile.');
     return this.profileService.updateProfile(user.account_id, updateUserDto);
   }
 
