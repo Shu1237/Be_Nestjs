@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import type {
   JWTUserType,
@@ -25,6 +25,7 @@ import { QrCodeService } from 'src/common/qrcode/qrcode.service';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   constructor(
     @InjectRepository(User) private userRepository: Repository<User>,
     @InjectRepository(Role) private roleRepository: Repository<Role>,
@@ -34,7 +35,6 @@ export class AuthService {
     private mailerService: MailerService,
     private configService: ConfigService,
     private qrcodeService: QrCodeService,
-    // @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) { }
 
   // async validateUser(username: string, password: string) {
@@ -242,17 +242,48 @@ export class AuthService {
         throw new ForbiddenException('Account is disabled');
       }
     }
+    // check token và refreshtoken trong refreshtoken table 
+    const newestRefreshToken = await this.refreshTokenRepository.findOne({
+      where: { user: { id: user.id }, revoked: false },
+      order: { id: 'DESC' },
+    });
+    // check token
+    let needNewToken = false;
+    if (newestRefreshToken) {
+      try {
+        this.jwtService.verify(newestRefreshToken.access_token, {
+          secret: this.configService.get<string>('jwt.secret'),
+        });
+        return {
+          msg: 'Login successful',
+          token: {
+            access_token: newestRefreshToken.access_token,
+            refresh_token: newestRefreshToken.refresh_token,
+          },
+        };
+      } catch (error) {
+        if (error.name === 'TokenExpiredError') {
+          this.logger.warn(`Access token expired at ${error.expiredAt.toISOString()}`);
+        } else {
+          this.logger.warn(`Access token invalid: ${error.message}`);
+        }
+      }
+    } else {
+      needNewToken = true;
+    }
 
-    const payload: JWTUserType = {
-      account_id: user.id,
-      username: user.username,
-      role_id: user.role.role_id,
-    };
+    if (needNewToken) {
+      const payload: JWTUserType = {
+        account_id: user.id,
+        username: user.username,
+        role_id: user.role.role_id,
+      };
 
-    return {
-      msg: 'Login successful',
-      token: await this.generateToken(payload),
-    };
+      return {
+        msg: 'Login successful',
+        token: await this.generateToken(payload),
+      };
+    }
   }
 
   async login(user: JWTUserType) {
