@@ -17,7 +17,6 @@ import { JWTUserType } from 'src/common/utils/type';
 import { BarcodeService } from 'src/common/barcode/barcode.service';
 import { ScanQrCodeDto } from 'src/modules/order/dto/qrcode.dto';
 import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
-import { Role } from 'src/common/enums/roles.enum';
 import { checkEmployeeRole } from 'src/common/role/emloyee';
 
 @ApiTags('Profile')
