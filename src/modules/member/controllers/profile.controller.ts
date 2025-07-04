@@ -38,14 +38,13 @@ export class ProfileController {
   }
 
   @Put('me')
-  @ApiOperation({ summary: 'Update user profile (admin and member only)' })
+  @ApiOperation({ summary: 'Update user profile' })
   async updateProfile(
     @Req() req: Request,
     @Body() updateUserDto: UpdateUserDto,
   ) {
 
     const user = req.user as JWTUserType;
-    checkEmployeeRole(user, 'Unauthorized: Only admin or user can update profile.');
     return this.profileService.updateProfile(user.account_id, updateUserDto);
 
 
