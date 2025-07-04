@@ -17,16 +17,21 @@ export class Order {
   @Column({ type: 'varchar', length: 50, nullable: false })
   status: string;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ type: 'datetime'})
   order_date: Date;
+
+
 
   @Column({ type: 'varchar', length: 256, nullable: true })
   qr_code: string;
 
+  @Column({ type: 'varchar', length: 256, nullable: true })
+  customer_id: string;
+
   @ManyToOne(() => User, (user) => user.orders, { nullable: false })
   @JoinColumn({ name: 'user_id' })
   user: User;
-
+ 
 
   @ManyToOne(() => Promotion, (promotion) => promotion.orders, { nullable: true })
   @JoinColumn({ name: 'promotion_id' })

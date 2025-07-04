@@ -24,6 +24,7 @@ import { JWTUserType } from '../../common/utils/type'; // Import JWT User Type
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { Role } from 'src/common/enums/roles.enum';
 import { ForbiddenException } from 'src/common/exceptions/forbidden.exception';
+import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 
 @ApiTags('Versions')
 @ApiBearerAuth()
@@ -35,12 +36,7 @@ export class VersionController {
   @Post()
   @ApiOperation({ summary: 'Create a new version (admin only)' })
   async create(@Body() createVersionDto: CreateVersionDto, @Req() req) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException(
-        'Unauthorized: Only admin can create a version.',
-      );
-    }
+    checkAdminEmployeeRole(req.user, 'Only admin can create a version');
     return await this.versionService.create(createVersionDto);
   }
 
@@ -67,24 +63,14 @@ export class VersionController {
     @Body() updateVersionDto: UpdateVersionDto,
     @Req() req,
   ) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException(
-        'Unauthorized: Only admin can update a version.',
-      );
-    }
+    checkAdminEmployeeRole(req.user, 'Only admin can update a version');
     return await this.versionService.update(id, updateVersionDto);
   }
   @UseGuards(JwtAuthGuard)
   @Patch(':id/soft-delete')
   @ApiOperation({ summary: 'Soft delete a version (admin, employee only)' })
   async softDeleteVersion(@Param('id', ParseIntPipe) id: number, @Req() req) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException(
-        'Unauthorized: Only admin or employee can soft delete a version.',
-      );
-    }
+    checkAdminEmployeeRole(req.user, 'Only admin or employee can soft delete a version.');
     return await this.versionService.softDeleteVersion(id);
   }
 
@@ -92,12 +78,7 @@ export class VersionController {
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a version by ID (admin only)' })
   async remove(@Param('id') id: number, @Req() req) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException(
-        'Unauthorized: Only admin can delete a version.',
-      );
-    }
+    checkAdminEmployeeRole(req.user, 'Only admin can delete a version.');
     return await this.versionService.remove(id);
   }
 }

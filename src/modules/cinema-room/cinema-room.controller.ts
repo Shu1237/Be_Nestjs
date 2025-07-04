@@ -25,6 +25,7 @@ import {
 import { JWTUserType } from '../../common/utils/type';
 import { Role } from '../../common/enums/roles.enum';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
+import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 
 
 @ApiTags('Cinema Rooms')
@@ -37,12 +38,7 @@ export class CinemaRoomController {
   @Post()
   @ApiOperation({ summary: 'Create a new cinema room (admin, employee only)' })
   async create(@Body() createCinemaRoomDto: CreateCinemaRoomDto, @Req() req) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException(
-        'Unauthorized: Only admin or employee can create a cinema room.',
-      );
-    }
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can create a cinema room.');
     return await this.cinemaRoomService.create(createCinemaRoomDto);
   }
 
@@ -68,12 +64,7 @@ export class CinemaRoomController {
     @Body() updateCinemaRoomDto: UpdateCinemaRoomDto,
     @Req() req,
   ) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException(
-        'Unauthorized: Only admin or employee can update a cinema room.',
-      );
-    }
+     checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can update a cinema room.');
     return await this.cinemaRoomService.update(id, updateCinemaRoomDto);
   }
   @UseGuards(JwtAuthGuard)
@@ -83,12 +74,7 @@ export class CinemaRoomController {
     @Param('id', ParseIntPipe) id: number,
     @Req() req,
   ) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException(
-        'Unauthorized: Only admin or employee can soft delete a cinema room.',
-      );
-    }
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can soft delete a cinema room.');
     return await this.cinemaRoomService.softDeleteCinemaRoom(id);
   }
 
@@ -96,12 +82,7 @@ export class CinemaRoomController {
   @Delete(':id')
   @ApiOperation({ summary: 'Delete cinema room by ID (admin, employee only)' })
   async remove(@Param('id') id: number, @Req() req) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException(
-        'Unauthorized: Only admin or employee can delete a cinema room.',
-      );
-    }
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can delete a cinema room.');
     return await this.cinemaRoomService.remove(id);
   }
 }

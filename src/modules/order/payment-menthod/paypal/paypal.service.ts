@@ -6,6 +6,7 @@ import { Method } from 'src/common/enums/payment-menthod.enum';
 import { MomoService } from '../momo/momo.service';
 import { StatusOrder } from 'src/common/enums/status-order.enum';
 import { ConfigService } from '@nestjs/config';
+import { InternalServerErrorException } from 'src/common/exceptions/internal-server-error.exception';
 
 @Injectable()
 export class PayPalService {
@@ -74,7 +75,7 @@ export class PayPalService {
 
     async captureOrderPaypal(orderId: string) {
         const accessToken = await this.generateAccessToken();
-        if (!accessToken) throw new Error('Failed to generate access token');
+        if (!accessToken) throw new InternalServerErrorException('Failed to generate access token');
 
         const response = await axios.post(
             `${this.configService.get<string>('paypal.baseUrl')}/v2/checkout/orders/${orderId}/capture`,
@@ -99,7 +100,7 @@ export class PayPalService {
         if (transaction.paymentMethod.id === Method.PAYPAL) {
             const captureResult = await this.captureOrderPaypal(transaction.transaction_code);
             if (captureResult.status !== 'COMPLETED') {
-                throw new Error('Payment not completed on PayPal');
+                throw new InternalServerErrorException('Payment not completed on PayPal');
             }
         }
         return this.momoService.handleReturnSuccess(transaction);

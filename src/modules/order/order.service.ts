@@ -33,6 +33,11 @@ import { BadRequestException } from 'src/common/exceptions/bad-request.exception
 import { ConflictException } from 'src/common/exceptions/conflict.exception';
 import { ConfigService } from '@nestjs/config';
 import { TicketService } from '../ticket/ticket.service';
+import { Role } from 'src/common/enums/roles.enum';
+import { ForbiddenException } from 'src/common/exceptions/forbidden.exception';
+import { HistoryScore } from 'src/database/entities/order/history_score';
+import { JwtService } from '@nestjs/jwt';
+
 
 
 
@@ -63,6 +68,8 @@ export class OrderService {
     private orderExtraRepository: Repository<OrderExtra>,
     @InjectRepository(Product)
     private productRepository: Repository<Product>,
+    @InjectRepository(HistoryScore)
+    private historyScoreRepository: Repository<HistoryScore>,
 
 
 
@@ -76,6 +83,7 @@ export class OrderService {
     private readonly gateway: MyGateWay,
     private readonly ticketService: TicketService,
     private readonly configService: ConfigService,
+    private readonly jwtService: JwtService,
 
 
 
@@ -100,21 +108,21 @@ export class OrderService {
 
   private async getPromotionById(promotionId: number) {
     const promotion = await this.promotionRepository.findOne({
-      where: { id: promotionId },
+      where: { id: promotionId, is_active: true },
       relations: ['promotionType']
     });
     if (!promotion) {
-      throw new NotFoundException(`Promotion with ID ${promotionId} not found`);
+      throw new NotFoundException(`Promotion with ID ${promotionId} not found or is not active`);
     }
     return promotion;
   }
 
   private async getScheduleById(scheduleId: number) {
     const schedule = await this.scheduleRepository.findOne({
-      where: { id: scheduleId },
+      where: { id: scheduleId, is_deleted: false },
     });
     if (!schedule) {
-      throw new NotFoundException(`Schedule with ID ${scheduleId} not found`);
+      throw new NotFoundException(`Schedule with ID ${scheduleId} not found or is deleted`);
     }
     return schedule;
   }
@@ -174,6 +182,7 @@ export class OrderService {
     return scheduleSeats;
   }
 
+
   async createOrder(userData: JWTUserType, orderBill: OrderBillType, clientIp: string) {
     try {
       const user = await this.getUserById(userData.account_id);
@@ -189,6 +198,29 @@ export class OrderService {
         this.getPromotionById(orderBill.promotion_id),
         this.getScheduleById(orderBill.schedule_id),
       ]);
+
+
+
+      // check promtion time
+      if (promotion.id !== 1) {
+        const currentTime = new Date();
+        if (
+          !promotion.start_time ||
+          !promotion.end_time ||
+          promotion.start_time > currentTime ||
+          promotion.end_time < currentTime
+        ) {
+          throw new BadRequestException('Promotion is not valid at this time.');
+        }
+        // check score 
+        if (promotion.exchange > user.score) {
+          throw new ConflictException('You do not have enough score to use this promotion.');
+        }
+        //check trường hợp nhân viên đặt hàng nhưng lại dùng giảm giá nhưng k gán customer
+        if (user.role.role_id === Role.EMPLOYEE || user.role.role_id === Role.ADMIN && !orderBill.customer_id) {
+          throw new ConflictException('Staff must provide customer ID when using promotion.');
+        }
+      }
 
 
       // Fetch seat IDs
@@ -279,17 +311,21 @@ export class OrderService {
       if (!paymentCode || !paymentCode.payUrl || !paymentCode.orderId) {
         throw new BadRequestException('Payment method failed to create order');
       }
+      // check customer_email
+
       // Create order
+
       const newOrder = await this.orderRepository.save({
         total_prices: orderBill.total_prices,
         status: Number(orderBill.payment_method_id) === Method.CASH ? StatusOrder.SUCCESS : StatusOrder.PENDING,
         user,
         promotion,
+        customer_id: orderBill.customer_id ?? undefined
       });
 
       const transaction = await this.transactionRepository.save({
         transaction_code: paymentCode.orderId,
-        transaction_date: new Date(),
+        transaction_date: new Date(), // Save as UTC in database
         prices: orderBill.total_prices,
         status: Number(orderBill.payment_method_id) === Method.CASH ? StatusOrder.SUCCESS : StatusOrder.PENDING,
         paymentMethod,
@@ -415,13 +451,40 @@ export class OrderService {
       }
 
       await this.orderExtraRepository.save(orderExtrasToSave);
-      if (Method.CASH) {
-        this.gateway.onBookSeat({
-          schedule_id: orderBill.schedule_id,
-          seatIds: orderBill.seats.map(seat => seat.id)
+      // socket
+      this.gateway.onBookSeat({
+        schedule_id: orderBill.schedule_id,
+        seatIds: orderBill.seats.map(seat => seat.id)
+      });
+
+      // add score for user , employee order
+      if (
+        orderBill.customer_id &&
+        orderBill.customer_id.trim() !== '' &&
+        Number(orderBill.payment_method_id) === Method.CASH
+      ) {
+        const customer = await this.userRepository.findOne({
+          where: { id: orderBill.customer_id },
+          relations: ['role'],
+        });
+
+        if (!customer || customer.role.role_id !== Role.USER) {
+          throw new ForbiddenException('Invalid customer for point accumulation');
+        }
+
+        const promotionExchange = promotion?.exchange ?? 0;
+        const orderScore = Math.floor(totalPrice / 1000);
+        const addScore = orderScore - promotionExchange;
+
+        customer.score += addScore;
+        await this.userRepository.save(customer);
+
+        await this.historyScoreRepository.save({
+          score_change: addScore,
+          user: customer,
+          order: newOrder,
         });
       }
-
       return { payUrl: paymentCode.payUrl };
     } catch (error) {
       throw error;
@@ -509,25 +572,102 @@ export class OrderService {
   }
 
 
+  async getAllOrders({
+    skip,
+    take,
+    page,
+    status,
+    search,
+    startDate,
+    endDate,
+    sortBy = 'order.order_date',
+    sortOrder = 'DESC',
+    paymentMethod,
+  }: {
+    skip: number;
+    take: number;
+    page: number;
+    status?: StatusOrder;
+    search?: string;
+    startDate?: string;
+    endDate?: string;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+    paymentMethod?: string;
+  }) {
 
-  async getAllOrders() {
-    const orders = await this.orderRepository.find({
-      relations: ['user',
-        'promotion',
-        'transaction',
-        'transaction.paymentMethod',
-        'orderDetails',
-        'orderDetails.ticket',
-        'orderDetails.schedule',
-        'orderDetails.schedule.movie',
-        'orderDetails.ticket',
-        'orderDetails.ticket.seat',
-        'orderDetails.ticket.ticketType'],
-    });
+    const query = this.orderRepository
+      .createQueryBuilder('order')
+      .leftJoinAndSelect('order.user', 'user')
+      .leftJoinAndSelect('order.promotion', 'promotion')
+      .leftJoinAndSelect('order.transaction', 'transaction')
+      .leftJoinAndSelect('transaction.paymentMethod', 'paymentMethod')
+      .leftJoinAndSelect('order.orderDetails', 'orderDetail')
+      .leftJoinAndSelect('orderDetail.ticket', 'ticket')
+      .leftJoinAndSelect('ticket.seat', 'seat')
+      .leftJoinAndSelect('ticket.ticketType', 'ticketType')
+      .leftJoinAndSelect('orderDetail.schedule', 'schedule')
+      .leftJoinAndSelect('schedule.movie', 'movie')
+      .leftJoinAndSelect('schedule.cinemaRoom', 'cinemaRoom')
+      .leftJoinAndSelect('order.orderExtras', 'orderExtra')
+      .leftJoinAndSelect('orderExtra.product', 'product')
+      .skip(skip)
+      .take(take);
 
-    const bookingSummaries = orders.map(order => this.mapToBookingSummaryLite(order));
-    return bookingSummaries;
+    // Filter: status
+    if (status) {
+      query.andWhere('order.status = :status', { status });
+    }
+
+    // Filter: search by username or movie name
+    if (search?.trim()) {
+      query.andWhere(
+        '(user.username LIKE :search OR movie.name LIKE :search)',
+        { search: `%${search.trim()}%` },
+      );
+    }
+
+    // Filter: payment method name
+    if (paymentMethod?.trim()) {
+      query.andWhere('paymentMethod.name LIKE :method', {
+        method: `%${paymentMethod.trim()}%`,
+      });
+    }
+
+    // Filter: date range
+    if (startDate && endDate) {
+      query.andWhere('order.order_date BETWEEN :start AND :end', {
+        start: `${startDate} 00:00:00`,
+        end: `${endDate} 23:59:59`,
+      });
+    } else if (startDate) {
+      query.andWhere('order.order_date >= :start', { start: `${startDate} 00:00:00` });
+    } else if (endDate) {
+      query.andWhere('order.order_date <= :end', { end: `${endDate} 23:59:59` });
+    }
+
+    // Sort: only allow predefined fields
+    const allowedSortFields = [
+      'order.order_date',
+      'user.username',
+      'movie.name',
+    ];
+    const finalSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'order.order_date';
+    query.orderBy(finalSortBy, sortOrder);
+
+    const [orders, total] = await query.getManyAndCount();
+    const summaries = orders.map(order => this.mapToBookingSummaryLite(order));
+
+    return {
+      data: summaries,
+      total,
+      page,
+      pageSize: take,
+      totalPages: Math.ceil(total / take),
+    };
   }
+
+
 
   async getOrderByIdEmployeeAndAdmin(orderId: number) {
     const order = await this.orderRepository.findOne({
@@ -539,30 +679,97 @@ export class OrderService {
         'orderDetails',
         'orderDetails.ticket',
         'orderDetails.schedule',
+        'orderDetails.schedule.cinemaRoom',
         'orderDetails.schedule.movie',
         'orderDetails.ticket.seat',
-        'orderDetails.ticket.ticketType'],
+        'orderDetails.ticket.ticketType',
+        'orderExtras',
+        'orderExtras.product'
+      ],
     });
     if (!order) {
       throw new NotFoundException(`Order with ID ${orderId} not found`);
     }
     return this.mapToBookingSummaryLite(order);
   }
-  async getMyOrders(userId: string) {
-    const orderByUser = await this.orderRepository.find({
-      where: { user: { id: userId } },
-      relations: ['user',
-        'promotion', 'transaction',
-        'transaction.paymentMethod',
-        'orderDetails', 'orderDetails.ticket',
-        'orderDetails.schedule',
-        'orderDetails.schedule.movie',
-        'orderDetails.ticket.seat',
-        'orderDetails.ticket.ticketType'],
-    });
+  async getMyOrders({
+    userId,
+    skip,
+    take,
+    page,
+    status,
+    search,
+    startDate,
+    endDate,
+    sortBy = 'order.order_date',
+    sortOrder = 'DESC',
+  }: {
+    userId: string;
+    skip: number;
+    take: number;
+    page: number;
+    status?: StatusOrder;
+    search?: string;
+    startDate?: string;
+    endDate?: string;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+  }) {
+    const query = this.orderRepository
+      .createQueryBuilder('order')
+      .leftJoinAndSelect('order.user', 'user')
+      .leftJoinAndSelect('order.promotion', 'promotion')
+      .leftJoinAndSelect('order.transaction', 'transaction')
+      .leftJoinAndSelect('transaction.paymentMethod', 'paymentMethod')
+      .leftJoinAndSelect('order.orderDetails', 'orderDetail')
+      .leftJoinAndSelect('orderDetail.ticket', 'ticket')
+      .leftJoinAndSelect('ticket.seat', 'seat')
+      .leftJoinAndSelect('ticket.ticketType', 'ticketType')
+      .leftJoinAndSelect('orderDetail.schedule', 'schedule')
+      .leftJoinAndSelect('schedule.movie', 'movie')
+      .leftJoinAndSelect('schedule.cinemaRoom', 'cinemaRoom')
+      .where('user.id = :userId', { userId })
+      .skip(skip)
+      .take(take);
 
-    const bookingSummaries = orderByUser.map(order => this.mapToBookingSummaryLite(order));
-    return bookingSummaries;
+    if (status) {
+      query.andWhere('order.status = :status', { status });
+    }
+
+    if (search && search.trim() !== '') {
+      query.andWhere(
+        `(movie.name LIKE :search OR cinemaRoom.cinema_room_name LIKE :search)`,
+        { search: `%${search.trim()}%` },
+      );
+    }
+
+    if (startDate && endDate) {
+      query.andWhere('order.order_date BETWEEN :start AND :end', {
+        start: `${startDate} 00:00:00`,
+        end: `${endDate} 23:59:59`,
+      });
+    } else if (startDate) {
+      query.andWhere('order.order_date >= :start', { start: `${startDate} 00:00:00` });
+    } else if (endDate) {
+      query.andWhere('order.order_date <= :end', { end: `${endDate} 23:59:59` });
+    }
+
+    const allowedSortFields = ['order.order_date', 'movie.name', 'cinemaRoom.cinema_room_name'];
+    const finalSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'order.order_date';
+
+    query.orderBy(finalSortBy, sortOrder);
+
+    const [orders, total] = await query.getManyAndCount();
+
+    const bookingSummaries = orders.map((order) => this.mapToBookingSummaryLite(order));
+
+    return {
+      data: bookingSummaries,
+      total,
+      page,
+      pageSize: take,
+      totalPages: Math.ceil(total / take),
+    };
   }
 
   private mapToBookingSummaryLite(order: Order) {
@@ -578,7 +785,11 @@ export class OrderService {
         email: order.user.email,
       },
       promotion: {
-        title: order.promotion?.title
+        title: order.promotion?.title,
+      },
+      cinemaroom: {
+        id: order.orderDetails[0].schedule.cinemaRoom.id,
+        name: order.orderDetails[0].schedule.cinemaRoom.cinema_room_name,
       },
       orderDetails: order.orderDetails.map(detail => ({
         id: detail.id,
@@ -588,31 +799,42 @@ export class OrderService {
           id: detail.ticket.seat.id,
           seat_row: detail.ticket.seat.seat_row,
           seat_column: detail.ticket.seat.seat_column,
-        },
-        ticketType: {
+        }, ticketType: {
           ticket_name: detail.ticket.ticketType.ticket_name,
         },
         start_movie_time: detail.schedule.start_movie_time,
         end_movie_time: detail.schedule.end_movie_time,
-
         movie: {
           id: detail.schedule.movie.id,
           name: detail.schedule.movie.name,
         },
       })),
+      orderExtras: order.orderExtras?.map(extra => ({
+        id: extra.id,
+        quantity: extra.quantity,
+        unit_price: extra.unit_price,
+        status: extra.status,
+        product: {
+          id: extra.product.id,
+          name: extra.product.name,
+          type: extra.product.type,
+          price: extra.product.price,
+        },
+      })) ?? [],
       transaction: {
         transaction_code: order.transaction.transaction_code,
+        transaction_date: order.transaction.transaction_date,
         status: order.transaction.status,
         PaymentMethod: {
-          method_name: order.transaction.paymentMethod.name
-        }
+          method_name: order.transaction.paymentMethod.name,
+        },
       },
     };
   }
+
   async scanQrCode(qrCode: string) {
     try {
-      const secret = this.configService.get<string>('jwt.qrSecret')!;
-      const rawDecoded = jwt.verify(qrCode, secret);
+      const rawDecoded = this.jwtService.verify(qrCode, { secret: this.configService.get<string>('jwt.qrSecret')});
       const decoded = rawDecoded as { orderId: number };
       const order = await this.getOrderByIdEmployeeAndAdmin(decoded.orderId);
       if (!order) {
@@ -631,5 +853,4 @@ export class OrderService {
     }
   }
 }
-
 

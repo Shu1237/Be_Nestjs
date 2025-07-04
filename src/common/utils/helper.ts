@@ -1,7 +1,7 @@
 import * as bcrypt from 'bcrypt';
 import { Stripe } from 'stripe';
 import { OrderBillType, ProductType } from './type';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { TicketType } from 'src/database/entities/order/ticket-type';
 import { ScheduleSeat } from 'src/database/entities/cinema/schedule_seat';
 import { Product } from 'src/database/entities/item/product';
@@ -23,7 +23,7 @@ export const comparePassword = async (password: string, hash: string): Promise<b
 export const changeVnToUSD = (total: string) => {
   const vndAmount = parseFloat(total.replace(/[,\s]/g, ''));
   if (isNaN(vndAmount)) {
-    throw new Error('Invalid VND amount provided');
+    throw new InternalServerErrorException('Invalid VND amount provided');
   }
   const exchangeRate = 24000;
   const usdAmount = vndAmount / exchangeRate;
@@ -37,7 +37,7 @@ export const changeUSDToVN = (total: string): string => {
   const usdAmount = parseFloat(total.replace(/[,\s]/g, ''));
 
   if (isNaN(usdAmount)) {
-    throw new Error('Invalid USD amount provided');
+    throw new InternalServerErrorException('Invalid VND amount provided');
   }
 
   const exchangeRate = 24000;
@@ -50,7 +50,7 @@ export const changeUSDToVN = (total: string): string => {
 export const changeVNtoUSDToCent = (total: string): number => {
   const vndAmount = parseFloat(total.replace(/[,\s]/g, ''));
   if (isNaN(vndAmount)) {
-    throw new Error('Invalid VND amount provided');
+    throw new InternalServerErrorException('Invalid VND amount provided');
   }
   const exchangeRate = 24000;
   const usdAmount = vndAmount / exchangeRate;

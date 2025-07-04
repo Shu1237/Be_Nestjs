@@ -10,6 +10,7 @@ import { Request } from 'express';
 import { AuthService } from 'src/modules/auth/auth.service';
 import * as jwt from 'jsonwebtoken';
 import { ConfigService } from '@nestjs/config';
+import { InternalServerErrorException } from '../exceptions/internal-server-error.exception';
 
 @Injectable()
 export class RefreshGuard implements CanActivate {
@@ -22,7 +23,7 @@ export class RefreshGuard implements CanActivate {
     const jwtSecret = this.configService.get<string>('jwt.secret');
 
     if (!jwtSecret) {
-      throw new Error('JWT_SECRET_KEY is not defined in environment variables');
+      throw new InternalServerErrorException('JWT_SECRET_KEY is not defined in environment variables');
     }
 
     // get access token từ header

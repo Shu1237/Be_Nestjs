@@ -4,6 +4,7 @@ import { Strategy, VerifyCallback, Profile } from 'passport-google-oauth20';
 import { AuthService } from '../auth.service';
 import { GoogleUserType } from 'src/common/utils/type';
 import { ConfigService } from '@nestjs/config';
+import { InternalServerErrorException } from 'src/common/exceptions/internal-server-error.exception';
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
@@ -17,7 +18,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     const googleCallbackUrl = configService.get<string>('google.callbackUrl');
 
     if (!googleClientId || !googleClientSecret || !googleCallbackUrl) {
-      throw new Error('Google OAuth environment variables are not defined');
+      throw new InternalServerErrorException('Google OAuth environment variables are not defined');
     }
     super({
       clientID: googleClientId,
@@ -31,7 +32,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       !googleClientSecret ||
       !googleCallbackUrl
     ) {
-      throw new Error('Google OAuth environment variables are not defined');
+      throw new InternalServerErrorException('Google OAuth environment variables are not defined');
     }
   }
 

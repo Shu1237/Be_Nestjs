@@ -6,7 +6,6 @@ import {
   Param,
   ParseIntPipe,
   Patch,
-  Delete,
   Put,
   UseGuards,
   Req,
@@ -17,17 +16,15 @@ import { UpdatePromotionDto } from './dto/update-promotion.dto';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { ApiBearerAuth, ApiOperation, ApiBody, ApiTags } from '@nestjs/swagger';
 import { ChangePromotionDto } from './dto/change-promotion.dto';
-import { Request } from 'express';
 import { JWTUserType } from 'src/common/utils/type';
-import { Role } from 'src/common/enums/roles.enum';
-import { ForbiddenException } from 'src/common/exceptions/forbidden.exception';
+import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 
 @ApiTags('Promotions')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 @Controller('promotion')
 export class PromotionController {
-  constructor(private readonly promotionService: PromotionService) {}
+  constructor(private readonly promotionService: PromotionService) { }
 
   @Get()
   @ApiOperation({ summary: 'Get all promotions' })
@@ -38,7 +35,7 @@ export class PromotionController {
   @Post('changePromotion')
   @ApiOperation({ summary: 'Đổi điểm lấy mã khuyến mãi' })
   @ApiBody({ type: ChangePromotionDto })
-  changePromotion(@Body() body: ChangePromotionDto, @Req() req: Request) {
+  changePromotion(@Body() body: ChangePromotionDto, @Req() req) {
     const user = req.user as JWTUserType;
     return this.promotionService.changePromotion(body, user);
   }
@@ -48,13 +45,10 @@ export class PromotionController {
   @ApiBody({ type: CreatePromotionDto })
   createPromotion(
     @Body() createPromotionDto: CreatePromotionDto,
-    @Req() req: Request,
+    @Req() req,
   ) {
-    const user = req.user as JWTUserType;
-    if (user.role_id === Role.ADMIN) {
-      return this.promotionService.createPromotion(createPromotionDto);
-    }
-    throw new ForbiddenException('Only admin can create promotions');
+    checkAdminEmployeeRole(req.user, 'Only admin can create promotions');
+    return this.promotionService.createPromotion(createPromotionDto);
   }
   @Get(':id')
   @ApiOperation({ summary: 'Get promotion by ID' })
@@ -68,38 +62,33 @@ export class PromotionController {
   updatePromotion(
     @Param('id', ParseIntPipe) id: number,
     @Body() updatePromotionDto: UpdatePromotionDto,
-    @Req() req: Request,
+    @Req() req,
   ) {
-    const user = req.user as JWTUserType;
-    if (user.role_id === Role.ADMIN) {
-      return this.promotionService.updatePromotion(id, updatePromotionDto);
-    }
-    throw new ForbiddenException('Only admin can update promotions');
+    checkAdminEmployeeRole(req.user, 'Only admin can update promotions');
+    return this.promotionService.updatePromotion(id, updatePromotionDto);
   }
 
-  @Delete(':id')
-  @ApiOperation({ summary: 'Delete promotion by ID (admin only)' })
-  async deletePromotion(
-    @Param('id', ParseIntPipe) id: number,
-    @Req() req: Request,
-  ) {
-    const user = req.user as JWTUserType;
-    if (user.role_id === Role.ADMIN) {
-      return this.promotionService.deletePromotion(id);
-    }
-    throw new ForbiddenException('Only admin can delete promotions');
-  }
+  // @Delete(':id')
+  // @ApiOperation({ summary: 'Delete promotion by ID (admin only)' })
+  // async deletePromotion(
+  //   @Param('id', ParseIntPipe) id: number,
+  //   @Req() req: Request,
+  // ) {
+  //   const user = req.user as JWTUserType;
+  //   if (user.role_id === Role.ADMIN) {
+  //     return this.promotionService.deletePromotion(id);
+  //   }
+  //   throw new ForbiddenException('Only admin can delete promotions');
+  // }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Soft delete promotion by ID (admin only)' })
   async deleteSoftPromotion(
     @Param('id', ParseIntPipe) id: number,
-    @Req() req: Request,
+    @Req() req,
   ) {
-    const user = req.user as JWTUserType;
-    if (user.role_id === Role.ADMIN) {
-      return this.promotionService.deleteSoftPromotion(id);
-    }
-    throw new ForbiddenException('Only admin can delete promotions');
+    checkAdminEmployeeRole(req.user, 'Only admin can delete promotions');
+    return this.promotionService.deleteSoftPromotion(id);
   }
 }
+

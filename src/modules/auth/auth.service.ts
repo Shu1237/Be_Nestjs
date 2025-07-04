@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import type {
   JWTUserType,
@@ -17,6 +17,7 @@ import { NotFoundException } from 'src/common/exceptions/not-found.exception';
 import { ForbiddenException } from 'src/common/exceptions/forbidden.exception';
 import { ConfigService } from '@nestjs/config';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
+import { QrCodeService } from 'src/common/qrcode/qrcode.service';
 
 
 
@@ -24,6 +25,7 @@ import { BadRequestException } from 'src/common/exceptions/bad-request.exception
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   constructor(
     @InjectRepository(User) private userRepository: Repository<User>,
     @InjectRepository(Role) private roleRepository: Repository<Role>,
@@ -31,8 +33,8 @@ export class AuthService {
 
     private jwtService: JwtService,
     private mailerService: MailerService,
-    private configService: ConfigService
-    // @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private configService: ConfigService,
+    private qrcodeService: QrCodeService,
   ) { }
 
   // async validateUser(username: string, password: string) {
@@ -65,7 +67,7 @@ export class AuthService {
       relations: ['user', 'user.role'],
     });
 
-    if (!record || record.expires_at < new Date()) {
+    if (!record || record.expires_at.getTime() < Date.now()) {
       return null;
     }
 
@@ -198,9 +200,11 @@ export class AuthService {
       // Tạo mới user với id uuid4 sinh mới
       const role = await this.roleRepository.findOneBy({ role_id: roleId });
       if (!role) throw new NotFoundException('Role not found');
-
+      //qr code
+      const id = uuidv4();
+      const qrCode = await this.qrcodeService.generateQrCode(id);
       user = this.userRepository.create({
-        id: uuidv4(),
+        id: id,
         sub: sub,
         username: name,
         email: email,
@@ -209,6 +213,7 @@ export class AuthService {
         status: true,
         is_deleted: false,
         role: role,
+        qr_code: qrCode,
       });
 
       await this.userRepository.save(user);
@@ -237,17 +242,48 @@ export class AuthService {
         throw new ForbiddenException('Account is disabled');
       }
     }
+    // check token và refreshtoken trong refreshtoken table 
+    const newestRefreshToken = await this.refreshTokenRepository.findOne({
+      where: { user: { id: user.id }, revoked: false },
+      order: { id: 'DESC' },
+    });
+    // check token
+    let needNewToken = false;
+    if (newestRefreshToken) {
+      try {
+        this.jwtService.verify(newestRefreshToken.access_token, {
+          secret: this.configService.get<string>('jwt.secret'),
+        });
+        return {
+          msg: 'Login successful',
+          token: {
+            access_token: newestRefreshToken.access_token,
+            refresh_token: newestRefreshToken.refresh_token,
+          },
+        };
+      } catch (error) {
+        if (error.name === 'TokenExpiredError') {
+          this.logger.warn(`Access token expired at ${error.expiredAt.toISOString()}`);
+        } else {
+          this.logger.warn(`Access token invalid: ${error.message}`);
+        }
+      }
+    } else {
+      needNewToken = true;
+    }
 
-    const payload: JWTUserType = {
-      account_id: user.id,
-      username: user.username,
-      role_id: user.role.role_id,
-    };
+    if (needNewToken) {
+      const payload: JWTUserType = {
+        account_id: user.id,
+        username: user.username,
+        role_id: user.role.role_id,
+      };
 
-    return {
-      msg: 'Login successful',
-      token: await this.generateToken(payload),
-    };
+      return {
+        msg: 'Login successful',
+        token: await this.generateToken(payload),
+      };
+    }
   }
 
   async login(user: JWTUserType) {
@@ -284,7 +320,7 @@ export class AuthService {
       access_token: access_token,
       user: user,
       revoked: false,
-      expires_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),// 3 day
+      expires_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), //3 days
     });
     return {
       access_token,

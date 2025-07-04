@@ -18,12 +18,9 @@ import {
   ApiTags,
   ApiBearerAuth,
   ApiOperation,
-  ApiResponse,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
-import { JWTUserType } from '../../common/utils/type'; // Import JWT User Type
-import { Role } from '../../common/enums/roles.enum'; // Import Role Enum
-import { ForbiddenException } from 'src/common/exceptions/forbidden.exception';
+import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 
 @ApiTags('Schedules')
 @ApiBearerAuth()
@@ -35,12 +32,7 @@ export class ScheduleController {
   @Post()
   @ApiOperation({ summary: 'Create a new schedule (admin, employee only)' })
   async create(@Body() createScheduleDto: CreateScheduleDto, @Req() req) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException(
-        'Unauthorized: Only admin or employee can create a schedule.',
-      );
-    }
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can create a schedule.');
     return await this.scheduleService.create(createScheduleDto);
   }
 
@@ -68,24 +60,14 @@ export class ScheduleController {
     @Body() updateScheduleDto: UpdateScheduleDto,
     @Req() req,
   ) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException(
-        'Unauthorized: Only admin or employee can update a schedule.',
-      );
-    }
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can update a schedule.');
     return await this.scheduleService.update(id, updateScheduleDto);
   }
   @UseGuards(JwtAuthGuard)
   @Patch(':id/soft-delete')
   @ApiOperation({ summary: 'Soft delete a schedule (admin, employee only)' })
   async softDeleteSchedule(@Param('id', ParseIntPipe) id: number, @Req() req) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException(
-        'Unauthorized: Only admin or employee can soft delete a schedule.',
-      );
-    }
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can soft delete a schedule.');
     return await this.scheduleService.softDeleteSchedule(id);
   }
 
@@ -93,12 +75,7 @@ export class ScheduleController {
   @Delete(':id')
   @ApiOperation({ summary: 'Delete schedule by ID (admin, employee only)' })
   async remove(@Param('id') id: number, @Req() req) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException(
-        'Unauthorized: Only admin or employee can delete a schedule.',
-      );
-    }
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can delete a schedule.');
     return await this.scheduleService.softDelete(id);
   }
 }

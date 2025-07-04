@@ -5,15 +5,17 @@ import { PayPalService } from './payment-menthod/paypal/paypal.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { Response } from 'express';
 import { CreateOrderBillDto } from './dto/order-bill.dto';
-import { ApiOperation, ApiBody, ApiResponse, ApiBearerAuth, ApiExcludeEndpoint } from '@nestjs/swagger';
+import { ApiOperation, ApiBody, ApiResponse, ApiBearerAuth, ApiExcludeEndpoint, ApiQuery } from '@nestjs/swagger';
 import { VnpayService } from './payment-menthod/vnpay/vnpay.service';
 import { ZalopayService } from './payment-menthod/zalopay/zalopay.service';
 import { JWTUserType } from 'src/common/utils/type';
-import { Role } from 'src/common/enums/roles.enum';
 import { ScanQrCodeDto } from './dto/qrcode.dto';
 import { InternalServerErrorException } from 'src/common/exceptions/internal-server-error.exception';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
-import { ForbiddenException } from 'src/common/exceptions/forbidden.exception';
+import { StatusOrder } from 'src/common/enums/status-order.enum';
+import { GetAllOrdersDto } from './dto/getAllOrder.dto';
+import { checkUserRole } from 'src/common/role/user';
+import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 
 
 @ApiBearerAuth()
@@ -44,7 +46,7 @@ export class OrderController {
   @Get('momo/return')
   async handleMomoReturn(@Query() query: any, @Res() res: Response) {
     const result = await this.momoService.handleReturn(query);
-    return res.send(result);
+    return res.redirect(result);
   }
   @ApiExcludeEndpoint()
   @Get('paypal/success/return')
@@ -56,7 +58,7 @@ export class OrderController {
     if (!result) {
       throw new BadRequestException('Invalid order ID or Payer ID');
     }
-    return res.send(result);
+    return res.redirect(result);
   }
   @ApiExcludeEndpoint()
   @Get('paypal/cancel/return')
@@ -65,7 +67,7 @@ export class OrderController {
     // if (!result) {
     //   throw new BadRequestException('Invalid order ID');
     // }
-    return res.send(result);
+    return res.redirect(result);
   }
 
 
@@ -79,7 +81,7 @@ export class OrderController {
     if (!result) {
       throw new BadRequestException('Invalid order ID or Payer ID');
     }
-    return res.send(result);
+    return res.redirect(result);
   }
   @ApiExcludeEndpoint()
   @Get('visa/cancel/return')
@@ -88,7 +90,7 @@ export class OrderController {
     // if (!result) {
     //   throw new BadRequestException('Invalid order ID');
     // }
-    return res.send(result);
+    return res.redirect(result);
   }
 
 
@@ -97,7 +99,7 @@ export class OrderController {
   @Get('vnpay/return')
   async handleVnPayReturn(@Query() query: any, @Res() res: Response) {
     const result = await this.vnpayService.handleReturnVnPay(query);
-    return res.send(result);
+    return res.redirect(result);
   }
 
 
@@ -106,7 +108,7 @@ export class OrderController {
   @Get('zalopay/return')
   async handleZaloPayReturn(@Query() query: any, @Res() res: Response) {
     const result = await this.zalopayService.handleReturnZaloPay(query);
-    return res.send(result);
+    return res.redirect(result);
   }
 
 
@@ -116,14 +118,38 @@ export class OrderController {
   @Get('all')
   @ApiOperation({ summary: 'View all orders' })
   @ApiBearerAuth()
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
+  @ApiQuery({ name: 'status', required: false, enum: ['all', ...Object.values(StatusOrder)], example: 'all', default: 'all', })
+  @ApiQuery({ name: 'search', required: false, type: String, example: 'search term' })
+  @ApiQuery({ name: 'startDate', required: false, type: String, example: '2025-07-01' })
+  @ApiQuery({ name: 'endDate', required: false, type: String, example: '2025-07-03' })
+  @ApiQuery({ name: 'sortBy', required: false, type: String, example: 'createdAt' })
+  @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], example: 'ASC' })
+  @ApiQuery({ name: 'paymentMethod', required: false, type: String, example: 'momo' })
   @ApiResponse({ status: 200, description: 'List of all orders' })
-  async getAllOrders(@Req() req) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException('You do not have permission to view all orders');
-    }
-    return this.orderService.getAllOrders();
+  async getAllOrders(
+    @Req() req,
+    @Query() query: GetAllOrdersDto,
+  ) {
+    checkAdminEmployeeRole(req.user, 'You do not have permission to view all orders');
+    const { page = 1, limit = 10, status, ...restFilters } = query;
+    const take = Math.min(limit, 100);
+    const skip = (page - 1) * take;
+
+    const statusValue: StatusOrder | undefined = status === 'all'
+      ? undefined
+      : status as StatusOrder;
+
+    return this.orderService.getAllOrders({
+      skip,
+      take,
+      page,
+      ...restFilters,
+      status: statusValue,
+    });
   }
+
 
 
   // // Get Order by Id 
@@ -137,11 +163,42 @@ export class OrderController {
 
   @UseGuards(JwtAuthGuard)
   @Get('getorderbyUserID/:id')
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
+  @ApiQuery({ name: 'status', required: false, enum: ['all', ...Object.values(StatusOrder)], example: 'all', default: 'all', })
+  @ApiQuery({ name: 'search', required: false, type: String, example: 'search term' })
+  @ApiQuery({ name: 'startDate', required: false, type: String, example: '2025-07-01' })
+  @ApiQuery({ name: 'endDate', required: false, type: String, example: '2025-07-03' })
+  @ApiQuery({ name: 'sortBy', required: false, type: String, example: 'createdAt' })
+  @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], example: 'ASC' })
+  @ApiQuery({ name: 'paymentMethod', required: false, type: String, example: 'momo' })
   @ApiBearerAuth()
   @ApiOperation({ summary: 'View my orders' })
-  async getMyOrders(@Param('id', ParseIntPipe) id: number, @Req() req) {
+  async getMyOrders(
+    @Param('id') id: string,
+    @Req() req,
+    @Query() query: GetAllOrdersDto,
+
+  ) {
     const user = req.user as JWTUserType;
-    return this.orderService.getMyOrders(user.account_id);
+    checkUserRole(user, 'You can only view your own orders', id.toString());
+    const { page = 1, limit = 10, status, ...restFilters } = query;
+    const take = Math.min(limit, 100);
+    const skip = (page - 1) * take;
+
+    const statusValue: StatusOrder | undefined = status === 'all'
+      ? undefined
+      : status as StatusOrder;
+
+
+    return this.orderService.getMyOrders({
+      userId: user.account_id,
+      skip,
+      take,
+      page,
+      ...restFilters,
+      status: statusValue,
+    });
   }
 
 
@@ -151,7 +208,8 @@ export class OrderController {
   @ApiBody({ type: ScanQrCodeDto })
   @ApiBearerAuth()
   @Post('scan-qr')
-  scanQrCode(@Body() data: ScanQrCodeDto) {
+  scanQrCode(@Body() data: ScanQrCodeDto,@Req() req) {
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can scan QR code.');
     return this.orderService.scanQrCode(data.qrCode);
   }
 

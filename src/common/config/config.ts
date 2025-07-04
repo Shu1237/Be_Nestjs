@@ -12,7 +12,6 @@ export default () => ({
       expiresIn: process.env.TMP_EXPIRES_IN,
     },
     otpSecret: process.env.OTP_SECRET,
-    
   },
 
   database: {
@@ -21,7 +20,7 @@ export default () => ({
     username: process.env.DB_USERNAME,
     password: process.env.DB_PASSWORD,
     name: process.env.DB_DATABASE,
-    url: process.env.DATABASE_URL, 
+    url: process.env.DATABASE_URL,
   },
 
   gmail: {
@@ -35,6 +34,10 @@ export default () => ({
     clientId: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     callbackUrl: process.env.GOOGLE_CALLBACK_URL,
+  },
+  redirectUrls: {
+    successUrl: process.env.FRONTEND_SUCCESS_URL,
+    failureUrl: process.env.FRONTEND_FAILURE_URL,
   },
 
   momo: {

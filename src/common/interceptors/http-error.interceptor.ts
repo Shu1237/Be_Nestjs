@@ -9,7 +9,6 @@ import { HttpException } from '@nestjs/common';
 import { NotFoundException } from '../exceptions/not-found.exception';
 import { ConflictException } from '../exceptions/conflict.exception';
 import { InternalServerErrorException } from '../exceptions/internal-server-error.exception';
-import { BadRequestException } from '../exceptions/bad-request.exception';
 import { ForbiddenException } from '../exceptions/forbidden.exception';
 
 @Injectable()
@@ -20,10 +19,6 @@ export class HttpErrorInterceptor implements NestInterceptor {
             catchError((error) => {
                 if (error instanceof HttpException) {
                     const status = error.getStatus();
-
-                    if (status === 400) {
-                        return throwError(() => new BadRequestException(error.message));
-                    }
                     if (status === 403) {
                         return throwError(() => new ForbiddenException(error.message));
                     }

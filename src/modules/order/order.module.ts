@@ -27,6 +27,9 @@ import { Drink } from 'src/database/entities/item/drink';
 import { MyGateWayModule } from 'src/common/gateways/seat.gateway.module';
 import { Product } from 'src/database/entities/item/product';
 import { TicketModule } from '../ticket/ticket.module';
+import { HistoryScore } from 'src/database/entities/order/history_score';
+import { JwtModule } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 
 
 
@@ -50,7 +53,8 @@ import { TicketModule } from '../ticket/ticket.module';
       Food,
       Drink,
       Combo,
-      OrderExtra
+      OrderExtra,
+      HistoryScore
 
     ]
   ),
@@ -62,7 +66,13 @@ import { TicketModule } from '../ticket/ticket.module';
     SeatModule,
     RedisModule,
     MyGateWayModule,
-    TicketModule
+    TicketModule,
+    JwtModule.registerAsync({
+       inject: [ConfigService],
+       useFactory: (configService: ConfigService) => ({
+         secret: configService.get<string>('jwt.secret'),
+       }),
+     }),
 
 
   ],

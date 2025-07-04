@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException, Redirect } from '@nestjs/common';
 import * as crypto from 'crypto';
 import axios from 'axios';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -15,8 +15,9 @@ import { User } from 'src/database/entities/user/user';
 import { OrderExtra } from 'src/database/entities/order/order-extra';
 import { MyGateWay } from 'src/common/gateways/seat.gateway';
 import { QrCodeService } from 'src/common/qrcode/qrcode.service';
-import * as jwt from 'jsonwebtoken';
 import { ConfigService } from '@nestjs/config';
+import { InternalServerErrorException } from 'src/common/exceptions/internal-server-error.exception';
+import { JwtService } from '@nestjs/jwt';
 @Injectable()
 export class MomoService {
   constructor(
@@ -39,6 +40,7 @@ export class MomoService {
     private readonly gateway: MyGateWay,
     private readonly qrCodeService: QrCodeService,
     private readonly configService: ConfigService,
+    private readonly jwtService: JwtService,
   ) { }
 
   async createOrderMomo(total: string) {
@@ -47,10 +49,10 @@ export class MomoService {
     const partnerCode = this.configService.get<string>('momo.partnerCode');
 
     if (!accessKey || !secretKey || !partnerCode) {
-      throw new Error('Momo configuration is missing');
+      throw new InternalServerErrorException('Momo configuration is missing');
     }
 
-    const requestId = partnerCode + Date.now();
+    const requestId = partnerCode + new Date().getTime();
     const orderId = requestId;
     const orderInfo = 'Momo payment';
     const redirectUrl = this.configService.get<string>('momo.redirectUrl');
@@ -155,7 +157,36 @@ export class MomoService {
   }
 
   async handleReturn(query: any) {
-    const { orderId, resultCode } = query;
+    const {
+      partnerCode,
+      orderId,
+      requestId,
+      amount,
+      orderInfo,
+      orderType,
+      transId,
+      resultCode,
+      message,
+      payType,
+      responseTime,
+      extraData,
+      signature
+    } = query;
+
+    const accessKey = this.configService.get<string>('momo.accessKey');
+    const secretKey = this.configService.get<string>('momo.secretKey');
+    if (!accessKey || !secretKey) {
+      throw new InternalServerErrorException('Momo configuration is missing');
+    }
+
+
+    const rawSignature = `accessKey=${accessKey}&amount=${amount}&extraData=${extraData}&message=${message}&orderId=${orderId}&orderInfo=${orderInfo}&orderType=${orderType}&partnerCode=${partnerCode}&payType=${payType}&requestId=${requestId}&responseTime=${responseTime}&resultCode=${resultCode}&transId=${transId}`;
+
+    const computedSignature = crypto.createHmac('sha256', secretKey).update(rawSignature).digest('hex');
+
+    if (computedSignature !== signature) {
+      throw new ForbiddenException('Invalid MoMo signature');
+    }
     const transaction = await this.getTransactionByOrderId(orderId);
     if (transaction.status !== StatusOrder.PENDING) {
       throw new NotFoundException('Transaction is not in pending state');
@@ -171,7 +202,7 @@ export class MomoService {
   }
 
   //handle return success 
-  async handleReturnSuccess(transaction: Transaction) {
+  async handleReturnSuccess(transaction: Transaction): Promise<string> {
     const order = transaction.order;
     // Giao dịch thành công
     transaction.status = StatusOrder.SUCCESS;
@@ -182,38 +213,51 @@ export class MomoService {
 
     // generate QR code , jwt orderid
     const endScheduleTime = order.orderDetails[0].ticket.schedule.end_movie_time;
-    if (!this.configService.get<string>('jwt.qrSecret')) {
-      throw new ForbiddenException('JWT QR Code secret is not set');
-    }
     const endTime = new Date(endScheduleTime).getTime();
     const now = Date.now();
     const expiresInSeconds = Math.floor((endTime - now) / 1000);
 
-    const qrSecret = this.configService.get<string>('jwt.qrSecret');
-    if (!qrSecret) {
-      throw new ForbiddenException('JWT QR Code secret is not set');
-    }
-    const jwtOrderID = jwt.sign(
+    // fallback: 1 tiếng nếu thời gian đã hết hạn
+    const validExpiresIn = expiresInSeconds > 0 ? expiresInSeconds : 60 * 60;
+    const jwtOrderID = this.jwtService.sign(
       { orderId: order.id },
-      qrSecret,
       {
-        expiresIn: expiresInSeconds > 0 ? expiresInSeconds : 60 * 60,
+        secret: this.configService.get<string>('jwt.qrSecret'),
+        expiresIn: validExpiresIn,
       }
     );
     const qrCode = await this.qrCodeService.generateQrCode(jwtOrderID);
     order.qr_code = qrCode;
     const savedOrder = await this.orderRepository.save(order);
     // Cộng điểm cho người dùng
-    if (order.user?.role.role_id === Role.USER) {
+
+    let scoreTargetUser: User | null = null;
+
+
+    if (order.customer_id && order.customer_id.trim() !== '') {
+      const customer = await this.userRepository.findOne({
+        where: { id: order.customer_id },
+        relations: ['role'],
+      });
+
+      if (customer && customer.role.role_id === Role.USER) {
+        scoreTargetUser = customer;
+      }
+    } else if (order.user?.role.role_id === Role.USER) {
+      scoreTargetUser = order.user;
+    }
+
+    if (scoreTargetUser) {
       const orderScore = Math.floor(Number(order.total_prices) / 1000);
       const addScore = orderScore - (order.promotion?.exchange ?? 0);
-      order.user.score += addScore;
-      await this.userRepository.save(order.user);
-      // history score
+      scoreTargetUser.score += addScore;
+      await this.userRepository.save(scoreTargetUser);
+
       await this.historyScoreRepository.save({
         score_change: addScore,
-        user: order.user,
+        user: scoreTargetUser,
         order: savedOrder,
+        created_at: new Date() // Save as UTC in database
       });
     }
 
@@ -243,18 +287,16 @@ export class MomoService {
       schedule_id: order.orderDetails[0].ticket.schedule.id,
       seatIds: order.orderDetails.map(detail => detail.ticket.seat.id),
 
-    })
-    return {
-      message: 'Payment successful',
-      order: savedOrder,
-      qrCode
-    };
-
-
-
+    });
+    // return {
+    //   message: 'Payment successful',
+    //   order: savedOrder,
+    //   qrCode
+    // };
+    return `${this.configService.get<string>('redirectUrls.successUrl')}?orderId=${savedOrder.id}&total=${(savedOrder.total_prices)}&paymentMethod=${transaction.paymentMethod.name}`;
   }
   //handle return failed
-  async handleReturnFailed(transaction: Transaction) {
+  async handleReturnFailed(transaction: Transaction): Promise<string> {
     const order = transaction.order;
     // Reset trạng thái ghế nếu cần
     for (const detail of order.orderDetails) {
@@ -275,7 +317,8 @@ export class MomoService {
       seatIds: order.orderDetails.map(detail => detail.ticket.seat.id),
     });
 
-    return { message: 'Payment failed' };
+    // return { message: 'Payment failed' };
+    return `${this.configService.get<string>('redirectUrls.failureUrl')}`;
   }
 
 
@@ -286,8 +329,7 @@ export class MomoService {
     await this.mailerService.sendMail({
       to: order.user.email,
       subject: 'Your Order Successful',
-      template: 'order-confirmation',
-      context: {
+      template: 'order-confirmation', context: {
         user: order.user.username,
         transactionCode: transaction.transaction_code,
         order_date: order.order_date,
@@ -296,8 +338,8 @@ export class MomoService {
         year: new Date().getFullYear(),
         movieName: firstTicket?.schedule.movie.name,
         roomName: firstTicket?.schedule.cinemaRoom.cinema_room_name,
-        start_movie_time: firstTicket?.schedule.start_movie_time,
-        end_movie_time: firstTicket?.schedule.end_movie_time,
+        start_movie_time: firstTicket?.schedule.start_movie_time ? firstTicket.schedule.start_movie_time : '',
+        end_movie_time: firstTicket?.schedule.end_movie_time ? firstTicket.schedule.end_movie_time : '',
         seats: order.orderDetails.map(detail => ({
           row: detail.ticket.seat.seat_row,
           column: detail.ticket.seat.seat_column,
