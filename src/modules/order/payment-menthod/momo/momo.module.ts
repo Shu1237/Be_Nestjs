@@ -11,6 +11,8 @@ import { HistoryScore } from "src/database/entities/order/history_score";
 import { OrderExtra } from "src/database/entities/order/order-extra";
 import { MyGateWayModule } from "src/common/gateways/seat.gateway.module";
 import { QrCodeModule } from "src/common/qrcode/qr.module";
+import { JwtModule } from "@nestjs/jwt";
+import { ConfigService } from "@nestjs/config";
 
 
 @Module({
@@ -18,8 +20,15 @@ import { QrCodeModule } from "src/common/qrcode/qr.module";
         MomoModule,
         MailerModule,
         MyGateWayModule,
-        QrCodeModule
+        QrCodeModule,
+        JwtModule.registerAsync({
+        inject: [ConfigService],
+        useFactory: (configService: ConfigService) => ({
+            secret: configService.get<string>('jwt.secret'),
+        }),
+    }),
     ],
+
     controllers: [],
     providers: [MomoService],
     exports: [MomoService]

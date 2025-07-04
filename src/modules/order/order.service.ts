@@ -36,6 +36,7 @@ import { TicketService } from '../ticket/ticket.service';
 import { Role } from 'src/common/enums/roles.enum';
 import { ForbiddenException } from 'src/common/exceptions/forbidden.exception';
 import { HistoryScore } from 'src/database/entities/order/history_score';
+import { JwtService } from '@nestjs/jwt';
 
 
 
@@ -82,6 +83,7 @@ export class OrderService {
     private readonly gateway: MyGateWay,
     private readonly ticketService: TicketService,
     private readonly configService: ConfigService,
+    private readonly jwtService: JwtService,
 
 
 
@@ -593,7 +595,7 @@ export class OrderService {
     sortOrder?: 'ASC' | 'DESC';
     paymentMethod?: string;
   }) {
-    
+
     const query = this.orderRepository
       .createQueryBuilder('order')
       .leftJoinAndSelect('order.user', 'user')
@@ -832,8 +834,7 @@ export class OrderService {
 
   async scanQrCode(qrCode: string) {
     try {
-      const secret = this.configService.get<string>('jwt.qrSecret')!;
-      const rawDecoded = jwt.verify(qrCode, secret);
+      const rawDecoded = this.jwtService.verify(qrCode, { secret: this.configService.get<string>('jwt.qrSecret')});
       const decoded = rawDecoded as { orderId: number };
       const order = await this.getOrderByIdEmployeeAndAdmin(decoded.orderId);
       if (!order) {

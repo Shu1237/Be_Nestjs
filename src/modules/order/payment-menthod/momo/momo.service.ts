@@ -15,9 +15,9 @@ import { User } from 'src/database/entities/user/user';
 import { OrderExtra } from 'src/database/entities/order/order-extra';
 import { MyGateWay } from 'src/common/gateways/seat.gateway';
 import { QrCodeService } from 'src/common/qrcode/qrcode.service';
-import * as jwt from 'jsonwebtoken';
 import { ConfigService } from '@nestjs/config';
 import { InternalServerErrorException } from 'src/common/exceptions/internal-server-error.exception';
+import { JwtService } from '@nestjs/jwt';
 @Injectable()
 export class MomoService {
   constructor(
@@ -40,6 +40,7 @@ export class MomoService {
     private readonly gateway: MyGateWay,
     private readonly qrCodeService: QrCodeService,
     private readonly configService: ConfigService,
+    private readonly jwtService: JwtService,
   ) { }
 
   async createOrderMomo(total: string) {
@@ -218,16 +219,10 @@ export class MomoService {
 
     // fallback: 1 tiếng nếu thời gian đã hết hạn
     const validExpiresIn = expiresInSeconds > 0 ? expiresInSeconds : 60 * 60;
-
-    const qrSecret = this.configService.get<string>('jwt.qrSecret');
-    if (!qrSecret) {
-      throw new ForbiddenException('JWT QR Code secret is not set');
-    }
-
-    const jwtOrderID = jwt.sign(
+    const jwtOrderID = this.jwtService.sign(
       { orderId: order.id },
-      qrSecret,
       {
+        secret: this.configService.get<string>('jwt.qrSecret'),
         expiresIn: validExpiresIn,
       }
     );
@@ -301,7 +296,7 @@ export class MomoService {
     return `${this.configService.get<string>('redirectUrls.successUrl')}?orderId=${savedOrder.id}&total=${(savedOrder.total_prices)}&paymentMethod=${transaction.paymentMethod.name}`;
   }
   //handle return failed
-  async handleReturnFailed(transaction: Transaction) : Promise<string> {
+  async handleReturnFailed(transaction: Transaction): Promise<string> {
     const order = transaction.order;
     // Reset trạng thái ghế nếu cần
     for (const detail of order.orderDetails) {
@@ -334,7 +329,7 @@ export class MomoService {
     await this.mailerService.sendMail({
       to: order.user.email,
       subject: 'Your Order Successful',
-      template: 'order-confirmation',      context: {
+      template: 'order-confirmation', context: {
         user: order.user.username,
         transactionCode: transaction.transaction_code,
         order_date: order.order_date,
