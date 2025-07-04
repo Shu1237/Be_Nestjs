@@ -112,7 +112,6 @@ export class MovieAutoScheduleService {
                 cinemaRoom: room,
                 start_movie_time: slotStart,
                 end_movie_time: slotEnd,
-                // version: ...
               });
 
               this.logger.verbose(
