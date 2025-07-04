@@ -13,6 +13,7 @@ import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { UserService } from '../services/user.service';
 import { UpdateUserDto } from '../dtos/update-user.dto';
 import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
+import { checkAdminRole } from 'src/common/role/admin';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -43,13 +44,13 @@ export class UserController {
     @Body() updateUserDto: UpdateUserDto,
     @Req() req,
   ) {
-    checkAdminEmployeeRole(req.user, 'Only admin can update users');
+    checkAdminRole(req.user, 'Only admin can update users');
     return this.userService.update(id, updateUserDto);
   }
   @Patch(':id')
   @ApiOperation({ summary: 'Soft delete user by ID (admin only)' })
   async softDelete(@Param('id') id: string, @Req() req) {
-    checkAdminEmployeeRole(req.user, 'Only admin can soft delete users');
+    checkAdminRole(req.user, 'Only admin can soft delete users');
     await this.userService.softDelete(id);
     return { msg: 'Delete successfully' };
   }
