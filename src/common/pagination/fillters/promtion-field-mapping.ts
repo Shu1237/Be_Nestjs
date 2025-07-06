@@ -20,8 +20,8 @@ export const promotionFieldMapping: Record<string, FilterField> = {
       qb.andWhere('promotion.exchange <= :exchangeTo', { exchangeTo: value });
     },
   },
-  promtion_type_id: {
-    field: 'promotion.promtion_type_id',
+  promotion_type_id: {
+    field: 'promotion.promotion_type_id',
     operator: '=',
   },
   startTime: {

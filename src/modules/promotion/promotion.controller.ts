@@ -15,7 +15,7 @@ import { PromotionService } from './promotion.service';
 import { CreatePromotionDto } from './dto/create-promotion.dto';
 import { UpdatePromotionDto } from './dto/update-promotion.dto';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
-import { ApiBearerAuth, ApiOperation, ApiBody, ApiTags, ApiQuery } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiBody, ApiQuery } from '@nestjs/swagger';
 import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 import { PromotionPaginationDto } from 'src/common/pagination/dto/promotion/promotionPagination.dto';
 
@@ -38,7 +38,7 @@ export class PromotionController {
   @ApiQuery({ name: 'exchange', required: false, type: Number, example: 500 })
   @ApiQuery({ name: 'exchangeFrom', required: false, type: Number, example: 100 })
   @ApiQuery({ name: 'exchangeTo', required: false, type: Number, example: 1000 })
-  @ApiQuery({ name: 'promtion_type_id', required: false, type: Number, example: 2 })
+  @ApiQuery({ name: 'promotion_type_id', required: false, type: Number, example: 2 })
   @ApiQuery({ name: 'startTime', required: false, type: String, example: '2025-07-01' })
   @ApiQuery({ name: 'endTime', required: false, type: String, example: '2025-07-31' })
   @ApiQuery({ name: 'is_active', required: false, type: Boolean, example: true })
