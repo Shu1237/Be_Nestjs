@@ -50,6 +50,15 @@ export class ScheduleService {
         : null, // Nếu version là null, trả về null
     };
   }
+  async findAllUser(): Promise<ISchedule[]> {
+    const schedules = await this.scheduleRepository.find({
+      where: { is_deleted: false }, 
+      relations: ['movie', 'cinemaRoom', 'version'], 
+    });
+
+    
+    return schedules.map((schedule) => this.getScheduleSummary(schedule));
+  }
   async create(
     createScheduleDto: CreateScheduleDto,
   ): Promise<{ message: string }> {

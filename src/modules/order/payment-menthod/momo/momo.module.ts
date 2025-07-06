@@ -17,7 +17,6 @@ import { ConfigService } from "@nestjs/config";
 
 @Module({
     imports: [TypeOrmModule.forFeature([OrderExtra, Transaction, Order, Ticket, ScheduleSeat, HistoryScore, User]),
-        MomoModule,
         MailerModule,
         MyGateWayModule,
         QrCodeModule,

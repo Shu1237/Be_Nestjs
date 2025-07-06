@@ -17,7 +17,6 @@ import { Gerne } from 'src/database/entities/cinema/gerne';
 import { CreateGerneDto } from './dtos/createGerne';
 import { UpdateGerneDto } from './dtos/updateGerne';
 import {
-  ApiTags,
   ApiOperation,
   ApiBearerAuth,
   ApiQuery,
@@ -27,19 +26,28 @@ import { Movie } from 'src/database/entities/cinema/movie';
 import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 import { GernePaginationDto } from 'src/common/pagination/dto/gerne/gerne.dto';
 
-@ApiTags('Gernes')
+
 @ApiBearerAuth()
 @Controller('gernes')
 export class GerneController {
   constructor(private readonly gerneService: GerneService) { }
 
-  @Get()
-  @ApiOperation({ summary: 'Get all genres' })
+
+  @Get('user')
+  @ApiOperation({ summary: 'Get all genres for users' })
+  async getAllGernesUser(): Promise<Gerne[]> {
+    return await this.gerneService.getAllGernesUser();
+  }
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get all genres for admin' })
+  @Get('admin')
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
   @ApiQuery({ name: 'search', required: false, type: String, example: 'Action' })
   @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], example: 'ASC' })
-  async findAllGernes(@Query() query: GernePaginationDto) {
+  async findAllGernes(@Query() query: GernePaginationDto, @Req() req) {
+
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can access this endpoint.');
     const {
       page = 1,
       take = 10,
@@ -62,7 +70,7 @@ export class GerneController {
   }
 
 
-
+ 
   @Get(':id')
   @ApiOperation({ summary: 'Get genre by ID' })
   async findGerneById(@Param('id', ParseIntPipe) id: number): Promise<Gerne> {

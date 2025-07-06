@@ -25,9 +25,14 @@ import { PromotionPaginationDto } from 'src/common/pagination/dto/promotion/prom
 @Controller('promotion')
 export class PromotionController {
   constructor(private readonly promotionService: PromotionService) { }
-
-  @Get()
-  @ApiOperation({ summary: 'Get all promotions with filters, search, sort, and pagination' })
+  
+  @Get('user')
+  @ApiOperation({ summary: 'Get all promotions for users' })
+  async getAllPromotionsUser() {
+    return await this.promotionService.getAllPromotionsUser();
+  }
+  @Get('admin')
+  @ApiOperation({ summary: 'Get all promotions for admin' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
   @ApiQuery({ name: 'exchange', required: false, type: Number, example: 500 })
@@ -40,7 +45,8 @@ export class PromotionController {
   @ApiQuery({ name: 'search', required: false, type: String, example: 'summer-sale' })
   @ApiQuery({ name: 'sortBy', required: false, type: String, example: 'promotion.start_time' })
   @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], example: 'DESC' })
-  getAllPromotions(@Query() query: PromotionPaginationDto) {
+  getAllPromotions(@Query() query: PromotionPaginationDto, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can access this endpoint.');
     const {
       page = 1,
       take = 10,

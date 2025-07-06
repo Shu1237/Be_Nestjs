@@ -29,10 +29,14 @@ import { SchedulePaginationDto } from 'src/common/pagination/dto/shedule/schedul
 @ApiBearerAuth()
 export class ScheduleController {
   constructor(private readonly scheduleService: ScheduleService) { }
+  @Get('user')
+  @ApiOperation({ summary: 'Get all schedules for users' })
+  async findAllUser() {
+    return await this.scheduleService.findAllUser();
+  }
 
-
-  @Get()
-  @ApiOperation({ summary: 'Get all schedules with filters, search, sort, and pagination' })
+  @Get('admin')
+  @ApiOperation({ summary: 'Get all schedules for admin' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
   @ApiQuery({ name: 'movieName', required: false, type: String, example: 'Avengers' })
@@ -44,7 +48,8 @@ export class ScheduleController {
   @ApiQuery({ name: 'sortBy', required: false, type: String, example: 'schedule.id' })
   @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], example: 'DESC' })
   @ApiOperation({ summary: 'Get all schedules' })
-  async findAll(@Query() query: SchedulePaginationDto) {
+  async findAll(@Query() query: SchedulePaginationDto, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can access this endpoint.');
     const {
       page = 1,
       take = 10,
@@ -57,11 +62,7 @@ export class ScheduleController {
     });
 
   }
-  @Get('user')
-  @ApiOperation({ summary: 'Get all schedules' })
-  async findAllUser() {
-    return await this.scheduleService.find();
-  }
+
 
   @Post()
   @ApiOperation({ summary: 'Create a new schedule (admin, employee only)' })

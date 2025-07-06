@@ -21,7 +21,12 @@ export class GerneService {
     private readonly gerneRepository: Repository<Gerne>,
 
   ) { }
-
+  async getAllGernesUser(): Promise<Gerne[]> {
+    return await this.gerneRepository.find({
+      where: { is_deleted: false },
+      relations: ['movies'],
+    });
+  }
   async createGerne(createGerneDto: CreateGerneDto): Promise<{ msg: string }> {
     const existing = await this.gerneRepository.findOne({
       where: { genre_name: createGerneDto.genre_name },

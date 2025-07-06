@@ -24,6 +24,12 @@ export class ProductService {
         private readonly productRepository: Repository<Product>
     ) { }
 
+    async getAllProductsUser(): Promise<Product[]> {
+        return await this.productRepository.find({
+            where: { is_deleted: false }
+        });
+    }
+
     async getAllProducts(fillters: ProductPaginationDto) {
         const qb = this.productRepository.createQueryBuilder('product')
 

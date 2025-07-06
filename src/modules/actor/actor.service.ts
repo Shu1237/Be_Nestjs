@@ -24,6 +24,14 @@ export class ActorService {
     @InjectRepository(Movie)
     private readonly movieRepository: Repository<Movie>,
   ) { }
+  
+
+  async getAllActorsUser(): Promise<Actor[]> {
+    return await this.actorRepository.find({
+      where: { is_deleted: false },
+      relations: ['movies'],
+    });
+  }
 
   async createActor(createActorDto: CreateActorDto): Promise<{ msg: string }> {
     const existingActor = await this.actorRepository.findOneBy({

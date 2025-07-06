@@ -16,8 +16,8 @@ export class HistoryScoreController {
   ) {
 
   }
-  @Get()
-  @ApiOperation({ summary: 'Get all history scores with filters, search, sort, and pagination' })
+  @Get('admin')
+  @ApiOperation({ summary: 'Get all history scores for admin' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
   @ApiQuery({ name: 'startDate', required: false, type: String, example: '2025-07-01' })
@@ -41,7 +41,7 @@ export class HistoryScoreController {
   }
 
   @Get('user')
-  @ApiOperation({ summary: 'Get history scores of current logged-in user' })
+  @ApiOperation({ summary: 'Get history scores for user' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
   @ApiQuery({ name: 'startDate', required: false, type: String, example: '2025-07-01' })

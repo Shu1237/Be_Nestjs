@@ -62,7 +62,13 @@ export class MovieService {
       })),
     };
   }
-
+  async getAllMoviesUser() {
+    const movies = await this.movieRepository.find({
+      where: { is_deleted: false },
+      relations: ['gernes', 'actors', 'versions'],
+    });
+    return movies.map((movie) => this.getMovieSummary(movie));
+  }
   async getAllMovies(fillters: MoviePaginationDto) {
     const qb = this.movieRepository.createQueryBuilder('movie')
       .leftJoinAndSelect('movie.actors', 'actor')

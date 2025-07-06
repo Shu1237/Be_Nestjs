@@ -10,7 +10,7 @@ import {
   Patch,
   Query,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiBody, ApiQuery } from '@nestjs/swagger';
+import {  ApiBearerAuth, ApiOperation, ApiBody, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { SeatService } from './seat.service';
 import { CreateSeatDto } from './dto/create-seat.dto';
@@ -20,14 +20,18 @@ import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 import { SeatPaginationDto } from 'src/common/pagination/dto/seat/seatPagination.dto';
 
 
-// @UseGuards(JwtAuthGuard)
-// @ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
 @Controller('seat')
 export class SeatController {
   constructor(private readonly seatService: SeatService) { }
-
-  @Get()
-  @ApiOperation({ summary: 'Get all seats with filters, search, sort, and pagination' })
+  @Get('user')
+  @ApiOperation({ summary: 'Get all seats for users' })
+  async getAllSeatsUser() {
+    return await this.seatService.getAllSeatsUser();
+  }
+  @Get('admin')
+  @ApiOperation({ summary: 'Get all seats for admin' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
   @ApiQuery({ name: 'cinema_room_id', required: false, type: String, example: 'room-uuid' })
@@ -38,7 +42,8 @@ export class SeatController {
   @ApiQuery({ name: 'sortBy', required: false, type: String, example: 'seat.seat_row' })
   @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], example: 'ASC' })
   @ApiOperation({ summary: 'Get all seats' })
-  getAllSeats(@Query() query: SeatPaginationDto) {
+  getAllSeats(@Query() query: SeatPaginationDto, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can access this endpoint.');
     const {
       page = 1,
       take = 10,

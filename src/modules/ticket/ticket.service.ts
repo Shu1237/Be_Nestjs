@@ -56,8 +56,15 @@ export class TicketService {
         name: ticket.seat.seatType.seat_type_name,
       }
     };
-  }
-
+  } 
+   
+ async getAllTicketsUser() {
+    const tickets = await this.ticketRepository.find({
+      where: { is_used: false, status: true },
+      relations: ['schedule', 'schedule.movie', 'schedule.cinemaRoom', 'seat', 'seat.seatType', 'ticketType']
+    });
+    return tickets.map((ticket) => this.summaryTicket(ticket));
+ }
   async getAllTickets(fillters: TicketPaginationDto) {
     const qb = this.ticketRepository
       .createQueryBuilder('ticket')

@@ -19,7 +19,11 @@ export class VersionService {
     @InjectRepository(Version)
     private readonly versionRepository: Repository<Version>,
   ) { }
-
+  async getAllVersionsUser(): Promise<Version[]> {
+    return await this.versionRepository.find({
+      where: { is_deleted: false },
+    });
+  }
   async create(
     createVersionDto: CreateVersionDto,
   ): Promise<{ message: string }> {

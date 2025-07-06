@@ -22,7 +22,11 @@ export class CinemaRoomService {
     @InjectRepository(CinemaRoom)
     private readonly cinemaRoomRepository: Repository<CinemaRoom>,
   ) { }
-
+  async getAllCinemaRoomsUser(): Promise<CinemaRoom[]> {
+    return await this.cinemaRoomRepository.find({
+      where: { is_deleted: false },
+    });
+  }
   async create(createCinemaRoomDto: CreateCinemaRoomDto):
     Promise<{ message: string }> {
     const existing = await this.cinemaRoomRepository.findOne({

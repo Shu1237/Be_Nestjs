@@ -26,14 +26,21 @@ import { JWTUserType } from 'src/common/utils/type';
 import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 import { ActorPaginationDto } from 'src/common/pagination/dto/actor/actor-pagination.dto';
 
-@ApiTags('Actors')
+
 @ApiBearerAuth()
 @Controller('actor')
 export class ActorController {
   constructor(private readonly actorService: ActorService) { }
+  
 
-  @Get()
-  @ApiOperation({ summary: 'Get all actors with filters, pagination, and sorting' })
+  @Get('user')
+  @ApiOperation({ summary: 'Get all actors for users' })
+  async getAllActorsUser() {
+    return await this.actorService.getAllActorsUser();
+  }
+
+  @Get('admin')
+  @ApiOperation({ summary: 'Get all actors for admin' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
   @ApiQuery({ name: 'search', required: false, type: String, example: 'name | stage_name | nationality' })
@@ -45,7 +52,8 @@ export class ActorController {
   @ApiQuery({ name: 'nationality', required: false, type: String, example: 'American' })
   @ApiQuery({ name: 'date_of_birth', required: false, type: String, example: '1990-01-01' })
   @ApiOperation({ summary: 'Get all actors' })
-  async getAllActors(@Query() query: ActorPaginationDto) {
+  async getAllActors(@Query() query: ActorPaginationDto, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can access this endpoint.');
     const {
       page = 1,
       take = 10,
