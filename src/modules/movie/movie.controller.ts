@@ -41,7 +41,7 @@ export class MovieController {
     checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can create a movie.');
     return this.movieService.createMovie(movieDto);
   }
-  // @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard)
   @Get('admin')
   @ApiOperation({ summary: 'Get all movies for admin' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
@@ -59,7 +59,7 @@ export class MovieController {
   @ApiQuery({ name: 'version_id', required: false, type: Number, example: 3 })
   @ApiOperation({ summary: 'Get all movies' })
   getAllMovies(@Query() query: MoviePaginationDto, @Req() req) {
-    // checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can view all movies.');
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can view all movies.');
     const {
       page = 1,
       take = 10,
