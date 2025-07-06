@@ -19,13 +19,13 @@ import { UserPaginationDto } from 'src/common/pagination/dto/user/userPagination
 
 
 @Controller('users')
-// @UseGuards(JwtAuthGuard)
-// @ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
 export class UserController {
   constructor(private readonly userService: UserService) { }
 
-  @Get()
-  @ApiOperation({ summary: 'Search all users (admin, employee only)' })
+  @Get('admin')
+  @ApiOperation({ summary: 'Get all users for admin' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
   @ApiQuery({ name: 'status', required: false, type: Boolean, example: true })
@@ -34,7 +34,7 @@ export class UserController {
   @ApiQuery({ name: 'sortBy', required: false, type: String, example: 'user.status' })
   @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], example: 'DESC' })
   findAll(@Query() query: UserPaginationDto, @Req() req) {
-    // checkAdminEmployeeRole(req.user, 'Only admin or employee can view all users');
+    checkAdminEmployeeRole(req.user, 'Only admin or employee can view all users');
     const {
       page = 1,
       take = 10,

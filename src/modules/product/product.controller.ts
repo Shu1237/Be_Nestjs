@@ -15,8 +15,13 @@ export class ProductController {
     constructor(
         private readonly productService: ProductService
     ) { }
-    @Get()
-    @ApiOperation({ summary: 'Get all products with filters, search, sort, and pagination' })
+    @Get('user')
+    @ApiOperation({ summary: 'Get all products for users' })
+    async getAllProductsUser() {
+        return await this.productService.getAllProductsUser();
+    }
+    @Get('admin')
+    @ApiOperation({ summary: 'Get all products for admin' })
     @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
     @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
     @ApiQuery({ name: 'search', required: false, type: String, example: 'Pizza' })
@@ -25,7 +30,8 @@ export class ProductController {
     @ApiQuery({ name: 'category', required: false, type: String, example: 'food' })
     @ApiQuery({ name: 'type', required: false, type: String, example: 'main' })
     @ApiQuery({ name: 'is_deleted', required: false, type: Boolean, example: false })
-    getAllProducts(@Query() query: ProductPaginationDto) {
+    getAllProducts(@Query() query: ProductPaginationDto,@Req() req) {
+        checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can access this endpoint.');
         const {
             page = 1,
             take = 10,

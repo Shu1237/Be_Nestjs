@@ -15,9 +15,7 @@ import {
 import { CinemaRoomService } from './cinema-room.service';
 import { CreateCinemaRoomDto } from './dto/create-cinema-room.dto';
 import { UpdateCinemaRoomDto } from './dto/update-cinema-room.dto';
-
 import {
-  ApiTags,
   ApiBearerAuth,
   ApiOperation,
   ApiQuery,
@@ -28,20 +26,24 @@ import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 import { CinemaRoomPaginationDto } from 'src/common/pagination/dto/cinmeroom/cinmearoomPagiantion.dto';
 
 @UseGuards(JwtAuthGuard)
-@ApiTags('Cinema Rooms')
 @ApiBearerAuth()
 @Controller('cinema-rooms')
 export class CinemaRoomController {
   constructor(private readonly cinemaRoomService: CinemaRoomService) { }
 
-
-  @Get()
-  @ApiOperation({ summary: 'Get all cinema rooms' })
+  @Get('user')
+  @ApiOperation({ summary: 'Get all cinema rooms for users' })
+  async getAllCinemaRoomsUser() {
+    return await this.cinemaRoomService.getAllCinemaRoomsUser();
+  }
+  @Get('admin')
+  @ApiOperation({ summary: 'Get all cinema rooms for admin' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
   @ApiQuery({ name: 'search', required: false, type: String, example: 'Room 1' })
   @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], example: 'ASC' })
-  async findAll(@Query() query: CinemaRoomPaginationDto) {
+  async findAll(@Query() query: CinemaRoomPaginationDto, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can access this endpoint.');
     const {
       page = 1,
       take = 10,

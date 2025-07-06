@@ -13,9 +13,14 @@ import { TicketPaginationDto } from 'src/common/pagination/dto/ticket/ticket-pag
 export class TicketController {
   constructor(private readonly ticketService: TicketService) { }
 
-
-  @Get()
-  @ApiOperation({ summary: 'Get all tickets with pagination, search, filter, sort' })
+  @Get('user')
+  @ApiOperation({ summary: 'Get all tickets for users' })
+  async getAllTicketsUser(@Req() req) {
+     checkAdminEmployeeRole(req.user, 'You do not have permission to view all tickets');
+    return await this.ticketService.getAllTicketsUser();
+  }
+  @Get('admin')
+  @ApiOperation({ summary: 'Get all tickets for admin' })
   @ApiBearerAuth()
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
@@ -44,7 +49,7 @@ export class TicketController {
 
 
 
-  @Get('user')
+  @Get('tickets-by-user-id')
   @ApiOperation({ summary: 'Get tickets by user ID with filters, search, sort' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })

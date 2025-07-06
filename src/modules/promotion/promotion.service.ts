@@ -21,7 +21,12 @@ export class PromotionService {
     @InjectRepository(Promotion)
     private readonly promotionRepository: Repository<Promotion>,
   ) { }
-
+  async getAllPromotionsUser(): Promise<Promotion[]> {
+    return await this.promotionRepository.find({
+      where: { is_active: true },
+      relations: ['promotionType'],
+    });
+  }
   async getAllPromotions(fillters: PromotionPaginationDto) {
     const qb = this.promotionRepository.createQueryBuilder('promotion')
       .leftJoinAndSelect('promotion.promotionType', 'promotionType')

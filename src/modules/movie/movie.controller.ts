@@ -14,7 +14,6 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
-  ApiTags,
   ApiOperation,
   ApiQuery,
 } from '@nestjs/swagger';
@@ -25,12 +24,16 @@ import { UpdateMovieDto } from './dtos/updateMovie.dto';
 import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 import { MoviePaginationDto } from 'src/common/pagination/dto/movie/moviePagination.dto';
 
-@ApiTags('Movies')
 @ApiBearerAuth()
 @Controller('movies')
 export class MovieController {
   constructor(private readonly movieService: MovieService) { }
-
+   
+  @Get('user')
+  @ApiOperation({ summary: 'Get all movies for user' })
+  getMovie(@Req() req) {
+    return this.movieService.getAllMoviesUser();
+  }
   @UseGuards(JwtAuthGuard)
   @Post()
   @ApiOperation({ summary: 'Create a new movie' })
@@ -38,9 +41,9 @@ export class MovieController {
     checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can create a movie.');
     return this.movieService.createMovie(movieDto);
   }
-
-  @Get()
-  @ApiOperation({ summary: 'Get all movies' })
+  @UseGuards(JwtAuthGuard)
+  @Get('admin')
+  @ApiOperation({ summary: 'Get all movies for admin' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
   @ApiQuery({ name: 'search', required: false, type: String, example: 'Avengers' })
@@ -56,7 +59,7 @@ export class MovieController {
   @ApiQuery({ name: 'version_id', required: false, type: Number, example: 3 })
   @ApiOperation({ summary: 'Get all movies' })
   getAllMovies(@Query() query: MoviePaginationDto, @Req() req) {
-    // checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can view all movies.');
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can view all movies.');
     const {
       page = 1,
       take = 10,

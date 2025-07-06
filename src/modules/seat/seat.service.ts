@@ -29,8 +29,6 @@ export class SeatService {
     private seatTypeRepository: Repository<SeatType>,
     @InjectRepository(CinemaRoom)
     private cinemaRoomRepository: Repository<CinemaRoom>,
-    @InjectRepository(Schedule)
-    private scheduleRepository: Repository<Schedule>,
     @InjectRepository(ScheduleSeat)
     private scheduleSeatRepository: Repository<ScheduleSeat>,
 
@@ -53,8 +51,13 @@ export class SeatService {
       }
     };
   }
-
-
+  async getAllSeatsUser(): Promise<Seat[]> {
+    return await this.seatRepository.find({
+      where: { is_deleted: false },
+      relations: ['seatType', 'cinemaRoom'],
+    });
+  }
+   
   async getAllSeats(fillters: SeatPaginationDto) {
     const qb = this.seatRepository.createQueryBuilder('seat')
       .leftJoinAndSelect('seat.seatType', 'seatType')
