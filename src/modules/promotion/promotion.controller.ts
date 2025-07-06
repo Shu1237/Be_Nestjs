@@ -9,17 +9,17 @@ import {
   Put,
   UseGuards,
   Req,
+  Query,
 } from '@nestjs/common';
 import { PromotionService } from './promotion.service';
 import { CreatePromotionDto } from './dto/create-promotion.dto';
 import { UpdatePromotionDto } from './dto/update-promotion.dto';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
-import { ApiBearerAuth, ApiOperation, ApiBody, ApiTags } from '@nestjs/swagger';
-import { ChangePromotionDto } from './dto/change-promotion.dto';
-import { JWTUserType } from 'src/common/utils/type';
+import { ApiBearerAuth, ApiOperation, ApiBody, ApiTags, ApiQuery } from '@nestjs/swagger';
 import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
+import { PromotionPaginationDto } from 'src/common/pagination/dto/promotion/promotionPagination.dto';
 
-@ApiTags('Promotions')
+
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 @Controller('promotion')
@@ -27,19 +27,33 @@ export class PromotionController {
   constructor(private readonly promotionService: PromotionService) { }
 
   @Get()
-  @ApiOperation({ summary: 'Get all promotions' })
-  getAllPromotions() {
-    return this.promotionService.getAllPromotions();
+  @ApiOperation({ summary: 'Get all promotions with filters, search, sort, and pagination' })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
+  @ApiQuery({ name: 'exchange', required: false, type: Number, example: 500 })
+  @ApiQuery({ name: 'exchangeFrom', required: false, type: Number, example: 100 })
+  @ApiQuery({ name: 'exchangeTo', required: false, type: Number, example: 1000 })
+  @ApiQuery({ name: 'promtion_type_id', required: false, type: Number, example: 2 })
+  @ApiQuery({ name: 'startTime', required: false, type: String, example: '2025-07-01' })
+  @ApiQuery({ name: 'endTime', required: false, type: String, example: '2025-07-31' })
+  @ApiQuery({ name: 'is_active', required: false, type: Boolean, example: true })
+  @ApiQuery({ name: 'search', required: false, type: String, example: 'summer-sale' })
+  @ApiQuery({ name: 'sortBy', required: false, type: String, example: 'promotion.start_time' })
+  @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], example: 'DESC' })
+  getAllPromotions(@Query() query: PromotionPaginationDto) {
+    const {
+      page = 1,
+      take = 10,
+      ...restFilters
+    } = query;
+    return this.promotionService.getAllPromotions({
+      page,
+      take: Math.min(take, 100),
+      ...restFilters,
+    });
   }
 
-  @Post('changePromotion')
-  @ApiOperation({ summary: 'Đổi điểm lấy mã khuyến mãi' })
-  @ApiBody({ type: ChangePromotionDto })
-  changePromotion(@Body() body: ChangePromotionDto, @Req() req) {
-    const user = req.user as JWTUserType;
-    return this.promotionService.changePromotion(body, user);
-  }
-
+  
   @Post()
   @ApiOperation({ summary: 'Create new promotion (admin only)' })
   @ApiBody({ type: CreatePromotionDto })

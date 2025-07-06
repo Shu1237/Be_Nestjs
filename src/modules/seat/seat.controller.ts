@@ -8,26 +8,48 @@ import {
   UseGuards,
   Req,
   Patch,
+  Query,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiBody, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { SeatService } from './seat.service';
 import { CreateSeatDto } from './dto/create-seat.dto';
 import { UpdateSeatDto } from './dto/update-seat.dto';
 import { BulkCreateSeatDto } from './dto/BulkCreateSeatDto';
 import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
+import { SeatPaginationDto } from 'src/common/pagination/dto/seat/seatPagination.dto';
 
-@ApiTags('Seats')
-@UseGuards(JwtAuthGuard)
-@ApiBearerAuth()
+
+// @UseGuards(JwtAuthGuard)
+// @ApiBearerAuth()
 @Controller('seat')
 export class SeatController {
-  constructor(private readonly seatService: SeatService) {}
+  constructor(private readonly seatService: SeatService) { }
 
   @Get()
+  @ApiOperation({ summary: 'Get all seats with filters, search, sort, and pagination' })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
+  @ApiQuery({ name: 'cinema_room_id', required: false, type: String, example: 'room-uuid' })
+  @ApiQuery({ name: 'seat_type_id', required: false, type: String, example: 'type-uuid' })
+  @ApiQuery({ name: 'seat_row', required: false, type: String, example: 'A' })
+  @ApiQuery({ name: 'seat_column', required: false, type: String, example: '5' })
+  @ApiQuery({ name: 'is_deleted', required: false, type: Boolean, example: false })
+  @ApiQuery({ name: 'sortBy', required: false, type: String, example: 'seat.seat_row' })
+  @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], example: 'ASC' })
   @ApiOperation({ summary: 'Get all seats' })
-  getAllSeats() {
-    return this.seatService.getAllSeats();
+  getAllSeats(@Query() query: SeatPaginationDto) {
+    const {
+      page = 1,
+      take = 10,
+      ...restFilters
+    } = query;
+
+    return this.seatService.getAllSeats({
+      page,
+      take: Math.min(take, 100),
+      ...restFilters,
+    });
   }
 
   @Get(':id')

@@ -5,6 +5,7 @@ import { StatusOrder } from 'src/common/enums/status-order.enum';
 import { StatusSeat } from 'src/common/enums/status_seat.enum';
 import { ScheduleSeat } from 'src/database/entities/cinema/schedule_seat';
 import { Order } from 'src/database/entities/order/order';
+import { OrderExtra } from 'src/database/entities/order/order-extra';
 import { Repository, LessThan } from 'typeorm';
 
 @Injectable()
@@ -16,7 +17,9 @@ export class OrderCronService {
     private readonly orderRepository: Repository<Order>,
     @InjectRepository(ScheduleSeat)
     private readonly scheduleSeatRepository: Repository<ScheduleSeat>,
-  ) {}
+    @InjectRepository(OrderExtra)
+    private readonly orderExtraRepository: Repository<OrderExtra>,
+  ) { }
 
   // Cron chạy mỗi 15 phút
   @Cron('*/20 * * * *', {
@@ -42,10 +45,12 @@ export class OrderCronService {
           'orderDetails.ticket',
           'orderDetails.ticket.seat',
           'orderDetails.schedule',
+          'orderExtras',
         ],
       });
 
-      const ordersToFail: Order[] = [];
+      let ordersToFail: Order[] = [];
+      let extrasToFail: OrderExtra[] = [];
 
       for (const order of expiredOrders) {
         // Kiểm tra xem suất chiếu vẫn chưa bắt đầu
@@ -53,6 +58,14 @@ export class OrderCronService {
         if (!firstSchedule || new Date(firstSchedule.start_movie_time) <= now) continue;
 
         this.logger.log(`Order ${order.id} is expired and eligible to be failed.`);
+        // update status orderExtras 
+        if (order.orderExtras && order.orderExtras.length > 0) {
+          for (const extra of order.orderExtras) {
+            extra.status = StatusOrder.FAILED;
+            this.logger.log(`Order Extra ${extra.id} marked as FAILED`);
+            extrasToFail.push(extra);
+          }
+        }
 
         // Cập nhật trạng thái ghế thành NOT_YET
         for (const detail of order.orderDetails) {
@@ -89,6 +102,9 @@ export class OrderCronService {
       // Lưu tất cả đơn hàng đã bị cập nhật
       if (ordersToFail.length > 0) {
         await this.orderRepository.save(ordersToFail);
+        if (extrasToFail.length > 0) {
+          await this.orderExtraRepository.save(extrasToFail);
+        }
         this.logger.log(`Marked ${ordersToFail.length} orders as FAILED`);
       } else {
         this.logger.log('No orders to update');

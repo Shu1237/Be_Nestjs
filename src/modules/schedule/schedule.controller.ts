@@ -10,25 +10,59 @@ import {
   Req,
   Put,
   ParseIntPipe,
+  Query,
 } from '@nestjs/common';
 import { ScheduleService } from './schedule.service';
 import { CreateScheduleDto } from './dto/create-schedule.dto';
 import { UpdateScheduleDto } from './dto/update-schedule.dto';
 import {
-  ApiTags,
   ApiBearerAuth,
   ApiOperation,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
+import { SchedulePaginationDto } from 'src/common/pagination/dto/shedule/schedulePagination.dto';
 
-@ApiTags('Schedules')
-@ApiBearerAuth()
 @Controller('schedules')
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
 export class ScheduleController {
-  constructor(private readonly scheduleService: ScheduleService) {}
+  constructor(private readonly scheduleService: ScheduleService) { }
 
-  @UseGuards(JwtAuthGuard)
+
+  @Get()
+  @ApiOperation({ summary: 'Get all schedules with filters, search, sort, and pagination' })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
+  @ApiQuery({ name: 'movieName', required: false, type: String, example: 'Avengers' })
+  @ApiQuery({ name: 'cinemaRoomName', required: false, type: String, example: 'Phòng chiếu 1' })
+  @ApiQuery({ name: 'scheduleStartTime', required: false, type: String, example: '2025-07-01' })
+  @ApiQuery({ name: 'scheduleEndTime', required: false, type: String, example: '2025-07-31' })
+  @ApiQuery({ name: 'version_id', required: false, type: Number, example: 2 })
+  @ApiQuery({ name: 'is_deleted', required: false, type: Boolean, example: false })
+  @ApiQuery({ name: 'sortBy', required: false, type: String, example: 'schedule.id' })
+  @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], example: 'DESC' })
+  @ApiOperation({ summary: 'Get all schedules' })
+  async findAll(@Query() query: SchedulePaginationDto) {
+    const {
+      page = 1,
+      take = 10,
+      ...restFilters
+    } = query;
+    return await this.scheduleService.findAll({
+      page,
+      take: Math.min(take, 100),
+      ...restFilters,
+    });
+
+  }
+  @Get('user')
+  @ApiOperation({ summary: 'Get all schedules' })
+  async findAllUser() {
+    return await this.scheduleService.find();
+  }
+
   @Post()
   @ApiOperation({ summary: 'Create a new schedule (admin, employee only)' })
   async create(@Body() createScheduleDto: CreateScheduleDto, @Req() req) {
@@ -36,14 +70,9 @@ export class ScheduleController {
     return await this.scheduleService.create(createScheduleDto);
   }
 
-  @UseGuards(JwtAuthGuard)
-  @Get()
-  @ApiOperation({ summary: 'Get all schedules' })
-  async findAll() {
-    return await this.scheduleService.find();
-  }
 
-  @UseGuards(JwtAuthGuard)
+
+
   @Get(':id')
   @ApiOperation({ summary: 'Get schedule by ID' })
   async findOut(@Param('id') id: number) {
@@ -51,8 +80,8 @@ export class ScheduleController {
   }
 
 
-  
-  @UseGuards(JwtAuthGuard)
+
+
   @Put(':id')
   @ApiOperation({ summary: 'Update schedule by ID (admin, employee only)' })
   async update(
@@ -63,7 +92,7 @@ export class ScheduleController {
     checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can update a schedule.');
     return await this.scheduleService.update(id, updateScheduleDto);
   }
-  @UseGuards(JwtAuthGuard)
+
   @Patch(':id/soft-delete')
   @ApiOperation({ summary: 'Soft delete a schedule (admin, employee only)' })
   async softDeleteSchedule(@Param('id', ParseIntPipe) id: number, @Req() req) {
@@ -71,7 +100,7 @@ export class ScheduleController {
     return await this.scheduleService.softDeleteSchedule(id);
   }
 
-  @UseGuards(JwtAuthGuard)
+
   @Delete(':id')
   @ApiOperation({ summary: 'Delete schedule by ID (admin, employee only)' })
   async remove(@Param('id') id: number, @Req() req) {

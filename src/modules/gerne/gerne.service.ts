@@ -7,6 +7,12 @@ import { UpdateGerneDto } from './dtos/updateGerne';
 import { Movie } from 'src/database/entities/cinema/movie';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
 import { NotFoundException } from 'src/common/exceptions/not-found.exception';
+import { GernePaginationDto } from 'src/common/pagination/dto/gerne/gerne.dto';
+import { applyCommonFilters } from 'src/common/pagination/applyCommonFilters';
+import { gerneFieldMapping } from 'src/common/pagination/fillters/gerne-field-mapping';
+import { applySorting } from 'src/common/pagination/apply_sort';
+import { applyPagination } from 'src/common/pagination/applyPagination';
+import { buildPaginationResponse } from 'src/common/pagination/pagination-response';
 
 @Injectable()
 export class GerneService {
@@ -32,8 +38,28 @@ export class GerneService {
     return { msg: 'Gerne created successfully' };
   }
 
-  async findAllGernes(): Promise<Gerne[]> {
-    return await this.gerneRepository.find();
+  async findAllGernes(filters: GernePaginationDto) {
+    const qb = this.gerneRepository.createQueryBuilder('gerne');
+
+    applyCommonFilters(qb, filters, gerneFieldMapping)
+
+    const allowedSortFields = [
+      'gerne.genre_name',
+    ]
+    applySorting(qb, filters.sortBy, filters.sortOrder, allowedSortFields, 'gerne.genre_name')
+
+    applyPagination(qb, {
+      page: filters.page,
+      take: filters.take,
+    });
+
+    const [gernes, total] = await qb.getManyAndCount();
+     return buildPaginationResponse(gernes,{
+      page: filters.page,
+      take: filters.take,
+      total,
+     })
+  
   }
 
   async findGerneById(id: number): Promise<Gerne> {

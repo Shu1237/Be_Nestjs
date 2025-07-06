@@ -7,6 +7,12 @@ import { CreatePromotionDto } from './dto/create-promotion.dto';
 import { UpdatePromotionDto } from './dto/update-promotion.dto';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
 import { NotFoundException } from 'src/common/exceptions/not-found.exception';
+import { PromotionPaginationDto } from 'src/common/pagination/dto/promotion/promotionPagination.dto';
+import { applyCommonFilters } from 'src/common/pagination/applyCommonFilters';
+import { promotionFieldMapping } from 'src/common/pagination/fillters/promtion-field-mapping';
+import { applySorting } from 'src/common/pagination/apply_sort';
+import { applyPagination } from 'src/common/pagination/applyPagination';
+import { buildPaginationResponse } from 'src/common/pagination/pagination-response';
 
 
 @Injectable()
@@ -14,11 +20,42 @@ export class PromotionService {
   constructor(
     @InjectRepository(Promotion)
     private readonly promotionRepository: Repository<Promotion>,
-  ) {}
+  ) { }
 
-  async getAllPromotions() {
-    return this.promotionRepository.find({
-      where: { is_active: true },
+  async getAllPromotions(fillters: PromotionPaginationDto) {
+    const qb = this.promotionRepository.createQueryBuilder('promotion')
+      .leftJoinAndSelect('promotion.promotionType', 'promotionType')
+
+    applyCommonFilters(qb, fillters, promotionFieldMapping);
+
+    const allowedFields = [
+      'promotion.exchange',
+      'promotionType.id',
+    ];
+    applySorting(qb, fillters.sortBy, fillters.sortOrder, allowedFields, 'promotion.id');
+
+    applyPagination(qb, {
+      page: fillters.page,
+      take: fillters.take,
+    })
+    const [promotions, total] = await qb.getManyAndCount();
+   const counts = await this.promotionRepository
+  .createQueryBuilder('promotion')
+  .select([
+    `SUM(CASE WHEN promotion.is_active = false THEN 1 ELSE 0 END) AS activeCount`,
+    `SUM(CASE WHEN promotion.is_active = true THEN 1 ELSE 0 END) AS deletedCount`,
+  ])
+  .getRawOne();
+
+  const activeCount = counts.activeCount || 0;
+  const deletedCount = counts.deletedCount || 0;
+
+    return buildPaginationResponse(promotions, {
+      total,
+      page: fillters.page,
+      take: fillters.take,
+      activeCount,
+      deletedCount,
     });
   }
 
@@ -93,42 +130,7 @@ export class PromotionService {
     return { msg: 'Promotion deleted successfully' };
   }
 
-  async changePromotion(body: ChangePromotionType, user: JWTUserType) {
-    // const userData = await this.userRepository.findOne({
-    //   where: { id: user.account_id },
-    //   relations: ['member'],
-    // });
-    // if (!userData) throw new NotFoundException('User not found');
-    // const promotion = await this.promotionRepository.findOne({
-    //   where: { id: body.id, is_active: true },
-    // });
-    // if (!promotion)
-    //   throw new NotFoundException('Promotion not found or inactive');
-    // const now = new Date();
-    // if (
-    //   (promotion.start_time && now < promotion.start_time) ||
-    //   (promotion.end_time && now > promotion.end_time)
-    // ) {
-    //   throw new BadRequestException(
-    //     'Promotion is not active during this period',
-    //   );
-    // }
-    // if (!userData.member) {
-    //   throw new BadRequestException('User does not have a member account');
-    // }
-    // if (Number(userData.member.score) < Number(promotion.exchange)) {
-    //   throw new BadRequestException(
-    //     'Insufficient points to exchange for this promotion',
-    //   );
-    // }
-    // // Deduct points from member
-    // const newScore = Number(userData.member.score) - Number(promotion.exchange);
-    // userData.member.score = newScore;
-    // await this.memberRepository.save(userData.member);
-    // return {
-    //   msg: 'Exchange successfully',
-    // };
-  }
+
   private validateDates(
     start_time?: string,
     end_time?: string,
