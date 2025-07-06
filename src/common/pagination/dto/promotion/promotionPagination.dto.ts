@@ -20,7 +20,7 @@ export class PromotionPaginationDto extends BasePaginationDto {
 
   @IsOptional()
   @IsString()
-  promtion_type_id?: string;
+  promotion_type_id?: string;
 
   @IsOptional()
   @IsString()
