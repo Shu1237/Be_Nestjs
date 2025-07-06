@@ -9,48 +9,68 @@ import {
   ParseIntPipe,
   UseGuards,
   Req,
-  ForbiddenException,
   Put,
+  Query,
 } from '@nestjs/common';
 import { GerneService } from './gerne.service';
 import { Gerne } from 'src/database/entities/cinema/gerne';
 import { CreateGerneDto } from './dtos/createGerne';
 import { UpdateGerneDto } from './dtos/updateGerne';
 import {
-  ApiTags,
   ApiOperation,
   ApiBearerAuth,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
-import { JWTUserType } from 'src/common/utils/type';
-import { Role } from 'src/common/enums/roles.enum';
 import { Movie } from 'src/database/entities/cinema/movie';
+import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
+import { GernePaginationDto } from 'src/common/pagination/dto/gerne/gerne.dto';
 
-@ApiTags('Gernes')
+
 @ApiBearerAuth()
 @Controller('gernes')
 export class GerneController {
-  constructor(private readonly gerneService: GerneService) {}
+  constructor(private readonly gerneService: GerneService) { }
+
+
+  @Get('user')
+  @ApiOperation({ summary: 'Get all genres for users' })
+  async getAllGernesUser(): Promise<Gerne[]> {
+    return await this.gerneService.getAllGernesUser();
+  }
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get all genres for admin' })
+  @Get('admin')
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
+  @ApiQuery({ name: 'search', required: false, type: String, example: 'Action' })
+  @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], example: 'ASC' })
+  async findAllGernes(@Query() query: GernePaginationDto, @Req() req) {
+
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can access this endpoint.');
+    const {
+      page = 1,
+      take = 10,
+      ...restFilters
+    } = query;
+
+    return await this.gerneService.findAllGernes({
+      page,
+      take: Math.min(take, 100),
+      ...restFilters,
+    });
+  }
 
   @UseGuards(JwtAuthGuard)
   @Post()
   @ApiOperation({ summary: 'Create a new genre (admin, employee only)' })
   createGerne(@Body() createGerneDto: CreateGerneDto, @Req() req) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException(
-        'Unauthorized: Only admin or employee can create a genre.',
-      );
-    }
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can create a genre.');
     return this.gerneService.createGerne(createGerneDto);
   }
 
-  @Get()
-  @ApiOperation({ summary: 'Get all genres' })
-  async findAllGernes(): Promise<Gerne[]> {
-    return await this.gerneService.findAllGernes();
-  }
 
+ 
   @Get(':id')
   @ApiOperation({ summary: 'Get genre by ID' })
   async findGerneById(@Param('id', ParseIntPipe) id: number): Promise<Gerne> {
@@ -65,25 +85,15 @@ export class GerneController {
     @Body() updateGerneDto: UpdateGerneDto,
     @Req() req,
   ) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException(
-        'Unauthorized: Only admin or employee can create a genre.',
-      );
-    }
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can update a genre.');
     return this.gerneService.updateGerne(id, updateGerneDto);
   }
   @UseGuards(JwtAuthGuard)
   @Patch(':id/soft-delete')
   @ApiOperation({ summary: 'Soft delete a genre (admin, employee only)' })
-   softDeleteGerne(@Param('id', ParseIntPipe) id: number, @Req() req) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException(
-        'Unauthorized: Only admin or employee can soft delete a genre.',
-      );
-    }
-    return  this.gerneService.softDeleteGerne(id);
+  softDeleteGerne(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can soft delete a genre.');
+    return this.gerneService.softDeleteGerne(id);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -93,12 +103,7 @@ export class GerneController {
     @Param('id', ParseIntPipe) id: number,
     @Req() req,
   ): Promise<void> {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException(
-        'Unauthorized: Only admin can delete a genre.',
-      );
-    }
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin can delete a genre.');
     return await this.gerneService.deleteGerne(id);
   }
 

@@ -5,6 +5,12 @@ import { In, Repository } from 'typeorm';
 import { User } from 'src/database/entities/user/user';
 import { NotFoundException } from 'src/common/exceptions/not-found.exception';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
+import { TicketPaginationDto } from 'src/common/pagination/dto/ticket/ticket-pagination.dto';
+import { applyCommonFilters } from 'src/common/pagination/applyCommonFilters';
+import { ticketFieldMapping } from 'src/common/pagination/fillters/ticket-field-mapping';
+import { buildPaginationResponse } from 'src/common/pagination/pagination-response';
+import { applySorting } from 'src/common/pagination/apply_sort';
+import { applyPagination } from 'src/common/pagination/applyPagination';
 
 @Injectable()
 export class TicketService {
@@ -31,6 +37,10 @@ export class TicketService {
           duration: ticket.schedule.movie.duration,
           thumbnail: ticket.schedule.movie.thumbnail,
         },
+        version: {
+          id: ticket.schedule.version.id,
+          name: ticket.schedule.version.name,
+        },
         cinemaRoom: {
           id: ticket.schedule.cinemaRoom.id,
           name: ticket.schedule.cinemaRoom.cinema_room_name,
@@ -46,55 +56,77 @@ export class TicketService {
         name: ticket.seat.seatType.seat_type_name,
       }
     };
-  }
-
-  async getAllTickets({
-    skip,
-    take,
-    page,
-    is_used,
-    active = true,
-  }: {
-    skip: number;
-    take: number;
-    page: number;
-    is_used?: boolean;
-    active?: boolean;
-  }) {
-    const query = this.ticketRepository
+  } 
+   
+ async getAllTicketsUser() {
+    const tickets = await this.ticketRepository.find({
+      where: { is_used: false, status: true },
+      relations: ['schedule', 'schedule.movie', 'schedule.cinemaRoom', 'seat', 'seat.seatType', 'ticketType']
+    });
+    return tickets.map((ticket) => this.summaryTicket(ticket));
+ }
+  async getAllTickets(fillters: TicketPaginationDto) {
+    const qb = this.ticketRepository
       .createQueryBuilder('ticket')
       .leftJoinAndSelect('ticket.schedule', 'schedule')
       .leftJoinAndSelect('schedule.movie', 'movie')
+      .leftJoinAndSelect('schedule.version', 'version')
       .leftJoinAndSelect('schedule.cinemaRoom', 'cinemaRoom')
       .leftJoinAndSelect('ticket.seat', 'seat')
       .leftJoinAndSelect('seat.seatType', 'seatType')
       .leftJoinAndSelect('ticket.ticketType', 'ticketType')
       .leftJoinAndSelect('ticket.orderDetail', 'orderDetail')
       .leftJoinAndSelect('orderDetail.order', 'order')
-      .orderBy('order.order_date', 'DESC')
-      .skip(skip)
-      .take(take);
 
-    // 
-    if (typeof is_used === 'boolean') {
-      query.andWhere('ticket.is_used = :is_used', { is_used });
-    }
-    if (typeof active === 'boolean') {
-      query.andWhere('ticket.status = :active', { active });
-    }
 
-    const [tickets, total] = await query.getManyAndCount();
 
-    const summaries = tickets.map(ticket => this.summaryTicket(ticket));
+    applyCommonFilters(qb, fillters, ticketFieldMapping);
 
-    return {
-      data: summaries,
-      total,
-      page,
-      pageSize: take,
-      totalPages: Math.ceil(total / take),
-    };
+    const allowedSortFields = [
+      'schedule.id',
+      'ticketType.id',
+      'ticket.is_used',
+      'ticket.status',
+    ];
+    applySorting(
+      qb,
+      fillters.sortBy,
+      fillters.sortOrder,
+      allowedSortFields,
+      'schedule.id',
+    );
+
+
+    applyPagination(qb, {
+      page: fillters.page,
+      take: fillters.take,
+    });
+    const [tickets, total] = await qb.getManyAndCount();
+    const summaries = tickets.map((ticket) => this.summaryTicket(ticket));
+
+    const result = await this.ticketRepository
+      .createQueryBuilder('ticket')
+      .select([
+        `SUM(CASE WHEN ticket.status = true AND ticket.is_used = false THEN 1 ELSE 0 END) AS totalAvailable`,
+        `SUM(CASE WHEN ticket.status = true AND ticket.is_used = true THEN 1 ELSE 0 END) AS totalUsedActive`,
+      ])
+      .getRawOne<{ totalAvailable: string; totalUsedActive: string }>();
+
+    const totalAvailable = parseInt(result?.totalAvailable || '0', 10);
+    const totalUsedActive = parseInt(result?.totalUsedActive || '0', 10);
+    return buildPaginationResponse(
+      summaries,
+      {
+        total,
+        page: fillters.page,
+        take: fillters.take,
+        totalAvailable,
+        totalUsedActive,
+      }
+
+    );
   }
+
 
 
   async getTicketById(id: string) {
@@ -111,108 +143,73 @@ export class TicketService {
 
 
 
-  // private mapTicketByUser(user: User) {
-  //   return {
-  //     id: user.id,
-  //     name: user.username,
-  //     email: user.email,
-  //     tickets: user.orders.flatMap(order =>
-  //       order.orderDetails.map(detail => {
-  //         const ticket = detail.ticket;
-  //         return {
-  //           id: ticket.id,
-  //           is_used: ticket.is_used,
-  //           status: ticket.status,
-  //           ticketType: {
-  //             id: ticket.ticketType.id,
-  //             name: ticket.ticketType.ticket_name,
-  //             audience_type: ticket.ticketType.audience_type,
-  //           },
-  //           schedule: {
-  //             start_movie_time: ticket.schedule.start_movie_time,
-  //             end_movie_time: ticket.schedule.end_movie_time,
-  //             movie: {
-  //               id: ticket.schedule.movie.id,
-  //               name: ticket.schedule.movie.name,
-  //               duration: ticket.schedule.movie.duration,
-  //               thumbnail: ticket.schedule.movie.thumbnail,
-  //             },
-  //             cinemaRoom: {
-  //               id: ticket.schedule.cinemaRoom.id,
-  //               name: ticket.schedule.cinemaRoom.cinema_room_name,
-  //             },
-  //           },
-  //           seat: {
-  //             id: ticket.seat.id,
-  //             row: ticket.seat.seat_row,
-  //             column: ticket.seat.seat_column,
-  //           },
-  //           seat_type: {
-  //             id: ticket.seat.seatType.id,
-  //             name: ticket.seat.seatType.seat_type_name,
-  //           }
-  //         };
-  //       })
-  //     )
-  //   };
-  // }
-
-  async getTicketsByUserId(userId: string, {
-    skip,
-    take,
-    page,
-    is_used,
-    active = true,
-  }: {
-    skip: number;
-    take: number;
-    page: number;
-    is_used?: boolean;
-    active?: boolean;
-  }) {
-    // First, check if user exists
-    const user = await this.userRepository.findOne({
-      where: { id: userId }
-    });
-
-    if (!user) {
-      throw new NotFoundException(`User with ID ${userId} not found`);
-    }
-
-    // Create query for tickets with pagination and filters
-    const query = this.ticketRepository
+  async getTicketsByUserId(fillters: TicketPaginationDto & { userId: string }) {
+    const qb = this.ticketRepository
       .createQueryBuilder('ticket')
       .leftJoinAndSelect('ticket.schedule', 'schedule')
       .leftJoinAndSelect('schedule.movie', 'movie')
+      .leftJoinAndSelect('schedule.version', 'version')
       .leftJoinAndSelect('schedule.cinemaRoom', 'cinemaRoom')
       .leftJoinAndSelect('ticket.seat', 'seat')
       .leftJoinAndSelect('seat.seatType', 'seatType')
       .leftJoinAndSelect('ticket.ticketType', 'ticketType')
       .leftJoinAndSelect('ticket.orderDetail', 'orderDetail')
       .leftJoinAndSelect('orderDetail.order', 'order')
-      .where('order.user_id = :userId', { userId })
-      .orderBy('order.order_date', 'DESC')
-      .skip(skip)
-      .take(take);
+      .where('order.user_id = :userId', { userId: fillters.userId });
 
-    // Apply filters
-    if (typeof is_used === 'boolean') {
-      query.andWhere('ticket.is_used = :is_used', { is_used });
-    }
-    if (typeof active === 'boolean') {
-      query.andWhere('ticket.status = :active', { active });
-    }
 
-    const [tickets, total] = await query.getManyAndCount();
-    return {
-      data: tickets.map(ticket => this.summaryTicket(ticket)),
-      total,
-      page,
-      pageSize: take,
-      totalPages: Math.ceil(total / take),
-    };
+
+    applyCommonFilters(qb, fillters, ticketFieldMapping);
+
+    const allowedSortFields = [
+      'schedule.id',
+      'ticketType',
+      'ticket.is_used',
+      'ticket.status',
+      'movie.name',
+      'version.name',
+    ];
+    applySorting(
+      qb,
+      fillters.sortBy,
+      fillters.sortOrder,
+      allowedSortFields,
+      'schedule.id',
+    );
+
+
+    applyPagination(qb, {
+      page: fillters.page,
+      take: fillters.take,
+    });
+    const [tickets, total] = await qb.getManyAndCount();
+    const summaries = tickets.map((ticket) => this.summaryTicket(ticket));
+
+    const result = await this.ticketRepository
+      .createQueryBuilder('ticket')
+      .select([
+        `SUM(CASE WHEN ticket.status = true AND ticket.is_used = false THEN 1 ELSE 0 END) AS totalAvailable`,
+        `SUM(CASE WHEN ticket.status = true AND ticket.is_used = true THEN 1 ELSE 0 END) AS totalUsedActive`,
+      ])
+      .getRawOne<{ totalAvailable: string; totalUsedActive: string }>();
+
+    const totalAvailable = parseInt(result?.totalAvailable || '0', 10);
+    const totalUsedActive = parseInt(result?.totalUsedActive || '0', 10);
+    return buildPaginationResponse(
+      summaries,
+      {
+        total,
+        page: fillters.page,
+        take: fillters.take,
+        totalAvailable,
+        totalUsedActive,
+      }
+
+    );
+
+
+
   }
-
 
 
 

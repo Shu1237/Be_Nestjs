@@ -8,28 +8,53 @@ import {
   UseGuards,
   Req,
   Patch,
+  Query,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiBody } from '@nestjs/swagger';
+import {  ApiBearerAuth, ApiOperation, ApiBody, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { SeatService } from './seat.service';
 import { CreateSeatDto } from './dto/create-seat.dto';
 import { UpdateSeatDto } from './dto/update-seat.dto';
-import { Request } from 'express';
-import { JWTUserType } from 'src/common/utils/type';
-import { Role } from 'src/common/enums/roles.enum';
 import { BulkCreateSeatDto } from './dto/BulkCreateSeatDto';
+import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
+import { SeatPaginationDto } from 'src/common/pagination/dto/seat/seatPagination.dto';
 
-@ApiTags('Seats')
+
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 @Controller('seat')
 export class SeatController {
-  constructor(private readonly seatService: SeatService) {}
-
-  @Get()
+  constructor(private readonly seatService: SeatService) { }
+  @Get('user')
+  @ApiOperation({ summary: 'Get all seats for users' })
+  async getAllSeatsUser() {
+    return await this.seatService.getAllSeatsUser();
+  }
+  @Get('admin')
+  @ApiOperation({ summary: 'Get all seats for admin' })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
+  @ApiQuery({ name: 'cinema_room_id', required: false, type: String, example: 'room-uuid' })
+  @ApiQuery({ name: 'seat_type_id', required: false, type: String, example: 'type-uuid' })
+  @ApiQuery({ name: 'seat_row', required: false, type: String, example: 'A' })
+  @ApiQuery({ name: 'seat_column', required: false, type: String, example: '5' })
+  @ApiQuery({ name: 'is_deleted', required: false, type: Boolean, example: false })
+  @ApiQuery({ name: 'sortBy', required: false, type: String, example: 'seat.seat_row' })
+  @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], example: 'ASC' })
   @ApiOperation({ summary: 'Get all seats' })
-  getAllSeats() {
-    return this.seatService.getAllSeats();
+  getAllSeats(@Query() query: SeatPaginationDto, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can access this endpoint.');
+    const {
+      page = 1,
+      take = 10,
+      ...restFilters
+    } = query;
+
+    return this.seatService.getAllSeats({
+      page,
+      take: Math.min(take, 100),
+      ...restFilters,
+    });
   }
 
   @Get(':id')
@@ -50,12 +75,9 @@ export class SeatController {
   updateSeat(
     @Param('id') id: string,
     @Body() updateSeatDto: UpdateSeatDto,
-    @Req() req: Request,
+    @Req() req,
   ) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN) {
-      throw new Error('Only admin can update seats');
-    }
+    checkAdminEmployeeRole(req.user, 'Only admin can update seats');
     return this.seatService.updateSeat(id, updateSeatDto);
   }
   // @Patch('hold')
@@ -74,11 +96,8 @@ export class SeatController {
   @Post()
   @ApiOperation({ summary: 'Create new seat (admin only)' })
   @ApiBody({ type: CreateSeatDto })
-  createSeat(@Body() createSeatDto: CreateSeatDto, @Req() req: Request) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN) {
-      throw new Error('Only admin can create seats');
-    }
+  createSeat(@Body() createSeatDto: CreateSeatDto, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Only admin can create seats');
     return this.seatService.createSeat(createSeatDto);
   }
   @Post('bulk')
@@ -88,11 +107,8 @@ export class SeatController {
   }
   @Patch(':id')
   @ApiOperation({ summary: 'Soft delete seat by ID (admin only)' })
-  deleteSeat(@Param('id') id: string, @Req() req: Request) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN) {
-      throw new Error('Only admin can delete seats');
-    }
+  deleteSeat(@Param('id') id: string, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Only admin can delete seats');
     return this.seatService.deleteSeat(id);
   }
 

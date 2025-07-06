@@ -6,7 +6,6 @@ import {
   Param,
   ParseIntPipe,
   Patch,
-  // Delete,
   Put,
   UseGuards,
   Req,
@@ -16,47 +15,104 @@ import { PromotionService } from './promotion.service';
 import { CreatePromotionDto } from './dto/create-promotion.dto';
 import { UpdatePromotionDto } from './dto/update-promotion.dto';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
-import { ApiBearerAuth, ApiOperation, ApiBody, ApiTags } from '@nestjs/swagger';
-import { ChangePromotionDto } from './dto/change-promotion.dto';
-import { Request } from 'express';
-import { JWTUserType } from 'src/common/utils/type';
-import { Role } from 'src/common/enums/roles.enum';
-import { ForbiddenException } from 'src/common/exceptions/forbidden.exception';
-import { PaginationDto } from './dto/pagination.dto';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiBody,
+  ApiQuery,
+} from '@nestjs/swagger';
+import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
+import { PromotionPaginationDto } from 'src/common/pagination/dto/promotion/promotionPagination.dto';
 
-@ApiTags('Promotions')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 @Controller('promotion')
 export class PromotionController {
   constructor(private readonly promotionService: PromotionService) {}
 
-  @Get()
-  @ApiOperation({ summary: 'Get all promotions with pagination' })
-  getAllPromotions(@Query() paginationDto: PaginationDto) {
-    return this.promotionService.getAllPromotions(paginationDto);
+  @Get('user')
+  @ApiOperation({ summary: 'Get all promotions for users' })
+  async getAllPromotionsUser() {
+    return await this.promotionService.getAllPromotionsUser();
   }
-
-  @Post('changePromotion')
-  @ApiOperation({ summary: 'Đổi điểm lấy mã khuyến mãi' })
-  @ApiBody({ type: ChangePromotionDto })
-  changePromotion(@Body() body: ChangePromotionDto, @Req() req: Request) {
-    const user = req.user as JWTUserType;
-    return this.promotionService.changePromotion(body, user);
+  @Get('admin')
+  @ApiOperation({ summary: 'Get all promotions for admin' })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
+  @ApiQuery({ name: 'exchange', required: false, type: Number, example: 500 })
+  @ApiQuery({
+    name: 'exchangeFrom',
+    required: false,
+    type: Number,
+    example: 100,
+  })
+  @ApiQuery({
+    name: 'exchangeTo',
+    required: false,
+    type: Number,
+    example: 1000,
+  })
+  @ApiQuery({
+    name: 'promotion_type_id',
+    required: false,
+    type: Number,
+    example: 2,
+  })
+  @ApiQuery({
+    name: 'startTime',
+    required: false,
+    type: String,
+    example: '2025-07-01',
+  })
+  @ApiQuery({
+    name: 'endTime',
+    required: false,
+    type: String,
+    example: '2025-07-31',
+  })
+  @ApiQuery({
+    name: 'is_active',
+    required: false,
+    type: Boolean,
+    example: true,
+  })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    example: 'summer-sale',
+  })
+  @ApiQuery({
+    name: 'sortBy',
+    required: false,
+    type: String,
+    example: 'promotion.start_time',
+  })
+  @ApiQuery({
+    name: 'sortOrder',
+    required: false,
+    enum: ['ASC', 'DESC'],
+    example: 'DESC',
+  })
+  getAllPromotions(@Query() query: PromotionPaginationDto, @Req() req) {
+    checkAdminEmployeeRole(
+      req.user,
+      'Unauthorized: Only admin or employee can access this endpoint.',
+    );
+    const { page = 1, take = 10, ...restFilters } = query;
+    return this.promotionService.getAllPromotions({
+      page,
+      take: Math.min(take, 100),
+      ...restFilters,
+    });
   }
 
   @Post()
   @ApiOperation({ summary: 'Create new promotion (admin only)' })
   @ApiBody({ type: CreatePromotionDto })
-  createPromotion(
-    @Body() createPromotionDto: CreatePromotionDto,
-    @Req() req: Request,
-  ) {
-    const user = req.user as JWTUserType;
-    if (user.role_id === Role.ADMIN) {
-      return this.promotionService.createPromotion(createPromotionDto);
-    }
-    throw new ForbiddenException('Only admin can create promotions');
+  createPromotion(@Body() createPromotionDto: CreatePromotionDto, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Only admin can create promotions');
+    return this.promotionService.createPromotion(createPromotionDto);
   }
   @Get(':id')
   @ApiOperation({ summary: 'Get promotion by ID' })
@@ -70,13 +126,10 @@ export class PromotionController {
   updatePromotion(
     @Param('id', ParseIntPipe) id: number,
     @Body() updatePromotionDto: UpdatePromotionDto,
-    @Req() req: Request,
+    @Req() req,
   ) {
-    const user = req.user as JWTUserType;
-    if (user.role_id === Role.ADMIN) {
-      return this.promotionService.updatePromotion(id, updatePromotionDto);
-    }
-    throw new ForbiddenException('Only admin can update promotions');
+    checkAdminEmployeeRole(req.user, 'Only admin can update promotions');
+    return this.promotionService.updatePromotion(id, updatePromotionDto);
   }
 
   // @Delete(':id')
@@ -94,14 +147,8 @@ export class PromotionController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Soft delete promotion by ID (admin only)' })
-  async deleteSoftPromotion(
-    @Param('id', ParseIntPipe) id: number,
-    @Req() req: Request,
-  ) {
-    const user = req.user as JWTUserType;
-    if (user.role_id === Role.ADMIN) {
-      return this.promotionService.deleteSoftPromotion(id);
-    }
-    throw new ForbiddenException('Only admin can delete promotions');
+  async deleteSoftPromotion(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Only admin can delete promotions');
+    return this.promotionService.deleteSoftPromotion(id);
   }
 }

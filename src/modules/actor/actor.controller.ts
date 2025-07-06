@@ -11,7 +11,6 @@ import {
   Req,
   ParseIntPipe,
   Query,
-  ForbiddenException,
 } from '@nestjs/common';
 import { ActorService } from './actor.service';
 import { CreateActorDto } from './dtos/createActor.dto';
@@ -19,50 +18,73 @@ import { UpdateActorDto } from './dtos/updateActor.dto';
 import {
   ApiBearerAuth,
   ApiOperation,
-  ApiResponse,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
-import { Actor } from 'src/database/entities/cinema/actor';
-import { Role } from 'src/common/enums/roles.enum';
 import { JWTUserType } from 'src/common/utils/type';
+import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
+import { ActorPaginationDto } from 'src/common/pagination/dto/actor/actor-pagination.dto';
 
-@ApiTags('Actors')
+
 @ApiBearerAuth()
 @Controller('actor')
 export class ActorController {
-  constructor(private readonly actorService: ActorService) {}
+  constructor(private readonly actorService: ActorService) { }
+  
 
+  @Get('user')
+  @ApiOperation({ summary: 'Get all actors for users' })
+  async getAllActorsUser() {
+    return await this.actorService.getAllActorsUser();
+  }
+
+  @Get('admin')
+  @ApiOperation({ summary: 'Get all actors for admin' })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
+  @ApiQuery({ name: 'search', required: false, type: String, example: 'name | stage_name | nationality' })
+  @ApiQuery({ name: 'sortBy', required: false, type: String, example: 'name | stage_name | nationality | gender | date_of_birth' })
+  @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], example: 'ASC' })
+  @ApiQuery({ name: 'name', required: false, type: String, example: 'Christopher' })
+  @ApiQuery({ name: 'stage_name', required: false, type: String, example: 'Johnny' })
+  @ApiQuery({ name: 'gender', required: false, enum: ['male', 'female'], example: 'male' })
+  @ApiQuery({ name: 'nationality', required: false, type: String, example: 'American' })
+  @ApiQuery({ name: 'date_of_birth', required: false, type: String, example: '1990-01-01' })
+  @ApiOperation({ summary: 'Get all actors' })
+  async getAllActors(@Query() query: ActorPaginationDto, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can access this endpoint.');
+    const {
+      page = 1,
+      take = 10,
+      ...restFilters
+    } = query;
+    return await this.actorService.getAllActors({
+      page,
+      take: Math.min(take, 100),
+      ...restFilters,
+    });
+
+  }
   @UseGuards(JwtAuthGuard)
   @Post()
   @ApiOperation({ summary: 'Create a new actor' })
   async createActor(@Req() req, @Body() createActorDto: CreateActorDto) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      return {
-        statusCode: 403,
-        message: 'Unauthorized: Only admin or employee can create an actor.',
-      };
-    }
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can create an actor.');
     return await this.actorService.createActor(createActorDto);
   }
 
-  @Get()
-  @ApiOperation({ summary: 'Get all actors' })
-  async findAllActors() {
-    return await this.actorService.findAllActors();
-  }
 
-  @Get('search')
-  @ApiOperation({ summary: 'Get actor by name' })
-  async search(@Query('name') name: string) {
-    return await this.actorService.findActorByName(name);
-  }
+  // @Get('search')
+  // @ApiOperation({ summary: 'Get actor by name' })
+  // async search(@Query('name') name: string) {
+  //   return await this.actorService.findActorByName(name);
+  // }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get actor by ID' })
-  async findActorById(@Param('id') id: string) {
-    return await this.actorService.findActorById(+id);
+  async findActorById(@Param('id', ParseIntPipe) id: number) {
+    return await this.actorService.findActorById(id);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -73,13 +95,7 @@ export class ActorController {
     @Param('id') id: string,
     @Body() updateActorDto: UpdateActorDto,
   ) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      return {
-        statusCode: 403,
-        message: 'Unauthorized: Only admin or employee can update an actor.',
-      };
-    }
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can update an actor.');
     return await this.actorService.updateActor(+id, updateActorDto);
   }
 
@@ -88,11 +104,7 @@ export class ActorController {
   @ApiOperation({ summary: 'Soft delete an actor (admin, employee only)' })
   async softDeleteActor(@Param('id', ParseIntPipe) id: number, @Req() req) {
     const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException(
-        'Unauthorized: Only admin or employee can soft delete an actor.',
-      );
-    }
+    checkAdminEmployeeRole(user, 'Unauthorized: Only admin or employee can soft delete an actor.');
     return await this.actorService.softDeleteActor(id);
   }
 
@@ -100,13 +112,7 @@ export class ActorController {
   @Delete(':id')
   @ApiOperation({ summary: 'Permanently delete an actor' })
   async removeActor(@Req() req, @Param('id') id: string) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      return {
-        statusCode: 403,
-        message: 'Unauthorized: Only admin can permanently delete an actor.',
-      };
-    }
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin can permanently delete an actor.');
     return await this.actorService.removeActor(+id);
   }
 

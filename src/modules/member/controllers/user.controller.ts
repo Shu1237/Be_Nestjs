@@ -6,43 +6,52 @@ import {
   Put,
   UseGuards,
   Req,
-  ForbiddenException,
   Patch,
+  Query,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiBody, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { UserService } from '../services/user.service';
-import { Role } from 'src/common/enums/roles.enum';
 import { UpdateUserDto } from '../dtos/update-user.dto';
-import { Request } from 'express';
-import { JWTUserType } from 'src/common/utils/type';
+import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
+import { checkAdminRole } from 'src/common/role/admin';
+import { UserPaginationDto } from 'src/common/pagination/dto/user/userPagination.dto';
 
-@ApiTags('Users')
-@ApiBearerAuth()
+
 @Controller('users')
 @UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly userService: UserService) { }
 
-  @Get('get-all')
-  @ApiOperation({ summary: 'Search all users (admin, employee only)' })
-  findAll(@Req() req: Request) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException('Only admin or employee can search users');
-    }
-    return this.userService.findAll();
+  @Get('admin')
+  @ApiOperation({ summary: 'Get all users for admin' })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
+  @ApiQuery({ name: 'status', required: false, type: Boolean, example: true })
+  @ApiQuery({ name: 'roleId', required: false, type: String, example: '2' })
+  @ApiQuery({ name: 'search', required: false, type: String, example: 'john.doe@example.com' })
+  @ApiQuery({ name: 'sortBy', required: false, type: String, example: 'user.status' })
+  @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], example: 'DESC' })
+  findAll(@Query() query: UserPaginationDto, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Only admin or employee can view all users');
+    const {
+      page = 1,
+      take = 10,
+      ...restFilters
+    } = query;
+
+    return this.userService.findAll({
+      page,
+      take: Math.min(take, 100),
+      ...restFilters,
+    });
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get user by ID (admin, employee only)' })
-  findOne(@Param('id') id: string, @Req() req: Request) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-      throw new ForbiddenException(
-        'Only admin or employee can view user details',
-      );
-    }
+  findOne(@Param('id') id: string, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Only admin or employee can view user details');
     return this.userService.findOne(id);
   }
 
@@ -52,23 +61,15 @@ export class UserController {
   update(
     @Param('id') id: string,
     @Body() updateUserDto: UpdateUserDto,
-    @Req() req: Request,
+    @Req() req,
   ) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN) {
-      throw new ForbiddenException('Only admin can update users');
-    }
+    checkAdminRole(req.user, 'Only admin can update users');
     return this.userService.update(id, updateUserDto);
   }
-
   @Patch(':id')
   @ApiOperation({ summary: 'Soft delete user by ID (admin only)' })
-  async softDelete(@Param('id') id: string, @Req() req: Request) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN) {
-      throw new ForbiddenException('Only admin can delete users');
-    }
-
+  async softDelete(@Param('id') id: string, @Req() req) {
+    checkAdminRole(req.user, 'Only admin can soft delete users');
     await this.userService.softDelete(id);
     return { msg: 'Delete successfully' };
   }

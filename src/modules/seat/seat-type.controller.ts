@@ -14,9 +14,7 @@ import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { SeatTypeService } from './seat-type.service';
 import { CreateSeatTypeDto } from './dto/create-seat-type.dto';
 import { UpdateSeatTypeDto } from './dto/update-seat-type.dto';
-import { Request } from 'express';
-import { JWTUserType } from 'src/common/utils/type';
-import { Role } from 'src/common/enums/roles.enum';
+import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 
 @ApiTags('Seat Types')
 @UseGuards(JwtAuthGuard)
@@ -42,12 +40,9 @@ export class SeatTypeController {
   @ApiBody({ type: CreateSeatTypeDto })
   createSeatType(
     @Body() createSeatTypeDto: CreateSeatTypeDto,
-    @Req() req: Request,
+    @Req() req,
   ) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN) {
-      throw new Error('Only admin can create seat types');
-    }
+    checkAdminEmployeeRole(req.user, 'Only admin can create seat types');
     return this.seatTypeService.createSeatType(createSeatTypeDto);
   }
 
@@ -57,22 +52,16 @@ export class SeatTypeController {
   updateSeatType(
     @Param('id') id: string,
     @Body() updateSeatTypeDto: UpdateSeatTypeDto,
-    @Req() req: Request,
+    @Req() req,
   ) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN) {
-      throw new Error('Only admin can update seat types');
-    }
+    checkAdminEmployeeRole(req.user, 'Only admin can update seat types');
     return this.seatTypeService.updateSeatType(id, updateSeatTypeDto);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete seat type by ID (admin only)' })
-  deleteSeatType(@Param('id') id: string, @Req() req: Request) {
-    const user = req.user as JWTUserType;
-    if (user.role_id !== Role.ADMIN) {
-      throw new Error('Only admin can delete seat types');
-    }
+  deleteSeatType(@Param('id') id: string, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Only admin can delete seat types');
     return this.seatTypeService.deleteSeatType(id);
   }
 }

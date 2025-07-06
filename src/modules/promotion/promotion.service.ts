@@ -1,104 +1,70 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Promotion } from 'src/database/entities/promotion/promotion';
-
-import { User } from 'src/database/entities/user/user';
 import { ChangePromotionType, JWTUserType } from 'src/common/utils/type';
 import { Repository } from 'typeorm';
 import { CreatePromotionDto } from './dto/create-promotion.dto';
 import { UpdatePromotionDto } from './dto/update-promotion.dto';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
 import { NotFoundException } from 'src/common/exceptions/not-found.exception';
-import { PaginationDto, SortOrder } from './dto/pagination.dto';
-// import { TimeUtil } from 'src/common/utils/time.util';
+import { PromotionPaginationDto } from 'src/common/pagination/dto/promotion/promotionPagination.dto';
+import { applyCommonFilters } from 'src/common/pagination/applyCommonFilters';
+import { promotionFieldMapping } from 'src/common/pagination/fillters/promtion-field-mapping';
+import { applySorting } from 'src/common/pagination/apply_sort';
+import { applyPagination } from 'src/common/pagination/applyPagination';
+import { buildPaginationResponse } from 'src/common/pagination/pagination-response';
 
 @Injectable()
 export class PromotionService {
   constructor(
     @InjectRepository(Promotion)
     private readonly promotionRepository: Repository<Promotion>,
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
   ) {}
+  async getAllPromotionsUser(): Promise<Promotion[]> {
+    return await this.promotionRepository.find({
+      where: { is_active: true },
+      relations: ['promotionType'],
+    });
+  }
+  async getAllPromotions(fillters: PromotionPaginationDto) {
+    const qb = this.promotionRepository
+      .createQueryBuilder('promotion')
+      .leftJoinAndSelect('promotion.promotionType', 'promotionType');
 
-  async getAllPromotions(paginationDto: PaginationDto = {}) {
-    const {
-      page = 1,
-      limit = 10,
-      is_active,
-      search,
-      promotion_type_id,
-      dateStatus = 'all',
-      sortBy = 'id',
-      sortOrder = SortOrder.DESC,
-    } = paginationDto;
+    applyCommonFilters(qb, fillters, promotionFieldMapping);
 
-    const skip = (page - 1) * limit;
+    const allowedFields = ['promotion.exchange', 'promotionType.id'];
+    applySorting(
+      qb,
+      fillters.sortBy,
+      fillters.sortOrder,
+      allowedFields,
+      'promotion.id',
+    );
 
-    const query = this.promotionRepository.createQueryBuilder('promotion');
+    applyPagination(qb, {
+      page: fillters.page,
+      take: fillters.take,
+    });
+    const [promotions, total] = await qb.getManyAndCount();
+    const counts = await this.promotionRepository
+      .createQueryBuilder('promotion')
+      .select([
+        `SUM(CASE WHEN promotion.is_active = false THEN 1 ELSE 0 END) AS activeCount`,
+        `SUM(CASE WHEN promotion.is_active = true THEN 1 ELSE 0 END) AS deletedCount`,
+      ])
+      .getRawOne();
 
-    // Apply filters
-    if (is_active !== undefined) {
-      query.andWhere('promotion.is_active = :is_active', { is_active });
-    }
+    const activeCount = counts.activeCount || 0;
+    const deletedCount = counts.deletedCount || 0;
 
-    if (search && search.trim() !== '') {
-      query.andWhere(
-        '(promotion.title LIKE :search OR promotion.code LIKE :search)',
-        { search: `%${search}%` },
-      );
-    }
-
-    if (promotion_type_id) {
-      query.andWhere('promotion.promotion_type_id = :promotion_type_id', {
-        promotion_type_id,
-      });
-    }
-
-    // Apply date filters
-    if (dateStatus !== 'all') {
-      const now = new Date();
-
-      if (dateStatus === 'current') {
-        query.andWhere(
-          '(promotion.start_time IS NULL OR promotion.start_time <= :now) AND (promotion.end_time IS NULL OR promotion.end_time >= :now)',
-          { now },
-        );
-      } else if (dateStatus === 'upcoming') {
-        query.andWhere('promotion.start_time > :now', { now });
-      } else if (dateStatus === 'expired') {
-        query.andWhere('promotion.end_time < :now', { now });
-      }
-    }
-
-    // Apply sorting
-    const validSortFields = [
-      'id',
-      'title',
-      'code',
-      'start_time',
-      'end_time',
-      'discount',
-      'exchange',
-    ];
-    const sortColumn = validSortFields.includes(sortBy) ? sortBy : 'id';
-    const order = sortOrder === SortOrder.ASC ? SortOrder.ASC : SortOrder.DESC;
-
-    query.orderBy(`promotion.${sortColumn}`, order);
-
-    const [items, total] = await query.skip(skip).take(limit).getManyAndCount();
-
-    return {
-      items,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-        hasNextPage: page < Math.ceil(total / limit),
-        hasPreviousPage: page > 1,
-      },
-    };
+    return buildPaginationResponse(promotions, {
+      total,
+      page: fillters.page,
+      take: fillters.take,
+      activeCount,
+      deletedCount,
+    });
   }
 
   async createPromotion(dto: CreatePromotionDto) {
@@ -172,42 +138,6 @@ export class PromotionService {
     return { msg: 'Promotion deleted successfully' };
   }
 
-  async changePromotion(body: ChangePromotionType, user: JWTUserType) {
-    // const userData = await this.userRepository.findOne({
-    //   where: { id: user.account_id },
-    //   relations: ['member'],
-    // });
-    // if (!userData) throw new NotFoundException('User not found');
-    // const promotion = await this.promotionRepository.findOne({
-    //   where: { id: body.id, is_active: true },
-    // });
-    // if (!promotion)
-    //   throw new NotFoundException('Promotion not found or inactive');
-    // const now = new Date();
-    // if (
-    //   (promotion.start_time && now < promotion.start_time) ||
-    //   (promotion.end_time && now > promotion.end_time)
-    // ) {
-    //   throw new BadRequestException(
-    //     'Promotion is not active during this period',
-    //   );
-    // }
-    // if (!userData.member) {
-    //   throw new BadRequestException('User does not have a member account');
-    // }
-    // if (Number(userData.member.score) < Number(promotion.exchange)) {
-    //   throw new BadRequestException(
-    //     'Insufficient points to exchange for this promotion',
-    //   );
-    // }
-    // // Deduct points from member
-    // const newScore = Number(userData.member.score) - Number(promotion.exchange);
-    // userData.member.score = newScore;
-    // await this.memberRepository.save(userData.member);
-    // return {
-    //   msg: 'Exchange successfully',
-    // };
-  }
   private validateDates(
     start_time?: string,
     end_time?: string,

@@ -1,20 +1,65 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { MailerService } from '@nestjs-modules/mailer';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import axios from 'axios';
+import { Repository } from 'typeorm';
 import { OrderBillType } from 'src/common/utils/type';
 import { changeVnToUSD } from 'src/common/utils/helper';
 import { Method } from 'src/common/enums/payment-menthod.enum';
-import { MomoService } from '../momo/momo.service';
 import { StatusOrder } from 'src/common/enums/status-order.enum';
-import { ConfigService } from '@nestjs/config';
 import { InternalServerErrorException } from 'src/common/exceptions/internal-server-error.exception';
+import { AbstractPaymentService } from '../base/abstract-payment.service';
+import { MyGateWay } from 'src/common/gateways/seat.gateway';
+import { QrCodeService } from 'src/common/qrcode/qrcode.service';
+import { ScheduleSeat } from 'src/database/entities/cinema/schedule_seat';
+import { HistoryScore } from 'src/database/entities/order/history_score';
+import { Order } from 'src/database/entities/order/order';
+import { OrderExtra } from 'src/database/entities/order/order-extra';
+import { Ticket } from 'src/database/entities/order/ticket';
+import { Transaction } from 'src/database/entities/order/transaction';
+import { User } from 'src/database/entities/user/user';
 
 @Injectable()
-export class PayPalService {
+export class PayPalService extends AbstractPaymentService {
   
     constructor(
-        private readonly momoService: MomoService,
-        private readonly configService: ConfigService,
-    ) { }
+        @InjectRepository(Transaction)
+        transactionRepository: Repository<Transaction>,
+        @InjectRepository(Order)
+        orderRepository: Repository<Order>,
+        @InjectRepository(Ticket)
+        ticketRepository: Repository<Ticket>,
+        @InjectRepository(ScheduleSeat)
+        scheduleSeatRepository: Repository<ScheduleSeat>,
+        @InjectRepository(HistoryScore)
+        historyScoreRepository: Repository<HistoryScore>,
+        @InjectRepository(User)
+        userRepository: Repository<User>,
+        @InjectRepository(OrderExtra)
+        orderExtraRepository: Repository<OrderExtra>,
+        mailerService: MailerService,
+        gateway: MyGateWay,
+        qrCodeService: QrCodeService,
+        configService: ConfigService,
+        jwtService: JwtService,
+    ) {
+        super(
+            transactionRepository,
+            orderRepository,
+            ticketRepository,
+            scheduleSeatRepository,
+            historyScoreRepository,
+            userRepository,
+            orderExtraRepository,
+            mailerService,
+            gateway,
+            qrCodeService,
+            configService,
+            jwtService,
+        );
+    }
     async generateAccessToken() {
         const response = await axios.request({
             method: 'POST',
@@ -29,12 +74,9 @@ export class PayPalService {
         return response.data.access_token
     }
 
-
-
     async createOrderPaypal(item: OrderBillType) {
         const accessToken = await this.generateAccessToken();
-        if (!accessToken) throw new Error('Failed to generate access token');
-
+        if (!accessToken) throw new InternalServerErrorException('Failed to generate access token');
 
         const totalUSD = changeVnToUSD(item.total_prices.toString());
 
@@ -92,7 +134,7 @@ export class PayPalService {
     }
 
     async handleReturnSuccessPaypal(transactionCode: string) {
-        const transaction = await this.momoService.getTransactionByOrderId(transactionCode);
+        const transaction = await this.getTransactionByOrderId(transactionCode);
         if (transaction.status !== StatusOrder.PENDING) {
             throw new NotFoundException('Transaction is not in pending state');
         }
@@ -103,16 +145,14 @@ export class PayPalService {
                 throw new InternalServerErrorException('Payment not completed on PayPal');
             }
         }
-        return this.momoService.handleReturnSuccess(transaction);
+        return this.handleReturnSuccess(transaction);
     }
 
-
     async handleReturnCancelPaypal(transactionCode: string) {
-        const transaction = await this.momoService.getTransactionByOrderId(transactionCode);
+        const transaction = await this.getTransactionByOrderId(transactionCode);
         if (transaction.status !== StatusOrder.PENDING) {
             throw new NotFoundException('Transaction is not in pending state');
         }
-        return this.momoService.handleReturnFailed(transaction);
-
+        return this.handleReturnFailed(transaction);
     }
 }
