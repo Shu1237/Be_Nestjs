@@ -37,15 +37,15 @@ export const movieFieldMapping: Record<string, FilterField> = {
         operator: '=',
     },
     actor_id: {
-        field: 'actors.id',
+        field: 'actor.id',
         operator: '=',
     },
     gerne_id: {
-        field: 'gernes.id',
+        field: 'gerne.id',
         operator: '=',
     },
     version_id: {
-        field: 'versions.id',
+        field: 'version.id',
         operator: '=',
     },
     search: {
