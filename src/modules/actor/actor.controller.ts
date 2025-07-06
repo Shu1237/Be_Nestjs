@@ -11,7 +11,6 @@ import {
   Req,
   ParseIntPipe,
   Query,
-  ForbiddenException,
 } from '@nestjs/common';
 import { ActorService } from './actor.service';
 import { CreateActorDto } from './dtos/createActor.dto';
@@ -19,14 +18,13 @@ import { UpdateActorDto } from './dtos/updateActor.dto';
 import {
   ApiBearerAuth,
   ApiOperation,
-  ApiResponse,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
-import { Actor } from 'src/database/entities/cinema/actor';
-import { Role } from 'src/common/enums/roles.enum';
 import { JWTUserType } from 'src/common/utils/type';
 import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
+import { ActorPaginationDto } from 'src/common/pagination/dto/actor/actor-pagination.dto';
 
 @ApiTags('Actors')
 @ApiBearerAuth()
@@ -34,6 +32,32 @@ import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 export class ActorController {
   constructor(private readonly actorService: ActorService) { }
 
+  @Get()
+  @ApiOperation({ summary: 'Get all actors with filters, pagination, and sorting' })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
+  @ApiQuery({ name: 'search', required: false, type: String, example: 'name | stage_name | nationality' })
+  @ApiQuery({ name: 'sortBy', required: false, type: String, example: 'name | stage_name | nationality | gender | date_of_birth' })
+  @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], example: 'ASC' })
+  @ApiQuery({ name: 'name', required: false, type: String, example: 'Christopher' })
+  @ApiQuery({ name: 'stage_name', required: false, type: String, example: 'Johnny' })
+  @ApiQuery({ name: 'gender', required: false, enum: ['male', 'female'], example: 'male' })
+  @ApiQuery({ name: 'nationality', required: false, type: String, example: 'American' })
+  @ApiQuery({ name: 'date_of_birth', required: false, type: String, example: '1990-01-01' })
+  @ApiOperation({ summary: 'Get all actors' })
+  async getAllActors(@Query() query: ActorPaginationDto) {
+    const {
+      page = 1,
+      take = 10,
+      ...restFilters
+    } = query;
+    return await this.actorService.getAllActors({
+      page,
+      take: Math.min(take, 100),
+      ...restFilters,
+    });
+
+  }
   @UseGuards(JwtAuthGuard)
   @Post()
   @ApiOperation({ summary: 'Create a new actor' })
@@ -42,22 +66,17 @@ export class ActorController {
     return await this.actorService.createActor(createActorDto);
   }
 
-  @Get()
-  @ApiOperation({ summary: 'Get all actors' })
-  async findAllActors() {
-    return await this.actorService.findAllActors();
-  }
 
-  @Get('search')
-  @ApiOperation({ summary: 'Get actor by name' })
-  async search(@Query('name') name: string) {
-    return await this.actorService.findActorByName(name);
-  }
+  // @Get('search')
+  // @ApiOperation({ summary: 'Get actor by name' })
+  // async search(@Query('name') name: string) {
+  //   return await this.actorService.findActorByName(name);
+  // }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get actor by ID' })
-  async findActorById(@Param('id') id: string) {
-    return await this.actorService.findActorById(+id);
+  async findActorById(@Param('id', ParseIntPipe) id: number) {
+    return await this.actorService.findActorById(id);
   }
 
   @UseGuards(JwtAuthGuard)

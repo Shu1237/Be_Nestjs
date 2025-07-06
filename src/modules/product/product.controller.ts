@@ -1,10 +1,11 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put, Query, Req, UseGuards } from "@nestjs/common";
 import { ProductService } from "./product.service";
 import { JwtAuthGuard } from "src/common/guards/jwt.guard";
-import { ApiBearerAuth, ApiOperation } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiOperation, ApiQuery } from "@nestjs/swagger";
 import { CreateProductDto } from "./dto/createProdcut.dto";
 import { UpdateProductDto } from "./dto/updateProduct.dto";
 import { checkAdminEmployeeRole } from "src/common/role/admin_employee";
+import { ProductPaginationDto } from "src/common/pagination/dto/product/productPagination.dto";
 
 
 @UseGuards(JwtAuthGuard)
@@ -15,9 +16,26 @@ export class ProductController {
         private readonly productService: ProductService
     ) { }
     @Get()
-    @ApiOperation({ summary: 'Get all products' })
-    getAllProducts() {
-        return this.productService.getAllProducts();
+    @ApiOperation({ summary: 'Get all products with filters, search, sort, and pagination' })
+    @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+    @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
+    @ApiQuery({ name: 'search', required: false, type: String, example: 'Pizza' })
+    @ApiQuery({ name: 'sortBy', required: false, type: String, example: 'product.name' })
+    @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], example: 'DESC' })
+    @ApiQuery({ name: 'category', required: false, type: String, example: 'food' })
+    @ApiQuery({ name: 'type', required: false, type: String, example: 'main' })
+    @ApiQuery({ name: 'is_deleted', required: false, type: Boolean, example: false })
+    getAllProducts(@Query() query: ProductPaginationDto) {
+        const {
+            page = 1,
+            take = 10,
+            ...restFilters
+        } = query;
+        return this.productService.getAllProducts({
+            page,
+            take: Math.min(take, 100),
+            ...restFilters,
+        });
     }
 
 
