@@ -10,6 +10,7 @@ import {
   Put,
   UseGuards,
   Req,
+  Query,
 } from '@nestjs/common';
 import { PromotionService } from './promotion.service';
 import { CreatePromotionDto } from './dto/create-promotion.dto';
@@ -21,6 +22,7 @@ import { Request } from 'express';
 import { JWTUserType } from 'src/common/utils/type';
 import { Role } from 'src/common/enums/roles.enum';
 import { ForbiddenException } from 'src/common/exceptions/forbidden.exception';
+import { PaginationDto } from './dto/pagination.dto';
 
 @ApiTags('Promotions')
 @UseGuards(JwtAuthGuard)
@@ -30,9 +32,9 @@ export class PromotionController {
   constructor(private readonly promotionService: PromotionService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get all promotions' })
-  getAllPromotions() {
-    return this.promotionService.getAllPromotions();
+  @ApiOperation({ summary: 'Get all promotions with pagination' })
+  getAllPromotions(@Query() paginationDto: PaginationDto) {
+    return this.promotionService.getAllPromotions(paginationDto);
   }
 
   @Post('changePromotion')

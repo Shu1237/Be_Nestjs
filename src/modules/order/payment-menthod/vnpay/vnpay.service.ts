@@ -106,7 +106,7 @@ export class VnpayService {
         return this.momoService.handleReturnFailed(transaction);
       }
     } else {
-      return { success: false, message: 'Invalid signature from VNPAY' };
+      return `${this.configService.get<string>('redirectUrls.failureUrl')}`;
     }
   }
 }
