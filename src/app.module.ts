@@ -95,6 +95,7 @@ import { PaymentMethodModule } from './modules/payment-method/payment-method.mod
     OrderModule,
     ProductModule,
     PromotionModule,
+    PaymentMethodModule,
     ScheduleByDb,
     ScheduleSeatModule,
     SeatModule,
@@ -107,7 +108,7 @@ import { PaymentMethodModule } from './modules/payment-method/payment-method.mod
     CronModule,
     MyGateWayModule,
     S3Module,
-    PaymentMethodModule,
+
   ],
 
 })
