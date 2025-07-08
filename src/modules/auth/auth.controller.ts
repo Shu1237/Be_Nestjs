@@ -38,35 +38,7 @@ import { LoginAzureDto } from './dtos/loginazure.dto';
 export class AuthController {
   constructor(private authService: AuthService) { }
 
-  // @Post('register')
-  // @ApiOperation({ summary: 'Register new account' })
-  // @ApiBody({ type: CreateAccountDto })
-  // @ApiResponse({ status: 201, description: 'Account created successfully' })
-  // createAccount(@Body() data: CreateAccountDto) {
-  //   return this.authService.createAccount(data);
-  // }
-
-  //Login google
-  // @UseGuards(GoogleAuthGuard)
-  // @Get('google/login')
-  // googleLogin() { }
-
-  // @UseGuards(GoogleAuthGuard)
-  // @Get('google/callback')
-  // async googleCallback(@Req() req) {
-  //   return this.authService.login(req.user);
-  // }
-
-  // @UseGuards(LocalGuard)
-  // @Post('login')
-  // @ApiOperation({ summary: 'Login with credentials' })
-  // @ApiBody({ type: LoginDto })
-  // @ApiResponse({ status: 200, description: 'Login successful' })
-  // login(@Request() req) {
-  //   // console.log(req.user);
-  //   return this.authService.login(req.user);
-  // }
-
+  // POST - Login
   @ApiOperation({ summary: 'Login with username and password' })
   @ApiBody({ type: LoginAzureDto })
   @Post('login')
@@ -74,14 +46,7 @@ export class AuthController {
     return this.authService.loginAzureAndGoogle(body);
   }
 
-  // @UseGuards(JwtAuthGuard)
-  // @Get('refreshToken')
-  // @ApiBearerAuth()
-  // @ApiOperation({ summary: 'Get all refresh tokens (admin only)' })
-  // getAllRefreshTokens() {
-  //   return this.authService.getAllRefreshTokens();
-  // }
-
+  // POST - Refresh token
   @UseGuards(RefreshGuard)
   @Post('refreshToken')
   @ApiOperation({ summary: 'Refresh JWT using refresh token' })
@@ -90,13 +55,7 @@ export class AuthController {
     return this.authService.refreshToken(req.user);
   }
 
-  // @Delete('refreshToken/:id')
-  // @ApiBearerAuth()
-  // @ApiOperation({ summary: 'Delete a refresh token by ID' })
-  // deleteRefreshToken(@Param('id', ParseIntPipe) refreshTokenId: number) {
-  //   return this.authService.deleteRefreshToken(refreshTokenId);
-  // }
-
+  // POST - Logout
   @UseGuards(JwtAuthGuard)
   @Post('logout')
   @ApiBearerAuth()

@@ -33,20 +33,23 @@ export class GerneController {
   constructor(private readonly gerneService: GerneService) { }
 
 
+
+  // GET - Lấy danh sách genres cho user
   @Get('user')
   @ApiOperation({ summary: 'Get all genres for users' })
   async getAllGernesUser(): Promise<Gerne[]> {
     return await this.gerneService.getAllGernesUser();
   }
+
+  // GET - Lấy danh sách genres cho admin (với phân trang)
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Get all genres for admin' })
   @Get('admin')
+  @ApiOperation({ summary: 'Get all genres for admin' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
   @ApiQuery({ name: 'search', required: false, type: String, example: 'Action' })
   @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], example: 'ASC' })
   async findAllGernes(@Query() query: GernePaginationDto, @Req() req) {
-
     checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can access this endpoint.');
     const {
       page = 1,
@@ -61,6 +64,25 @@ export class GerneController {
     });
   }
 
+  // GET - Lấy genre theo ID
+  @Get(':id')
+  @ApiOperation({ summary: 'Get genre by ID' })
+  async findGerneById(@Param('id', ParseIntPipe) id: number): Promise<Gerne> {
+    return await this.gerneService.findGerneById(id);
+  }
+
+  // GET - Lấy movies của genre
+  @Get(':gerneId/movies')
+  @ApiOperation({ summary: 'Get all movies of a genre' })
+  async getMoviesOfGerne(
+    @Param('gerneId', ParseIntPipe) gerneId: number,
+  ): Promise<Movie[]> {
+    return await this.gerneService.getMoviesOfGerne(gerneId);
+  }
+
+
+
+  // POST - Tạo genre mới
   @UseGuards(JwtAuthGuard)
   @Post()
   @ApiOperation({ summary: 'Create a new genre (admin, employee only)' })
@@ -70,13 +92,8 @@ export class GerneController {
   }
 
 
- 
-  @Get(':id')
-  @ApiOperation({ summary: 'Get genre by ID' })
-  async findGerneById(@Param('id', ParseIntPipe) id: number): Promise<Gerne> {
-    return await this.gerneService.findGerneById(id);
-  }
 
+  // PUT - Cập nhật genre theo ID
   @UseGuards(JwtAuthGuard)
   @Put(':id')
   @ApiOperation({ summary: 'Update genre by ID (admin, employee only)' })
@@ -88,6 +105,10 @@ export class GerneController {
     checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can update a genre.');
     return this.gerneService.updateGerne(id, updateGerneDto);
   }
+
+
+
+  // PATCH - Soft delete genre
   @UseGuards(JwtAuthGuard)
   @Patch(':id/soft-delete')
   @ApiOperation({ summary: 'Soft delete a genre (admin, employee only)' })
@@ -96,6 +117,9 @@ export class GerneController {
     return this.gerneService.softDeleteGerne(id);
   }
 
+
+
+  // DELETE - Xóa genre vĩnh viễn
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete genre by ID (admin only)' })
@@ -105,13 +129,5 @@ export class GerneController {
   ): Promise<void> {
     checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin can delete a genre.');
     return await this.gerneService.deleteGerne(id);
-  }
-
-  @Get(':gerneId/movies')
-  @ApiOperation({ summary: 'Get all movies of a genre' })
-  async getMoviesOfGerne(
-    @Param('gerneId', ParseIntPipe) gerneId: number,
-  ): Promise<Movie[]> {
-    return await this.gerneService.getMoviesOfGerne(gerneId);
   }
 }

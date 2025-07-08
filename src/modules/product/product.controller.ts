@@ -15,11 +15,15 @@ export class ProductController {
     constructor(
         private readonly productService: ProductService
     ) { }
+
+    // GET - Lấy danh sách products cho user
     @Get('user')
     @ApiOperation({ summary: 'Get all products for users' })
     async getAllProductsUser() {
         return await this.productService.getAllProductsUser();
     }
+
+    // GET - Lấy danh sách products cho admin (với phân trang và filter)
     @Get('admin')
     @ApiOperation({ summary: 'Get all products for admin' })
     @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
@@ -30,7 +34,7 @@ export class ProductController {
     @ApiQuery({ name: 'category', required: false, type: String, example: 'food' })
     @ApiQuery({ name: 'type', required: false, type: String, example: 'main' })
     @ApiQuery({ name: 'is_deleted', required: false, type: Boolean, example: false })
-    getAllProducts(@Query() query: ProductPaginationDto,@Req() req) {
+    getAllProducts(@Query() query: ProductPaginationDto, @Req() req) {
         checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can access this endpoint.');
         const {
             page = 1,
@@ -44,21 +48,22 @@ export class ProductController {
         });
     }
 
-
+    // GET - Lấy product theo ID
     @Get(':id')
-    @ApiOperation({ summary: 'Get Prodcut By Id' })
+    @ApiOperation({ summary: 'Get product by ID' })
     getProdcutById(@Param('id', ParseIntPipe) id: number) {
-        return this.productService.getProdcutById(id)
+        return this.productService.getProdcutById(id);
     }
 
-
-
+    // POST - Tạo product mới
     @Post()
     @ApiOperation({ summary: 'Create a new product' })
     async createProduct(@Body() dto: CreateProductDto, @Req() req) {
         checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can create a product.');
         return this.productService.createProduct(dto);
     }
+
+    // PUT - Cập nhật product theo ID
     @Put(':id')
     @ApiOperation({ summary: 'Update product by ID (admin, employee only)' })
     async updateProduct(
@@ -70,6 +75,7 @@ export class ProductController {
         return this.productService.updateProduct(id, dto);
     }
 
+    // DELETE - Xóa product theo ID
     @Delete(':id')
     @ApiOperation({ summary: 'Hard delete a product by ID (admin, employee only)' })
     async deleteProduct(@Param('id', ParseIntPipe) id: number, @Req() req) {
