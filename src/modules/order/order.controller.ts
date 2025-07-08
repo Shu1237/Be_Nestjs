@@ -158,6 +158,13 @@ export class OrderController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'View Order by ID ' })
   async getMyOrder(@Param('id', ParseIntPipe) id: number, @Req() req) {
+     const user = req.user as JWTUserType;
+    if (user.role_id === Role.USER) {
+      checkUserRole(user, 'Unauthorized: Only user can view their own orders.', user.account_id);
+    }
+    else {
+      checkAdminEmployeeRole(user, 'Unauthorized: Only admin or employee can view user orders.');
+    }
     return this.orderService.getOrderByIdEmployeeAndAdmin(id);
   }
 
