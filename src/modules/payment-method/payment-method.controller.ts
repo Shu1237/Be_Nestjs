@@ -9,6 +9,7 @@ import {
   ParseIntPipe,
   UseGuards,
   Req,
+  Patch,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PaymentMethodService } from './payment-method.service';
@@ -76,5 +77,18 @@ export class PaymentMethodController {
       'Unauthorized: Only admin or employee can delete a payment method.',
     );
     return this.paymentMethodService.remove(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id')
+  @ApiOperation({
+    summary: 'Xóa mềm phương thức thanh toán (admin, employee only)',
+  })
+  async softDelete(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    checkAdminEmployeeRole(
+      req.user,
+      'Unauthorized: Only admin or employee can soft delete a payment method.',
+    );
+    return this.paymentMethodService.softDelete(id);
   }
 }
