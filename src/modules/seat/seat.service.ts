@@ -14,6 +14,12 @@ import Redis from 'ioredis/built/Redis';
 import { NotFoundException } from 'src/common/exceptions/not-found.exception';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
 import { BulkCreateSeatDto } from './dto/BulkCreateSeatDto';
+import { SeatPaginationDto } from 'src/common/pagination/dto/seat/seatPagination.dto';
+import { applyCommonFilters } from 'src/common/pagination/applyCommonFilters';
+import { seatFieldMapping } from 'src/common/pagination/fillters/seat-filed-mapping';
+import { applySorting } from 'src/common/pagination/apply_sort';
+import { applyPagination } from 'src/common/pagination/applyPagination';
+import { buildPaginationResponse } from 'src/common/pagination/pagination-response';
 
 @Injectable()
 export class SeatService {
@@ -23,18 +29,73 @@ export class SeatService {
     private seatTypeRepository: Repository<SeatType>,
     @InjectRepository(CinemaRoom)
     private cinemaRoomRepository: Repository<CinemaRoom>,
-    @InjectRepository(Schedule)
-    private scheduleRepository: Repository<Schedule>,
     @InjectRepository(ScheduleSeat)
     private scheduleSeatRepository: Repository<ScheduleSeat>,
 
     @Inject('REDIS_CLIENT') private readonly redisClient: Redis,
-  ) {}
+  ) { }
 
-  async getAllSeats() {
-    return this.seatRepository.find({
+  private getSeatSummary(seat: Seat) {
+    return {
+      id: seat.id,
+      seat_row: seat.seat_row,
+      seat_column: seat.seat_column,
+      is_deleted: seat.is_deleted,
+      seatType: {
+        id: seat.seatType?.id,
+        name: seat.seatType?.seat_type_name,
+      },
+      cinemaRoom: {
+        id: seat.cinemaRoom?.id,
+        name: seat.cinemaRoom?.cinema_room_name,
+      }
+    };
+  }
+  async getAllSeatsUser(): Promise<Seat[]> {
+    return await this.seatRepository.find({
       where: { is_deleted: false },
       relations: ['seatType', 'cinemaRoom'],
+    });
+  }
+   
+  async getAllSeats(fillters: SeatPaginationDto) {
+    const qb = this.seatRepository.createQueryBuilder('seat')
+      .leftJoinAndSelect('seat.seatType', 'seatType')
+      .leftJoinAndSelect('seat.cinemaRoom', 'cinemaRoom')
+
+    applyCommonFilters(qb, fillters, seatFieldMapping);
+    const allowedFields = [
+      'seat.seat_row',
+      'seat.seat_column',
+      'seatType.seat_type_name',
+      'cinemaRoom.cinema_room_name',
+      'cinemaRoom.id'
+    ];
+    applySorting(qb, fillters.sortBy, fillters.sortOrder, allowedFields, 'seat.seat_row');
+
+    applyPagination(qb, {
+      page: fillters.page,
+      take: fillters.take,
+    })
+    const [seats, total] = await qb.getManyAndCount();
+    const seatSummaries = seats.map(seat => this.getSeatSummary(seat));
+    const counts = await this.seatRepository
+      .createQueryBuilder('seat')
+      .select([
+        `SUM(CASE WHEN seat.is_deleted = false THEN 1 ELSE 0 END) AS activeCount`,
+        `SUM(CASE WHEN seat.is_deleted = true THEN 1 ELSE 0 END) AS deletedCount`,
+      ])
+      .getRawOne();
+    const activeCount = parseInt(counts.activeCount, 10) || 0;
+    const deletedCount = parseInt(counts.deletedCount, 10) || 0;
+
+    return buildPaginationResponse(seatSummaries, {
+      total,
+      page: fillters.page,
+      take: fillters.take,
+      activeCount,
+      deletedCount,
+
     });
   }
 

@@ -1,6 +1,8 @@
 import { Role } from 'src/common/enums/roles.enum';
 import { OrderExtra } from 'src/database/entities/order/order-extra';
 import { AudienceType } from '../enums/audience_type.enum';
+import { StatusOrderWithAllType } from '../enums/status-order.enum';
+import { SelectQueryBuilder } from 'typeorm';
 
 export type CreateAccountType = {
   address: string;
@@ -137,9 +139,9 @@ export type ISchedule = {
   movie: IMovieBasic;
   cinema_room_id: number;
   is_deleted: boolean;
-   version?: { id: number; name: string } | null; // Cho phép giá trị null
+  version?: { id: number; name: string } | null; // Cho phép giá trị null
 
- 
+
   // Chỉ chứa id và name
 };
 
@@ -187,12 +189,12 @@ export type LoginAzureType = {
   name: string;
   role_id?: number;
 }
-export type ProductType ={
-  id:number;
-  name:string;
-  price:string;
-  category?:string;
-  discount?:string;
+export type ProductType = {
+  id: number;
+  name: string;
+  price: string;
+  category?: string;
+  discount?: string;
   type: string;
 }
 
@@ -207,3 +209,39 @@ export type ZaloReturnQuery = {
   status: string;
   checksum: string;
 }
+
+
+
+
+
+
+
+
+
+
+
+// pagination
+type Operator = '=' | 'LIKE' | 'ILIKE' | 'BETWEEN'| '<>' | '!=' | '>' | '<' | '>=' | '<=' | 'IN' | 'NOT IN' | 'IS NULL' | 'IS NOT NULL';
+export type PaginationParams = {
+  page: number;
+  take: number;
+}
+
+export interface FilterField {
+  field: string;
+  operator: Operator;
+  paramName?: string;
+  customWhere?: (qb: SelectQueryBuilder<any>, value: any) => void; // optional custom where function
+}
+
+export type MetaOptions = {
+  total: number;
+  page: number;
+  take: number;
+  totalSuccess?: number;
+  totalFailed?: number;
+  totalPending?: number;
+  revenue?: string | number;
+  [key: string]: any; 
+}
+

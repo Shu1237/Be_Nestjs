@@ -85,22 +85,22 @@ import { HistoryScoreModule } from './modules/historyScore/historyScore.module';
     }),
 
     // Application Modules
+    ActorModule,
     AuthModule,
-    TesterModule,
-    UserModule,
+    CinemaRoomModule,
+    GerneModule,
+    HistoryScoreModule,
     MovieModule,
     OrderModule,
-    PromotionModule,
-    ActorModule,
-    GerneModule,
-    VersionModule,
-    CinemaRoomModule,
-    ScheduleByDb,
-    SeatModule,
-    TicketModule,
-    ScheduleSeatModule,
     ProductModule,
-    HistoryScoreModule,
+    PromotionModule,
+    ScheduleByDb,
+    ScheduleSeatModule,
+    SeatModule,
+    TesterModule,
+    TicketModule,
+    UserModule,
+    VersionModule,
 
     // Shared Modules
     CronModule,
@@ -108,4 +108,4 @@ import { HistoryScoreModule } from './modules/historyScore/historyScore.module';
     S3Module,
   ],
 })
-export class AppModule {}
+export class AppModule { }

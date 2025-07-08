@@ -202,7 +202,7 @@ export class AuthService {
       if (!role) throw new NotFoundException('Role not found');
       //qr code
       const id = uuidv4();
-      const qrCode = await this.qrcodeService.generateQrCode(id);
+      const qrCode = await this.qrcodeService.generateQrCode(id,'User');
       user = this.userRepository.create({
         id: id,
         sub: sub,

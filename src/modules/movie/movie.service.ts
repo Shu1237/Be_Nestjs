@@ -11,6 +11,12 @@ import { Version } from 'src/database/entities/cinema/version';
 import { IMovie } from 'src/common/utils/type';
 import { NotFoundException } from 'src/common/exceptions/not-found.exception';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
+import { MoviePaginationDto } from 'src/common/pagination/dto/movie/moviePagination.dto';
+import { applyCommonFilters } from 'src/common/pagination/applyCommonFilters';
+import { movieFieldMapping } from 'src/common/pagination/fillters/movieFieldMapping';
+import { applySorting } from 'src/common/pagination/apply_sort';
+import { applyPagination } from 'src/common/pagination/applyPagination';
+import { buildPaginationResponse } from 'src/common/pagination/pagination-response';
 
 @ApiTags('Movies')
 @Injectable()
@@ -24,8 +30,8 @@ export class MovieService {
     private readonly gerneRepository: Repository<Gerne>,
     @InjectRepository(Version)
     private readonly versionRepository: Repository<Version>,
-    // Injec // Inject Actor repository
-  ) {}
+
+  ) { }
   private getMovieSummary(movie: IMovie) {
     return {
       id: movie.id,
@@ -56,13 +62,51 @@ export class MovieService {
       })),
     };
   }
-
-  async getAllMovies(): Promise<IMovie[]> {
+  async getAllMoviesUser() {
     const movies = await this.movieRepository.find({
+      where: { is_deleted: false },
       relations: ['gernes', 'actors', 'versions'],
-      order: { id: 'DESC' }, // Sắp xếp mới nhất đến cũ nhất
     });
     return movies.map((movie) => this.getMovieSummary(movie));
+  } 
+  async getAllMovies(fillters: MoviePaginationDto) {
+    const qb = this.movieRepository.createQueryBuilder('movie')
+      .leftJoinAndSelect('movie.actors', 'actor')
+      .leftJoinAndSelect('movie.gernes', 'gerne')
+      .leftJoinAndSelect('movie.versions', 'version');
+
+    applyCommonFilters(qb, fillters, movieFieldMapping);
+
+    const allowedFields = [
+      'movie.id',
+      'movie.name',
+      'movie.director',
+      'movie.nation',
+    ];
+    applySorting(qb, fillters.sortBy, fillters.sortOrder, allowedFields, 'movie.name');
+    applyPagination(qb, {
+      page: fillters.page,
+      take: fillters.take,
+    })
+    const [movies, total] = await qb.getManyAndCount();
+    const summaries = movies.map((movie) => this.getMovieSummary(movie));
+    const counts = await this.movieRepository
+      .createQueryBuilder('movie')
+      .select([
+        `SUM(CASE WHEN movie.is_deleted = false THEN 1 ELSE 0 END) AS activeCount`,
+        `SUM(CASE WHEN movie.is_deleted = true THEN 1 ELSE 0 END) AS deletedCount`,
+      ])
+      .getRawOne();
+
+    const activeCount = Number(counts.activeCount) || 0;
+    const deletedCount = Number(counts.deletedCount) || 0;
+    return buildPaginationResponse(summaries, {
+      total,
+      page: fillters.page,
+      take: fillters.take,
+      activeCount,
+      deletedCount,
+    })
   }
 
   async getMovieById(id: number): Promise<IMovie> {
@@ -325,8 +369,8 @@ export class MovieService {
 
     return movie.versions;
   }
- 
-    
+
+
   async getMoviesPaginated(
     page = 1,
     limit = 10,

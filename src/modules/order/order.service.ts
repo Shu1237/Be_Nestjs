@@ -37,6 +37,12 @@ import { Role } from 'src/common/enums/roles.enum';
 import { ForbiddenException } from 'src/common/exceptions/forbidden.exception';
 import { HistoryScore } from 'src/database/entities/order/history_score';
 import { JwtService } from '@nestjs/jwt';
+import { OrderPaginationDto } from 'src/common/pagination/dto/order/orderPagination.dto';
+import { applyCommonFilters } from 'src/common/pagination/applyCommonFilters';
+import { orderFieldMapping } from 'src/common/pagination/fillters/order-field-mapping';
+import { applySorting } from 'src/common/pagination/apply_sort';
+import { buildPaginationResponse } from 'src/common/pagination/pagination-response';
+import { applyPagination } from 'src/common/pagination/applyPagination';
 
 
 
@@ -221,7 +227,7 @@ export class OrderService {
         if (promotion.exchange > user.score) {
           throw new ConflictException('You do not have enough score to use this promotion.');
         }
-        //check trường hợp nhân viên đặt hàng nhưng lại dùng giảm giá nhưng k gán customer
+        //check trường hợp nhân viên đặt hàng nhưng lại dùng giảm giá mà k gán customer
         if (user.role.role_id === Role.EMPLOYEE || user.role.role_id === Role.ADMIN && !orderBill.customer_id) {
           throw new ConflictException('Staff must provide customer ID when using promotion.');
         }
@@ -576,33 +582,128 @@ export class OrderService {
     }
   }
 
+  async getOrderOverview() {
+    const [statusCounts, revenueResult] = await Promise.all([
+      this.orderRepository
+        .createQueryBuilder('order')
+        .select('order.status', 'status')
+        .addSelect('COUNT(*)', 'count')
+        .groupBy('order.status')
+        .getRawMany(),
 
-  async getAllOrders({
-    skip,
-    take,
-    page,
-    status,
-    search,
-    startDate,
-    endDate,
-    sortBy = 'order.order_date',
-    sortOrder = 'DESC',
-    paymentMethod,
-  }: {
-    skip: number;
-    take: number;
-    page: number;
-    status?: StatusOrder;
-    search?: string;
-    startDate?: string;
-    endDate?: string;
-    sortBy?: string;
-    sortOrder?: 'ASC' | 'DESC';
-    paymentMethod?: string;
-  }) {
+      this.orderRepository
+        .createQueryBuilder('order')
+        .select('SUM(order.total_prices)', 'revenue')
+        .where('order.status = :status', { status: StatusOrder.SUCCESS })
+        .getRawOne<{ revenue: string }>(),
+    ]);
+
+    const countByStatus = Object.fromEntries(
+      statusCounts.map((row) => [row.status, Number(row.count)]),
+    );
+
+    const totalSuccess = countByStatus[StatusOrder.SUCCESS] || 0;
+    const totalFailed = countByStatus[StatusOrder.FAILED] || 0;
+    const totalPending = countByStatus[StatusOrder.PENDING] || 0;
+    
+    const totalOrders = totalSuccess + totalFailed + totalPending;
+    return {
+      totalOrders,
+      totalSuccess,
+      totalFailed,
+      totalPending,
+      revenue: revenueResult?.revenue,
+    };
+  }
+  async getAllOrders(filters: OrderPaginationDto) {
+    const qb = this.orderRepository
+      .createQueryBuilder('order')
+      .leftJoinAndSelect('order.user', 'user')
+      .leftJoinAndSelect('order.promotion', 'promotion')
+      .leftJoinAndSelect('order.transaction', 'transaction')
+      .leftJoinAndSelect('transaction.paymentMethod', 'paymentMethod')
+      .leftJoinAndSelect('order.orderDetails', 'orderDetail')
+      .leftJoinAndSelect('orderDetail.ticket', 'ticket')
+      .leftJoinAndSelect('ticket.seat', 'seat')
+      .leftJoinAndSelect('ticket.ticketType', 'ticketType')
+      .leftJoinAndSelect('orderDetail.schedule', 'schedule')
+      .leftJoinAndSelect('schedule.movie', 'movie')
+      .leftJoinAndSelect('schedule.cinemaRoom', 'cinemaRoom')
+      .leftJoinAndSelect('order.orderExtras', 'orderExtra')
+      .leftJoinAndSelect('orderExtra.product', 'product');
+
+    //  Apply filters
+    applyCommonFilters(qb, filters, orderFieldMapping);
+
+    //  Apply sorting
+    const allowedSortFields = [
+      'order.id',
+      'order.order_date',
+      'user.username',
+      'movie.name',
+      'paymentMethod.name',
+      'order.status',
+      'order.total_prices',
+    ];
+    applySorting(
+      qb,
+      filters.sortBy,
+      filters.sortOrder,
+      allowedSortFields,
+      'order.order_date',
+    );
+
+    //  Pagination
+    applyPagination(qb, {
+      page: filters.page,
+      take: filters.take,
+    });
+
+    const [orders, total] = await qb.getManyAndCount();
+
+    //  Map to summary DTO
+    const summaries = orders.map((order) =>
+      this.mapToBookingSummaryLite(order),
+    );
+    //  Calculate additional metrics
+    const [statusCounts, revenueResult] = await Promise.all([
+      this.orderRepository
+        .createQueryBuilder('order')
+        .select('order.status', 'status')
+        .addSelect('COUNT(*)', 'count')
+        .groupBy('order.status')
+        .getRawMany(),
+
+      this.orderRepository
+        .createQueryBuilder('order')
+        .select('SUM(order.total_prices)', 'revenue')
+        .where('order.status = :status', { status: StatusOrder.SUCCESS })
+        .getRawOne<{ revenue: string }>(),
+    ]);
+
+    const countByStatus = Object.fromEntries(
+      statusCounts.map((row) => [row.status, Number(row.count)]),
+    );
+
+    const totalSuccess = countByStatus[StatusOrder.SUCCESS] || 0;
+    const totalFailed = countByStatus[StatusOrder.FAILED] || 0;
+    const totalPending = countByStatus[StatusOrder.PENDING] || 0;
 
 
-    const query = this.orderRepository
+    return buildPaginationResponse(summaries, {
+      total,
+      page: filters.page,
+      take: filters.take,
+      totalSuccess,
+      totalFailed,
+      totalPending,
+      revenue: revenueResult?.revenue,
+    });
+  }
+
+
+  async getOrderByIdEmployeeAndAdmin(orderId: number) {
+    const qb = this.orderRepository
       .createQueryBuilder('order')
       .leftJoinAndSelect('order.user', 'user')
       .leftJoinAndSelect('order.promotion', 'promotion')
@@ -617,127 +718,19 @@ export class OrderService {
       .leftJoinAndSelect('schedule.cinemaRoom', 'cinemaRoom')
       .leftJoinAndSelect('order.orderExtras', 'orderExtra')
       .leftJoinAndSelect('orderExtra.product', 'product')
-      .skip(skip)
-      .take(take);
+      .where('order.id = :orderId', { orderId });
 
-    // Filter: status
-    if (status) {
-      query.andWhere('order.status = :status', { status });
-    }
+    const order = await qb.getOne();
 
-    // Filter: search by username or movie name
-    if (search?.trim()) {
-      query.andWhere(
-        '(user.username LIKE :search OR movie.name LIKE :search)',
-        { search: `%${search.trim()}%` },
-      );
-    }
-
-    // Filter: payment method name
-    if (paymentMethod?.trim()) {
-      query.andWhere('paymentMethod.name LIKE :method', {
-        method: `%${paymentMethod.trim()}%`,
-      });
-    }
-
-    // Filter: date range
-    if (startDate && endDate) {
-      query.andWhere('order.order_date BETWEEN :start AND :end', {
-        start: `${startDate} 00:00:00`,
-        end: `${endDate} 23:59:59`,
-      });
-    } else if (startDate) {
-      query.andWhere('order.order_date >= :start', { start: `${startDate} 00:00:00` });
-    } else if (endDate) {
-      query.andWhere('order.order_date <= :end', { end: `${endDate} 23:59:59` });
-    }
-
-    // Sort: only allow predefined fields
-    const allowedSortFields = [
-      'order.order_date',
-      'user.username',
-      'movie.name',
-    ];
-    const finalSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'order.order_date';
-    query.orderBy(finalSortBy, sortOrder);
-
-    const [orders, total] = await query.getManyAndCount();
-    const summaries = orders.map(order => this.mapToBookingSummaryLite(order));
-
-    // --- Tính tổng trạng thái ---
-    const [totalSuccess, totalFailed, totalPending, revenueResult] = await Promise.all([
-      this.orderRepository.count({ where: { status: StatusOrder.SUCCESS } }),
-      this.orderRepository.count({ where: { status: StatusOrder.FAILED } }),
-      this.orderRepository.count({ where: { status: StatusOrder.PENDING } }),
-      this.orderRepository
-        .createQueryBuilder('order')
-        .select('SUM(order.total_prices)', 'revenue')
-        .where('order.status = :status', { status: StatusOrder.SUCCESS })
-        .getRawOne<{ revenue: string }>(),
-    ]);
-
-    return {
-      data: summaries,
-      total,
-      page,
-      totalSuccess,
-      totalFailed,
-      totalPending,
-      revenue: revenueResult?.revenue ? parseFloat(revenueResult.revenue) : 0,
-      pageSize: take,
-      totalPages: Math.ceil(total / take),
-    };
-  }
-
-
-
-  async getOrderByIdEmployeeAndAdmin(orderId: number) {
-    const order = await this.orderRepository.findOne({
-      where: { id: orderId },
-      relations: ['user',
-        'promotion',
-        'transaction',
-        'transaction.paymentMethod',
-        'orderDetails',
-        'orderDetails.ticket',
-        'orderDetails.schedule',
-        'orderDetails.schedule.cinemaRoom',
-        'orderDetails.schedule.movie',
-        'orderDetails.ticket.seat',
-        'orderDetails.ticket.ticketType',
-        'orderExtras',
-        'orderExtras.product'
-      ],
-    });
     if (!order) {
       throw new NotFoundException(`Order with ID ${orderId} not found`);
     }
+
     return this.mapToBookingSummaryLite(order);
   }
-  async getMyOrders({
-    userId,
-    skip,
-    take,
-    page,
-    status,
-    search,
-    startDate,
-    endDate,
-    sortBy = 'order.order_date',
-    sortOrder = 'DESC',
-  }: {
-    userId: string;
-    skip: number;
-    take: number;
-    page: number;
-    status?: StatusOrder;
-    search?: string;
-    startDate?: string;
-    endDate?: string;
-    sortBy?: string;
-    sortOrder?: 'ASC' | 'DESC';
-  }) {
-    const query = this.orderRepository
+
+  async getMyOrders(filters: OrderPaginationDto & { userId: string }) {
+    const qb = this.orderRepository
       .createQueryBuilder('order')
       .leftJoinAndSelect('order.user', 'user')
       .leftJoinAndSelect('order.promotion', 'promotion')
@@ -750,61 +743,75 @@ export class OrderService {
       .leftJoinAndSelect('orderDetail.schedule', 'schedule')
       .leftJoinAndSelect('schedule.movie', 'movie')
       .leftJoinAndSelect('schedule.cinemaRoom', 'cinemaRoom')
-      .where('user.id = :userId', { userId })
-      .skip(skip)
-      .take(take);
+      .leftJoinAndSelect('order.orderExtras', 'orderExtra')
+      .leftJoinAndSelect('orderExtra.product', 'product')
+      .where('user.id = :userId', { userId: filters.userId });
 
-    if (status) {
-      query.andWhere('order.status = :status', { status });
-    }
 
-    if (search && search.trim() !== '') {
-      query.andWhere(
-        `(movie.name LIKE :search OR cinemaRoom.cinema_room_name LIKE :search)`,
-        { search: `%${search.trim()}%` },
-      );
-    }
+    applyCommonFilters(qb, filters, orderFieldMapping);
 
-    if (startDate && endDate) {
-      query.andWhere('order.order_date BETWEEN :start AND :end', {
-        start: `${startDate} 00:00:00`,
-        end: `${endDate} 23:59:59`,
-      });
-    } else if (startDate) {
-      query.andWhere('order.order_date >= :start', { start: `${startDate} 00:00:00` });
-    } else if (endDate) {
-      query.andWhere('order.order_date <= :end', { end: `${endDate} 23:59:59` });
-    }
+    const allowedSortFields = [
+      'order.id',
+      'order.order_date',
+      'movie.name',
+      'user.username',
+      'paymentMethod.name',
+      'order.status',
+      'order.total_prices',
+    ];
+    applySorting(
+      qb,
+      filters.sortBy,
+      filters.sortOrder,
+      allowedSortFields,
+      'order.order_date',
+    );
 
-    const allowedSortFields = ['order.order_date', 'movie.name', 'cinemaRoom.cinema_room_name'];
-    const finalSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'order.order_date';
 
-    query.orderBy(finalSortBy, sortOrder);
+    applyPagination(qb, {
+      page: filters.page,
+      take: filters.take,
+    });
 
-    const [orders, total] = await query.getManyAndCount();
+    const [orders, total] = await qb.getManyAndCount();
 
-    const bookingSummaries = orders.map((order) => this.mapToBookingSummaryLite(order));
-    const [totalSuccess, totalFailed, totalPending, revenueResult] = await Promise.all([
-      this.orderRepository.count({ where: { status: StatusOrder.SUCCESS } }),
-      this.orderRepository.count({ where: { status: StatusOrder.FAILED } }),
-      this.orderRepository.count({ where: { status: StatusOrder.PENDING } }),
+    const summaries = orders.map((order) => this.mapToBookingSummaryLite(order),);
+
+
+    const [statusCounts, revenueResult] = await Promise.all([
+      this.orderRepository
+        .createQueryBuilder('order')
+        .select('order.status', 'status')
+        .addSelect('COUNT(*)', 'count')
+        .where('order.user.id = :userId', { userId: filters.userId })
+        .groupBy('order.status')
+        .getRawMany(),
+
       this.orderRepository
         .createQueryBuilder('order')
         .select('SUM(order.total_prices)', 'revenue')
         .where('order.status = :status', { status: StatusOrder.SUCCESS })
+        .andWhere('order.user.id = :userId', { userId: filters.userId })
         .getRawOne<{ revenue: string }>(),
     ]);
-    return {
-      data: bookingSummaries,
+
+    const countByStatus = Object.fromEntries(
+      statusCounts.map((row) => [row.status, Number(row.count)]),
+    );
+
+    const totalSuccess = countByStatus[StatusOrder.SUCCESS] || 0;
+    const totalFailed = countByStatus[StatusOrder.FAILED] || 0;
+    const totalPending = countByStatus[StatusOrder.PENDING] || 0;
+
+    return buildPaginationResponse(summaries, {
       total,
-      page,
+      page: filters.page,
+      take: filters.take,
       totalSuccess,
       totalFailed,
       totalPending,
-      revenue: revenueResult?.revenue ? parseFloat(revenueResult.revenue) : 0,
-      pageSize: take,
-      totalPages: Math.ceil(total / take),
-    };
+      revenue: revenueResult?.revenue,
+    });
   }
 
   private mapToBookingSummaryLite(order: Order) {
@@ -826,6 +833,15 @@ export class OrderService {
         id: order.orderDetails[0].schedule.cinemaRoom.id,
         name: order.orderDetails[0].schedule.cinemaRoom.cinema_room_name,
       },
+      schedule: {
+        id: order.orderDetails[0].schedule.id,
+        start_time: order.orderDetails[0].schedule.start_movie_time,
+        end_time: order.orderDetails[0].schedule.end_movie_time,
+      },
+      movie: {
+        id: order.orderDetails[0].schedule.movie.id,
+        name: order.orderDetails[0].schedule.movie.name,
+      },
       orderDetails: order.orderDetails.map(detail => ({
         id: detail.id,
         total_each_ticket: detail.total_each_ticket,
@@ -837,12 +853,7 @@ export class OrderService {
         }, ticketType: {
           ticket_name: detail.ticket.ticketType.ticket_name,
         },
-        start_movie_time: detail.schedule.start_movie_time,
-        end_movie_time: detail.schedule.end_movie_time,
-        movie: {
-          id: detail.schedule.movie.id,
-          name: detail.schedule.movie.name,
-        },
+       
       })),
       orderExtras: order.orderExtras?.map(extra => ({
         id: extra.id,

@@ -8,33 +8,53 @@ import {
   Body,
   UseGuards,
   Req,
-  ForbiddenException,
   Put,
   ParseIntPipe,
+  Query,
 } from '@nestjs/common';
 import { CinemaRoomService } from './cinema-room.service';
 import { CreateCinemaRoomDto } from './dto/create-cinema-room.dto';
 import { UpdateCinemaRoomDto } from './dto/update-cinema-room.dto';
-
 import {
-  ApiTags,
   ApiBearerAuth,
   ApiOperation,
-  ApiResponse,
+  ApiQuery,
 } from '@nestjs/swagger';
-import { JWTUserType } from '../../common/utils/type';
-import { Role } from '../../common/enums/roles.enum';
+
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
+import { CinemaRoomPaginationDto } from 'src/common/pagination/dto/cinmeroom/cinmearoomPagiantion.dto';
 
-
-@ApiTags('Cinema Rooms')
+@UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 @Controller('cinema-rooms')
 export class CinemaRoomController {
-  constructor(private readonly cinemaRoomService: CinemaRoomService) {}
+  constructor(private readonly cinemaRoomService: CinemaRoomService) { }
 
-  @UseGuards(JwtAuthGuard)
+  @Get('user')
+  @ApiOperation({ summary: 'Get all cinema rooms for users' })
+  async getAllCinemaRoomsUser() {
+    return await this.cinemaRoomService.getAllCinemaRoomsUser();
+  }
+  @Get('admin')
+  @ApiOperation({ summary: 'Get all cinema rooms for admin' })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
+  @ApiQuery({ name: 'search', required: false, type: String, example: 'Room 1' })
+  @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], example: 'ASC' })
+  async findAll(@Query() query: CinemaRoomPaginationDto, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can access this endpoint.');
+    const {
+      page = 1,
+      take = 10,
+      ...restFilters
+    } = query;
+    return this.cinemaRoomService.findAll({
+      page,
+      take: Math.min(take, 100), 
+      ...restFilters,
+    });
+  }
   @Post()
   @ApiOperation({ summary: 'Create a new cinema room (admin, employee only)' })
   async create(@Body() createCinemaRoomDto: CreateCinemaRoomDto, @Req() req) {
@@ -42,21 +62,15 @@ export class CinemaRoomController {
     return await this.cinemaRoomService.create(createCinemaRoomDto);
   }
 
-  @UseGuards(JwtAuthGuard)
-  @Get()
-  @ApiOperation({ summary: 'Get all cinema rooms' })
-  async findAll() {
-    return await this.cinemaRoomService.findAll();
-  }
 
-  @UseGuards(JwtAuthGuard)
+
   @Get(':id')
   @ApiOperation({ summary: 'Get cinema room by ID' })
   async findOne(@Param('id') id: number) {
     return await this.cinemaRoomService.findOne(id);
   }
 
-  @UseGuards(JwtAuthGuard)
+
   @Put(':id')
   @ApiOperation({ summary: 'Update cinema room by ID (admin, employee only)' })
   async update(
@@ -64,10 +78,10 @@ export class CinemaRoomController {
     @Body() updateCinemaRoomDto: UpdateCinemaRoomDto,
     @Req() req,
   ) {
-     checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can update a cinema room.');
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can update a cinema room.');
     return await this.cinemaRoomService.update(id, updateCinemaRoomDto);
   }
-  @UseGuards(JwtAuthGuard)
+
   @Patch(':id/soft-delete')
   @ApiOperation({ summary: 'Soft delete a cinema room (admin, employee only)' })
   async softDeleteCinemaRoom(
@@ -78,7 +92,7 @@ export class CinemaRoomController {
     return await this.cinemaRoomService.softDeleteCinemaRoom(id);
   }
 
-  @UseGuards(JwtAuthGuard)
+
   @Delete(':id')
   @ApiOperation({ summary: 'Delete cinema room by ID (admin, employee only)' })
   async remove(@Param('id') id: number, @Req() req) {

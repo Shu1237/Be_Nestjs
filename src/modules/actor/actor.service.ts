@@ -9,6 +9,12 @@ import { UpdateActorDto } from 'src/modules/actor/dtos/updateActor.dto';
 import { Movie } from 'src/database/entities/cinema/movie';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
 import { NotFoundException } from 'src/common/exceptions/not-found.exception';
+import { ActorPaginationDto } from 'src/common/pagination/dto/actor/actor-pagination.dto';
+import { applyCommonFilters } from 'src/common/pagination/applyCommonFilters';
+import { actorFieldMapping } from 'src/common/pagination/fillters/actor-field-mapping';
+import { applySorting } from 'src/common/pagination/apply_sort';
+import { applyPagination } from 'src/common/pagination/applyPagination';
+import { buildPaginationResponse } from 'src/common/pagination/pagination-response';
 
 @Injectable()
 export class ActorService {
@@ -17,7 +23,14 @@ export class ActorService {
     private readonly actorRepository: Repository<Actor>,
     @InjectRepository(Movie)
     private readonly movieRepository: Repository<Movie>,
-  ) {}
+  ) { }
+
+
+  async getAllActorsUser(): Promise<Actor[]> {
+    return await this.actorRepository.find({
+      where: { is_deleted: false },
+    });
+  }
 
   async createActor(createActorDto: CreateActorDto): Promise<{ msg: string }> {
     const existingActor = await this.actorRepository.findOneBy({
@@ -36,8 +49,42 @@ export class ActorService {
     };
   }
 
-  async findAllActors(): Promise<Actor[]> {
-    return await this.actorRepository.find();
+  async getAllActors(filters: ActorPaginationDto) {
+    const qb = this.actorRepository.createQueryBuilder('actor')
+    applyCommonFilters(qb, filters, actorFieldMapping);
+    const allowedSortFields = [
+      'actor.name',
+      'actor.stage_name',
+      'actor.nationality',
+      'actor.date_of_birth',
+      'actor.gender',
+    ];
+    applySorting(qb, filters.sortBy, filters.sortOrder, allowedSortFields, 'actor.name');
+
+    // Apply pagination
+    applyPagination(qb, {
+      page: filters.page,
+      take: filters.take
+    });
+    const [actors, total] = await qb.getManyAndCount();
+
+    const counts = await this.actorRepository
+      .createQueryBuilder('actor')
+      .select([
+        `SUM(CASE WHEN actor.is_deleted = false THEN 1 ELSE 0 END) AS activeCount`,
+        `SUM(CASE WHEN actor.is_deleted = true THEN 1 ELSE 0 END) AS deletedCount`,
+      ])
+      .getRawOne();
+
+    const activeCount = parseInt(counts?.activeCount || '0', 10);
+    const deletedCount = parseInt(counts?.deletedCount || '0', 10);
+    return buildPaginationResponse(actors, {
+      total,
+      page: filters.page,
+      take: filters.take,
+      activeCount,
+      deletedCount,
+    });
   }
 
   async findActorById(id: number): Promise<Actor> {
