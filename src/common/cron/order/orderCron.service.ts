@@ -18,59 +18,51 @@ export class OrderCronService {
     private readonly scheduleSeatRepository: Repository<ScheduleSeat>,
   ) {}
 
-  // Cron chạy mỗi 20 phút
   @Cron('*/20 * * * *', {
     name: 'check-pending-orders-to-fail',
   })
   async handleExpiredPendingOrders() {
-    this.logger.log(' Checking for expired PENDING orders every 20 minutes');
+    this.logger.log('Running cron to check expired pending orders...');
+
+    const now = new Date();
+    const expiredThreshold = new Date(now.getTime() - 20 * 60 * 1000); // 20 phút trước
 
     try {
-      const now = new Date();
-      const holdMinutes = 20;
-      const holdThreshold = new Date(now.getTime() - holdMinutes * 60 * 1000);
-
       const expiredOrders = await this.orderRepository.find({
         where: {
           status: StatusOrder.PENDING,
-          order_date: LessThan(holdThreshold),
+          order_date: LessThan(expiredThreshold),
         },
         relations: [
           'transaction',
           'orderDetails',
           'orderDetails.ticket',
           'orderDetails.ticket.seat',
-          'orderDetails.schedule',
+          'orderDetails.ticket.schedule',
         ],
       });
 
       const ordersToFail: Order[] = [];
 
       for (const order of expiredOrders) {
-
-
-        const firstSchedule = order.orderDetails[0]?.schedule;
-        if (!firstSchedule || new Date(firstSchedule.start_movie_time) <= now) continue;
-
-        this.logger.log(` Order ${order.id} expired and eligible to be FAILED`);
+        this.logger.log(`→ Order ${order.id} is expired and will be marked as FAILED`);
 
         for (const detail of order.orderDetails) {
-          const schedule = detail.ticket?.schedule;
           const seat = detail.ticket?.seat;
+          const ticketSchedule = detail.ticket?.schedule;
 
-          if (schedule && seat) {
+          if (seat && ticketSchedule) {
             const scheduleSeat = await this.scheduleSeatRepository.findOne({
               where: {
-                schedule: { id: schedule.id },
                 seat: { id: seat.id },
+                schedule: { id: ticketSchedule.id },
               },
             });
 
-            if (scheduleSeat && scheduleSeat.status === StatusSeat.BOOKED) {
+            if (scheduleSeat?.status === StatusSeat.BOOKED) {
               scheduleSeat.status = StatusSeat.NOT_YET;
               await this.scheduleSeatRepository.save(scheduleSeat);
-
-              this.logger.log(` Seat ${seat.id} in schedule ${schedule.id} marked as NOT_YET`);
+              this.logger.log(`→ Seat ${seat.id} in schedule ${ticketSchedule.id} set to NOT_YET`);
             }
           }
         }
@@ -88,10 +80,10 @@ export class OrderCronService {
         await this.orderRepository.save(ordersToFail);
         this.logger.log(` Marked ${ordersToFail.length} expired orders as FAILED`);
       } else {
-        this.logger.log(' No expired orders to update');
+        this.logger.log(' No expired orders found to fail');
       }
-    } catch (error) {
-      this.logger.error(' Error while checking expired pending orders', error);
+    } catch (err) {
+      this.logger.error(' Error while handling expired pending orders', err);
     }
   }
 }
