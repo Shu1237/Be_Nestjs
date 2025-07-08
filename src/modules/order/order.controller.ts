@@ -180,7 +180,7 @@ export class OrderController {
 
   ) {
     const user = req.user as JWTUserType;
-    checkUserRole(user, 'You can only view your own orders', id.toString());
+    // checkUserRole(user, 'You can only view your own orders', id.toString());
     const { page = 1, limit = 10, status, ...restFilters } = query;
     const take = Math.min(limit, 100);
     const skip = (page - 1) * take;
