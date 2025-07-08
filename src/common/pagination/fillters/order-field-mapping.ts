@@ -7,9 +7,9 @@ export const orderFieldMapping: Record<string, FilterField> = {
     field: 'order.status',
     operator: '=',
   },
-  userId: {
-    field: 'user.id',
-    operator: '=',
+  email: {
+    field: 'user.email',
+    operator: 'LIKE',
   },
   search: {
     operator: 'LIKE',

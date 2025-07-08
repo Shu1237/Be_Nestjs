@@ -227,7 +227,7 @@ export class OrderService {
         if (promotion.exchange > user.score) {
           throw new ConflictException('You do not have enough score to use this promotion.');
         }
-        //check trường hợp nhân viên đặt hàng nhưng lại dùng giảm giá nhưng k gán customer
+        //check trường hợp nhân viên đặt hàng nhưng lại dùng giảm giá mà k gán customer
         if (user.role.role_id === Role.EMPLOYEE || user.role.role_id === Role.ADMIN && !orderBill.customer_id) {
           throw new ConflictException('Staff must provide customer ID when using promotion.');
         }
@@ -582,7 +582,39 @@ export class OrderService {
     }
   }
 
+  async getOrderOverview() {
+    const [statusCounts, revenueResult] = await Promise.all([
+      this.orderRepository
+        .createQueryBuilder('order')
+        .select('order.status', 'status')
+        .addSelect('COUNT(*)', 'count')
+        .groupBy('order.status')
+        .getRawMany(),
 
+      this.orderRepository
+        .createQueryBuilder('order')
+        .select('SUM(order.total_prices)', 'revenue')
+        .where('order.status = :status', { status: StatusOrder.SUCCESS })
+        .getRawOne<{ revenue: string }>(),
+    ]);
+
+    const countByStatus = Object.fromEntries(
+      statusCounts.map((row) => [row.status, Number(row.count)]),
+    );
+
+    const totalSuccess = countByStatus[StatusOrder.SUCCESS] || 0;
+    const totalFailed = countByStatus[StatusOrder.FAILED] || 0;
+    const totalPending = countByStatus[StatusOrder.PENDING] || 0;
+    
+    const totalOrders = totalSuccess + totalFailed + totalPending;
+    return {
+      totalOrders,
+      totalSuccess,
+      totalFailed,
+      totalPending,
+      revenue: revenueResult?.revenue,
+    };
+  }
   async getAllOrders(filters: OrderPaginationDto) {
     const qb = this.orderRepository
       .createQueryBuilder('order')
@@ -605,9 +637,13 @@ export class OrderService {
 
     //  Apply sorting
     const allowedSortFields = [
+      'order.id',
       'order.order_date',
       'user.username',
       'movie.name',
+      'paymentMethod.name',
+      'order.status',
+      'order.total_prices',
     ];
     applySorting(
       qb,
@@ -715,13 +751,13 @@ export class OrderService {
     applyCommonFilters(qb, filters, orderFieldMapping);
 
     const allowedSortFields = [
+      'order.id',
       'order.order_date',
       'movie.name',
       'user.username',
       'paymentMethod.name',
       'order.status',
       'order.total_prices',
-      'cinemaRoom.cinema_room_name',
     ];
     applySorting(
       qb,
@@ -797,6 +833,15 @@ export class OrderService {
         id: order.orderDetails[0].schedule.cinemaRoom.id,
         name: order.orderDetails[0].schedule.cinemaRoom.cinema_room_name,
       },
+      schedule: {
+        id: order.orderDetails[0].schedule.id,
+        start_time: order.orderDetails[0].schedule.start_movie_time,
+        end_time: order.orderDetails[0].schedule.end_movie_time,
+      },
+      movie: {
+        id: order.orderDetails[0].schedule.movie.id,
+        name: order.orderDetails[0].schedule.movie.name,
+      },
       orderDetails: order.orderDetails.map(detail => ({
         id: detail.id,
         total_each_ticket: detail.total_each_ticket,
@@ -808,12 +853,7 @@ export class OrderService {
         }, ticketType: {
           ticket_name: detail.ticket.ticketType.ticket_name,
         },
-        start_movie_time: detail.schedule.start_movie_time,
-        end_movie_time: detail.schedule.end_movie_time,
-        movie: {
-          id: detail.schedule.movie.id,
-          name: detail.schedule.movie.name,
-        },
+       
       })),
       orderExtras: order.orderExtras?.map(extra => ({
         id: extra.id,

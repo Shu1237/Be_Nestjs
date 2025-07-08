@@ -5,7 +5,6 @@ import { StatusOrder } from 'src/common/enums/status-order.enum';
 import { StatusSeat } from 'src/common/enums/status_seat.enum';
 import { ScheduleSeat } from 'src/database/entities/cinema/schedule_seat';
 import { Order } from 'src/database/entities/order/order';
-import { OrderExtra } from 'src/database/entities/order/order-extra';
 import { Repository, LessThan } from 'typeorm';
 
 @Injectable()
@@ -17,23 +16,20 @@ export class OrderCronService {
     private readonly orderRepository: Repository<Order>,
     @InjectRepository(ScheduleSeat)
     private readonly scheduleSeatRepository: Repository<ScheduleSeat>,
-    @InjectRepository(OrderExtra)
-    private readonly orderExtraRepository: Repository<OrderExtra>,
-  ) { }
+  ) {}
 
-  // Cron chạy mỗi 15 phút
+  // Cron chạy mỗi 20 phút
   @Cron('*/20 * * * *', {
     name: 'check-pending-orders-to-fail',
   })
   async handleExpiredPendingOrders() {
-    this.logger.log('Checking for expired PENDING orders every 20 minutes');
+    this.logger.log(' Checking for expired PENDING orders every 20 minutes');
 
     try {
       const now = new Date();
-      const holdMinutes = 20; // thời gian giữ chỗ tối đa
-      const holdThreshold = new Date(now.getTime() - holdMinutes * 60 * 1000); // now - 20 phút
+      const holdMinutes = 20;
+      const holdThreshold = new Date(now.getTime() - holdMinutes * 60 * 1000);
 
-      // Lấy các order PENDING, được tạo trước ngưỡng giữ chỗ, và suất chiếu vẫn chưa bắt đầu
       const expiredOrders = await this.orderRepository.find({
         where: {
           status: StatusOrder.PENDING,
@@ -45,29 +41,19 @@ export class OrderCronService {
           'orderDetails.ticket',
           'orderDetails.ticket.seat',
           'orderDetails.schedule',
-          'orderExtras',
         ],
       });
 
-      let ordersToFail: Order[] = [];
-      let extrasToFail: OrderExtra[] = [];
+      const ordersToFail: Order[] = [];
 
       for (const order of expiredOrders) {
-        // Kiểm tra xem suất chiếu vẫn chưa bắt đầu
-        const firstSchedule = order.orderDetails?.[0]?.schedule;
+
+
+        const firstSchedule = order.orderDetails[0]?.schedule;
         if (!firstSchedule || new Date(firstSchedule.start_movie_time) <= now) continue;
 
-        this.logger.log(`Order ${order.id} is expired and eligible to be failed.`);
-        // update status orderExtras 
-        if (order.orderExtras && order.orderExtras.length > 0) {
-          for (const extra of order.orderExtras) {
-            extra.status = StatusOrder.FAILED;
-            this.logger.log(`Order Extra ${extra.id} marked as FAILED`);
-            extrasToFail.push(extra);
-          }
-        }
+        this.logger.log(` Order ${order.id} expired and eligible to be FAILED`);
 
-        // Cập nhật trạng thái ghế thành NOT_YET
         for (const detail of order.orderDetails) {
           const schedule = detail.ticket?.schedule;
           const seat = detail.ticket?.seat;
@@ -80,17 +66,16 @@ export class OrderCronService {
               },
             });
 
-            if (scheduleSeat) {
+            if (scheduleSeat && scheduleSeat.status === StatusSeat.BOOKED) {
               scheduleSeat.status = StatusSeat.NOT_YET;
               await this.scheduleSeatRepository.save(scheduleSeat);
-              this.logger.log(
-                `Seat ${seat.id} in schedule ${schedule.id} marked as NOT_YET`,
-              );
+
+              this.logger.log(` Seat ${seat.id} in schedule ${schedule.id} marked as NOT_YET`);
             }
           }
         }
 
-        // Cập nhật trạng thái order
+        // Đánh dấu order và transaction là FAILED
         order.status = StatusOrder.FAILED;
         if (order.transaction) {
           order.transaction.status = StatusOrder.FAILED;
@@ -99,18 +84,14 @@ export class OrderCronService {
         ordersToFail.push(order);
       }
 
-      // Lưu tất cả đơn hàng đã bị cập nhật
       if (ordersToFail.length > 0) {
         await this.orderRepository.save(ordersToFail);
-        if (extrasToFail.length > 0) {
-          await this.orderExtraRepository.save(extrasToFail);
-        }
-        this.logger.log(`Marked ${ordersToFail.length} orders as FAILED`);
+        this.logger.log(` Marked ${ordersToFail.length} expired orders as FAILED`);
       } else {
-        this.logger.log('No orders to update');
+        this.logger.log(' No expired orders to update');
       }
     } catch (error) {
-      this.logger.error('Error while checking expired pending orders', error);
+      this.logger.error(' Error while checking expired pending orders', error);
     }
   }
 }

@@ -3,9 +3,7 @@ import { TicketService } from './ticket.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { JWTUserType } from 'src/common/utils/type';
 import { ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
-import { GetAllTicketsDto } from './dto/get-all-tickets.dto';
 import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
-import { checkUserRole } from 'src/common/role/user';
 import { TicketPaginationDto } from 'src/common/pagination/dto/ticket/ticket-pagination.dto';
 
 @UseGuards(JwtAuthGuard)
@@ -66,8 +64,6 @@ export class TicketController {
     @Query() query: TicketPaginationDto,
   ) {
     const user = req.user as JWTUserType;
-    // checkUserRole(user, 'You can only view your own tickets');
-
     // Trích xuất các giá trị từ query
     const {
       page = 1,

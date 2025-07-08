@@ -235,7 +235,6 @@ export interface FilterField {
 }
 
 export type MetaOptions = {
-
   total: number;
   page: number;
   take: number;
@@ -243,6 +242,6 @@ export type MetaOptions = {
   totalFailed?: number;
   totalPending?: number;
   revenue?: string | number;
-  [key: string]: any; // more properties 
+  [key: string]: any; 
 }
 

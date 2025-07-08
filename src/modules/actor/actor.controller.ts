@@ -31,14 +31,14 @@ import { ActorPaginationDto } from 'src/common/pagination/dto/actor/actor-pagina
 @Controller('actor')
 export class ActorController {
   constructor(private readonly actorService: ActorService) { }
-  
+
 
   @Get('user')
   @ApiOperation({ summary: 'Get all actors for users' })
   async getAllActorsUser() {
     return await this.actorService.getAllActorsUser();
   }
-
+  @UseGuards(JwtAuthGuard)
   @Get('admin')
   @ApiOperation({ summary: 'Get all actors for admin' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })

@@ -31,7 +31,7 @@ export class MovieController {
    
   @Get('user')
   @ApiOperation({ summary: 'Get all movies for user' })
-  getMovie(@Req() req) {
+  getMovie() {
     return this.movieService.getAllMoviesUser();
   }
   @UseGuards(JwtAuthGuard)

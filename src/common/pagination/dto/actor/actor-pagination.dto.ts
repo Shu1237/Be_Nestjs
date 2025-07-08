@@ -9,9 +9,7 @@ export class ActorPaginationDto extends BasePaginationDto {
     @IsOptional()
     @IsString()
     stage_name?: string;
-
- 
-
+     
     @IsOptional()
     @IsString()
     nationality?: string;

@@ -68,7 +68,7 @@ export class MovieService {
       relations: ['gernes', 'actors', 'versions'],
     });
     return movies.map((movie) => this.getMovieSummary(movie));
-  }
+  } 
   async getAllMovies(fillters: MoviePaginationDto) {
     const qb = this.movieRepository.createQueryBuilder('movie')
       .leftJoinAndSelect('movie.actors', 'actor')
@@ -78,12 +78,10 @@ export class MovieService {
     applyCommonFilters(qb, fillters, movieFieldMapping);
 
     const allowedFields = [
+      'movie.id',
       'movie.name',
       'movie.director',
       'movie.nation',
-      'version.name',
-      'gerne.genre_name',
-      'actor.name',
     ];
     applySorting(qb, fillters.sortBy, fillters.sortOrder, allowedFields, 'movie.name');
     applyPagination(qb, {

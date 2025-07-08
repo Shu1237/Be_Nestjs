@@ -16,18 +16,22 @@ export class S3Service {
     });
   }
 
-  async uploadFile(file: Buffer, fileName: string): Promise<string> {
+  async uploadFile(file: Buffer, fileName: string, folder: string): Promise<string> {
     const bucketName = this.configService.get<string>('aws.bucketName')!;
     const region = this.configService.get<string>('aws.region')!;
+
+    // Tạo đường dẫn Key đúng thư mục
+    const key = `${folder}/${fileName}`;
 
     await this.s3Client.send(
       new PutObjectCommand({
         Bucket: bucketName,
-        Key: fileName,
+        Key: key,
         Body: file,
       }),
     );
 
-    return `https://${bucketName}.s3.${region}.amazonaws.com/${fileName}`;
+    // Trả về đường dẫn đúng folder
+    return `https://${bucketName}.s3.${region}.amazonaws.com/${key}`;
   }
 }

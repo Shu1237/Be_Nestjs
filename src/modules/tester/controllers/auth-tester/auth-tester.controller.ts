@@ -104,11 +104,11 @@ export class AuthTesterController {
     return this.orderService.getAllOrderTest()
   }
 
-  @Post('s3')
-  testS3() {
-    const data = 'Hello, QR Code!';
-    return this.qrCodeService.generateQrCode(data);
-  }
+  // @Post('s3')
+  // testS3() {
+  //   const data = 'Hello, QR Code!';
+  //   return this.qrCodeService.generateQrCode(data,);
+  // }
   @Post('time/manual-check')
   @ApiOperation({
     summary: 'Manually test time-based promotion checks',
