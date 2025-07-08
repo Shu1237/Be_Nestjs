@@ -29,6 +29,8 @@ import { S3Module } from './common/s3/s3.module';
 import { ScheduleSeatModule } from './modules/scheduleseat/scheduleseat.module';
 import { ProductModule } from './modules/product/product.module';
 import { HistoryScoreModule } from './modules/historyScore/historyScore.module';
+import { PaymentMethodResolver } from './payment-method/payment-method.resolver';
+import { PaymentMethodModule } from './payment-method/payment-method.module';
 
 @Module({
   imports: [
@@ -106,6 +108,8 @@ import { HistoryScoreModule } from './modules/historyScore/historyScore.module';
     CronModule,
     MyGateWayModule,
     S3Module,
+    PaymentMethodModule,
   ],
+  providers: [PaymentMethodResolver],
 })
 export class AppModule {}
