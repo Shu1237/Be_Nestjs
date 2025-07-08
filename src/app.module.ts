@@ -30,7 +30,7 @@ import { ScheduleSeatModule } from './modules/scheduleseat/scheduleseat.module';
 import { ProductModule } from './modules/product/product.module';
 import { HistoryScoreModule } from './modules/historyScore/historyScore.module';
 import { PaymentMethodResolver } from './payment-method/payment-method.resolver';
-import { PaymentMethodModule } from './payment-method/payment-method.module';
+import { PaymentMethodModule } from './modules/payment-method/payment-method.module';
 
 @Module({
   imports: [

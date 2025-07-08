@@ -8,6 +8,9 @@ export class PaymentMethod {
   @Column({ type: 'varchar', nullable: false })
   name: string;
 
+  @Column({ type: 'boolean', default: false })
+  is_deleted: boolean;
+
   @OneToMany(() => Transaction, (transaction) => transaction.paymentMethod)
   transactions: Transaction[];
 }

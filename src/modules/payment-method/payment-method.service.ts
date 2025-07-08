@@ -16,7 +16,7 @@ export class PaymentMethodService {
 
   async create(createPaymentMethodDto: CreatePaymentMethodDto) {
     const exists = await this.paymentMethodRepository.findOne({
-      where: { name: createPaymentMethodDto.name },
+      where: { name: createPaymentMethodDto.name, is_deleted: false },
     });
     if (exists) {
       throw new BadRequestException(
@@ -29,11 +29,11 @@ export class PaymentMethodService {
   }
 
   async findAll() {
-    return this.paymentMethodRepository.find();
+    return this.paymentMethodRepository.find({ where: { is_deleted: false } });
   }
 
   async findOne(id: number) {
-    const paymentMethod = await this.paymentMethodRepository.findOne({ where: { id } });
+    const paymentMethod = await this.paymentMethodRepository.findOne({ where: { id, is_deleted: false } });
     if (!paymentMethod) {
       throw new NotFoundException(`Payment method with ID ${id} not found`);
     }
@@ -41,7 +41,7 @@ export class PaymentMethodService {
   }
 
   async update(id: number, updatePaymentMethodDto: UpdatePaymentMethodDto) {
-    const paymentMethod = await this.paymentMethodRepository.findOne({ where: { id } });
+    const paymentMethod = await this.paymentMethodRepository.findOne({ where: { id, is_deleted: false } });
     if (!paymentMethod) {
       throw new NotFoundException(`Payment method with ID ${id} not found`);
     }
@@ -56,5 +56,15 @@ export class PaymentMethodService {
       throw new NotFoundException(`Payment method with ID ${id} not found`);
     }
     return { msg: 'Payment method deleted successfully' };
+  }
+
+  async softDelete(id: number) {
+    const paymentMethod = await this.paymentMethodRepository.findOne({ where: { id, is_deleted: false } });
+    if (!paymentMethod) {
+      throw new NotFoundException(`Payment method with ID ${id} not found`);
+    }
+    paymentMethod.is_deleted = true;
+    await this.paymentMethodRepository.save(paymentMethod);
+    return { msg: 'Payment method soft deleted successfully' };
   }
 }
