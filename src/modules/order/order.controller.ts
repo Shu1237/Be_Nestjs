@@ -16,7 +16,7 @@ import { StatusOrder } from 'src/common/enums/status-order.enum';
 import { GetAllOrdersDto } from './dto/getAllOrder.dto';
 import { checkUserRole } from 'src/common/role/user';
 import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
-
+import { Role } from 'src/common/enums/roles.enum';
 
 @ApiBearerAuth()
 @Controller('order')
