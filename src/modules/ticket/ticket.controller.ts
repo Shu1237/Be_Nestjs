@@ -14,7 +14,7 @@ export class TicketController {
   @Get('user')
   @ApiOperation({ summary: 'Get all tickets for users' })
   async getAllTicketsUser(@Req() req) {
-     checkAdminEmployeeRole(req.user, 'You do not have permission to view all tickets');
+    checkAdminEmployeeRole(req.user, 'You do not have permission to view all tickets');
     return await this.ticketService.getAllTicketsUser();
   }
   @Get('admin')
@@ -74,8 +74,8 @@ export class TicketController {
     return this.ticketService.getTicketsByUserId({
       page,
       take: Math.min(take, 100),
-      userId: user.account_id,
       ...restFilters,
+      userId: user.account_id,
     });
   }
   @Get(':id')
