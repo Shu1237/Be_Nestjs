@@ -20,7 +20,6 @@ import { ConfigService } from '@nestjs/config';
 import { checkUserRole } from 'src/common/role/user';
 
 
-
 @ApiBearerAuth()
 @Controller('order')
 export class OrderController {
@@ -206,7 +205,7 @@ export class OrderController {
 
 
 
-  @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard)
   @Get('getOrdersByUserId')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'View my orders' })
@@ -235,7 +234,7 @@ export class OrderController {
       userId: user.account_id,
     });
   }
-  // // Get Order by Id 
+  // Get Order by Id 
   @UseGuards(JwtAuthGuard)
   @Get(':id')
   @ApiBearerAuth()
