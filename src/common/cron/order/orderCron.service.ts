@@ -5,6 +5,7 @@ import { StatusOrder } from 'src/common/enums/status-order.enum';
 import { StatusSeat } from 'src/common/enums/status_seat.enum';
 import { ScheduleSeat } from 'src/database/entities/cinema/schedule_seat';
 import { Order } from 'src/database/entities/order/order';
+import { Transaction } from 'src/database/entities/order/transaction';
 import { Repository, LessThan } from 'typeorm';
 
 @Injectable()
@@ -16,6 +17,8 @@ export class OrderCronService {
     private readonly orderRepository: Repository<Order>,
     @InjectRepository(ScheduleSeat)
     private readonly scheduleSeatRepository: Repository<ScheduleSeat>,
+    @InjectRepository(Transaction)
+    private readonly transactionRepository: Repository<Transaction>,
   ) {}
 
   @Cron('*/20 * * * *', {
@@ -67,20 +70,34 @@ export class OrderCronService {
           }
         }
 
-        // Đánh dấu order và transaction là FAILED
+        // Đánh dấu order là FAILED
         order.status = StatusOrder.FAILED;
+        
+        // Cập nhật transaction status nếu có
         if (order.transaction) {
           order.transaction.status = StatusOrder.FAILED;
+          this.logger.log(`→ Transaction ${order.transaction.id} for order ${order.id} set to FAILED`);
         }
 
         ordersToFail.push(order);
       }
 
       if (ordersToFail.length > 0) {
+        // Save orders với cascade: true sẽ tự động save transaction
         await this.orderRepository.save(ordersToFail);
-        this.logger.log(` Marked ${ordersToFail.length} expired orders as FAILED`);
+        
+        // Đảm bảo transaction được save riêng biệt
+        const transactionsToUpdate = ordersToFail
+          .map(order => order.transaction)
+          .filter(transaction => transaction !== null);
+        
+        if (transactionsToUpdate.length > 0) {
+          await this.transactionRepository.save(transactionsToUpdate);
+        }
+        
+        this.logger.log(`✅ Marked ${ordersToFail.length} expired orders as FAILED`);
       } else {
-        this.logger.log(' No expired orders found to fail');
+        this.logger.log('✅ No expired orders found to fail');
       }
     } catch (err) {
       this.logger.error(' Error while handling expired pending orders', err);

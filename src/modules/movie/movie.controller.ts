@@ -29,18 +29,14 @@ import { MoviePaginationDto } from 'src/common/pagination/dto/movie/moviePaginat
 export class MovieController {
   constructor(private readonly movieService: MovieService) { }
    
+  // GET - Lấy danh sách movies cho user
   @Get('user')
   @ApiOperation({ summary: 'Get all movies for user' })
   getMovie() {
     return this.movieService.getAllMoviesUser();
   }
-  @UseGuards(JwtAuthGuard)
-  @Post()
-  @ApiOperation({ summary: 'Create a new movie' })
-  async createMovie(@Body() movieDto: CreateMovieDto, @Req() req) {
-    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can create a movie.');
-    return this.movieService.createMovie(movieDto);
-  }
+
+  // GET - Lấy danh sách movies cho admin (với phân trang và filter)
   @UseGuards(JwtAuthGuard)
   @Get('admin')
   @ApiOperation({ summary: 'Get all movies for admin' })
@@ -57,7 +53,6 @@ export class MovieController {
   @ApiQuery({ name: 'actor_id', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'gerne_id', required: false, type: Number, example: 2 })
   @ApiQuery({ name: 'version_id', required: false, type: Number, example: 3 })
-  @ApiOperation({ summary: 'Get all movies' })
   getAllMovies(@Query() query: MoviePaginationDto, @Req() req) {
     checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can view all movies.');
     const {
@@ -72,12 +67,49 @@ export class MovieController {
     });
   }
 
+  // GET - Lấy movie theo ID
   @Get(':id')
   @ApiOperation({ summary: 'Get movie by ID' })
   getMovieById(@Param('id', ParseIntPipe) id: number) {
     return this.movieService.getMovieById(id);
   }
 
+  // GET - Lấy actors của movie
+  @UseGuards(JwtAuthGuard)
+  @Get(':movieId/actors')
+  @ApiOperation({ summary: 'Get all actors of a movie' })
+  getActorsOfMovie(@Param('movieId', ParseIntPipe) movieId: number) {
+    return this.movieService.getActorsOfMovie(movieId);
+  }
+
+  // GET - Lấy genres của movie
+  @UseGuards(JwtAuthGuard)
+  @Get(':movieId/gernes')
+  @ApiOperation({ summary: 'Get all genres of a movie' })
+  getGernesOfMovie(
+    @Param('movieId', ParseIntPipe) movieId: number,
+  ): Promise<any> {
+    return this.movieService.getGernesOfMovie(movieId);
+  }
+
+  // GET - Lấy versions của movie
+  @UseGuards(JwtAuthGuard)
+  @Get(':movieId/versions')
+  @ApiOperation({ summary: 'Get all versions of a movie' })
+  getVersionsOfMovie(@Param('movieId', ParseIntPipe) movieId: number) {
+    return this.movieService.getVersionsOfMovie(movieId);
+  }
+
+  // POST - Tạo movie mới
+  @UseGuards(JwtAuthGuard)
+  @Post()
+  @ApiOperation({ summary: 'Create a new movie' })
+  async createMovie(@Body() movieDto: CreateMovieDto, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can create a movie.');
+    return this.movieService.createMovie(movieDto);
+  }
+
+  // PUT - Cập nhật movie theo ID
   @UseGuards(JwtAuthGuard)
   @Put(':id')
   @ApiOperation({ summary: 'Update movie by ID (admin, employee only)' })
@@ -90,14 +122,7 @@ export class MovieController {
     return this.movieService.updateMovie(id, movieDTO);
   }
 
-  @UseGuards(JwtAuthGuard)
-  @Delete(':id')
-  @ApiOperation({ summary: 'Hard delete a movie by ID (admin, employee only)' })
-  async deleteMovie(@Param('id', ParseIntPipe) id: number, @Req() req) {
-    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can delete a movie.');
-    return this.movieService.deleteMovie(id);
-  }
-
+  // PATCH - Soft delete movie
   @UseGuards(JwtAuthGuard)
   @Patch(':id')
   @ApiOperation({ summary: 'Soft delete a movie by ID (admin, employee only)' })
@@ -107,28 +132,12 @@ export class MovieController {
     return { message: 'Movie soft deleted successfully' };
   }
 
-
-
+  // DELETE - Xóa movie vĩnh viễn
   @UseGuards(JwtAuthGuard)
-  @Get(':movieId/actors')
-  @ApiOperation({ summary: 'Get all actors of a movie' })
-  getActorsOfMovie(@Param('movieId', ParseIntPipe) movieId: number) {
-    return this.movieService.getActorsOfMovie(movieId);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Get(':movieId/gernes')
-  @ApiOperation({ summary: 'Get all genres of a movie' })
-  getGernesOfMovie(
-    @Param('movieId', ParseIntPipe) movieId: number,
-  ): Promise<any> {
-    return this.movieService.getGernesOfMovie(movieId);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Get(':movieId/versions')
-  @ApiOperation({ summary: 'Get all versions of a movie' })
-  getVersionsOfMovie(@Param('movieId', ParseIntPipe) movieId: number) {
-    return this.movieService.getVersionsOfMovie(movieId);
+  @Delete(':id')
+  @ApiOperation({ summary: 'Hard delete a movie by ID (admin, employee only)' })
+  async deleteMovie(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can delete a movie.');
+    return this.movieService.deleteMovie(id);
   }
 }

@@ -26,11 +26,14 @@ import { PromotionPaginationDto } from 'src/common/pagination/dto/promotion/prom
 export class PromotionController {
   constructor(private readonly promotionService: PromotionService) { }
   
+  // GET - Lấy danh sách promotions cho user
   @Get('user')
   @ApiOperation({ summary: 'Get all promotions for users' })
   async getAllPromotionsUser() {
     return await this.promotionService.getAllPromotionsUser();
   }
+
+  // GET - Lấy danh sách promotions cho admin (với phân trang)
   @Get('admin')
   @ApiOperation({ summary: 'Get all promotions for admin' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
@@ -59,7 +62,14 @@ export class PromotionController {
     });
   }
 
-  
+  // GET - Lấy promotion theo ID
+  @Get(':id')
+  @ApiOperation({ summary: 'Get promotion by ID' })
+  getPromotionById(@Param('id', ParseIntPipe) id: number) {
+    return this.promotionService.getPromotionById(id);
+  }
+
+  // POST - Tạo promotion mới
   @Post()
   @ApiOperation({ summary: 'Create new promotion (admin only)' })
   @ApiBody({ type: CreatePromotionDto })
@@ -70,12 +80,8 @@ export class PromotionController {
     checkAdminEmployeeRole(req.user, 'Only admin can create promotions');
     return this.promotionService.createPromotion(createPromotionDto);
   }
-  @Get(':id')
-  @ApiOperation({ summary: 'Get promotion by ID' })
-  getPromotionById(@Param('id', ParseIntPipe) id: number) {
-    return this.promotionService.getPromotionById(id);
-  }
 
+  // PUT - Cập nhật promotion theo ID
   @Put(':id')
   @ApiOperation({ summary: 'Update promotion by ID (admin only)' })
   @ApiBody({ type: UpdatePromotionDto })
@@ -88,6 +94,18 @@ export class PromotionController {
     return this.promotionService.updatePromotion(id, updatePromotionDto);
   }
 
+  // PATCH - Soft delete promotion
+  @Patch(':id')
+  @ApiOperation({ summary: 'Soft delete promotion by ID (admin only)' })
+  async deleteSoftPromotion(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req,
+  ) {
+    checkAdminEmployeeRole(req.user, 'Only admin can delete promotions');
+    return this.promotionService.deleteSoftPromotion(id);
+  }
+
+  // @DELETE - Hard delete promotion (commented out)
   // @Delete(':id')
   // @ApiOperation({ summary: 'Delete promotion by ID (admin only)' })
   // async deletePromotion(
@@ -100,15 +118,5 @@ export class PromotionController {
   //   }
   //   throw new ForbiddenException('Only admin can delete promotions');
   // }
-
-  @Patch(':id')
-  @ApiOperation({ summary: 'Soft delete promotion by ID (admin only)' })
-  async deleteSoftPromotion(
-    @Param('id', ParseIntPipe) id: number,
-    @Req() req,
-  ) {
-    checkAdminEmployeeRole(req.user, 'Only admin can delete promotions');
-    return this.promotionService.deleteSoftPromotion(id);
-  }
 }
 
