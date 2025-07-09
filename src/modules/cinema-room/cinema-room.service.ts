@@ -45,8 +45,8 @@ export class CinemaRoomService {
   async findAll(filters: CinemaRoomPaginationDto) {
     const qb = this.cinemaRoomRepository.createQueryBuilder('cinemaRoom');
     applyCommonFilters(qb, filters, cinemaRoomFieldMapping);
-    const allowedSortFields = ['cinemaRoom.cinema_room_name']; 
-    applySorting(qb, filters.sortBy, filters.sortOrder, allowedSortFields, 'cinemaRoom.cinema_room_name');
+    const allowedSortFields = ['cinemaRoom.id', 'cinemaRoom.cinema_room_name']; 
+    applySorting(qb, filters.sortBy, filters.sortOrder, allowedSortFields, 'cinemaRoom.id');
 
 
 
