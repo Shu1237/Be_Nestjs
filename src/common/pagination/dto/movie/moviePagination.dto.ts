@@ -17,11 +17,11 @@ export class MoviePaginationDto extends BasePaginationDto {
 
   @IsOptional()
   @IsString()
-  from_date?: string;
+  fromDate?: string;
 
   @IsOptional()
   @IsString()
-  to_date?: string;
+  toDate?: string;
 
 
   @IsOptional()
