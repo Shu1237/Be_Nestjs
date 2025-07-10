@@ -1,6 +1,5 @@
 
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put, Req, UseGuards, Patch } from "@nestjs/common";
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put, Query, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put, Query, Req, UseGuards,Patch } from "@nestjs/common";
 import { ProductService } from "./product.service";
 import { JwtAuthGuard } from "src/common/guards/jwt.guard";
 import { ApiBearerAuth, ApiOperation, ApiQuery } from "@nestjs/swagger";
