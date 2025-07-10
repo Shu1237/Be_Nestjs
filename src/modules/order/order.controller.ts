@@ -62,10 +62,11 @@ export class OrderController {
 
   // POST /order/user/process-payment - User re-payment for pending order
   @UseGuards(JwtAuthGuard)
-  @Post('user/process-payment')
+  @Post('user/process-payment/:orderId')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'User re-payment for pending order', })
   async userProcessOrderPayment(
+    @Param('orderId', ParseIntPipe) orderId: number,
     @Body() orderData: OrderBillUserAgainDto,
     @Req() req,
   ) {
@@ -82,11 +83,12 @@ export class OrderController {
     }
 
     return this.orderService.userProcessOrderPayment(
-      orderData,
+      { ...orderData, orderId: orderId }, 
       clientIp,
       user.account_id
     );
   }
+
 
   // POST /order/admin/update-order/:orderId - Admin/Employee update pending order
   @UseGuards(JwtAuthGuard)
