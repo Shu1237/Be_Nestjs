@@ -97,7 +97,22 @@ export class CinemaRoomController {
     return await this.cinemaRoomService.softDeleteCinemaRoom(id);
   }
 
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/restore')
+  @ApiOperation({ summary: 'Restore a soft-deleted cinema room (admin, employee only)' })
+  async restoreCinemaRoom(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req,
+  ) {
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can restore a cinema room.');
+    return await this.cinemaRoomService.restoreCinemaRoom(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+
   // DELETE - Xóa cinema room theo ID
+
   @Delete(':id')
   @ApiOperation({ summary: 'Delete cinema room by ID (admin, employee only)' })
   async remove(@Param('id') id: number, @Req() req) {

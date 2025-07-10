@@ -67,4 +67,19 @@ export class PaymentMethodService {
     await this.paymentMethodRepository.save(paymentMethod);
     return { msg: 'Payment method soft deleted successfully' };
   }
+
+  async restore(id: number): Promise<{ msg: string }> {
+    const paymentMethod = await this.paymentMethodRepository.findOne({ where: { id } });
+    if (!paymentMethod) {
+      throw new NotFoundException(`Payment method with ID ${id} not found`);
+    }
+    if (!paymentMethod.is_deleted) {
+      throw new BadRequestException(
+        `Payment method with ID ${id} is not soft-deleted`,
+      );
+    }
+    paymentMethod.is_deleted = false;
+    await this.paymentMethodRepository.save(paymentMethod);
+    return { msg: 'Payment method restored successfully' };
+  }
 }
