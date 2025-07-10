@@ -228,8 +228,8 @@ export type PaginationParams = {
 }
 
 export interface FilterField {
-  field: string;
-  operator: Operator;
+  field?: string;
+  operator?: Operator;
   paramName?: string;
   customWhere?: (qb: SelectQueryBuilder<any>, value: any) => void; // optional custom where function
 }
