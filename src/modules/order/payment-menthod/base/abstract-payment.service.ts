@@ -105,7 +105,7 @@ export abstract class AbstractPaymentService {
             }
         );
 
-        const qrCode = await this.qrCodeService.generateQrCode(jwtOrderID);
+        const qrCode = await this.qrCodeService.generateQrCode(jwtOrderID,'QR');
         order.qr_code = qrCode;
         const savedOrder = await this.orderRepository.save(order);
 

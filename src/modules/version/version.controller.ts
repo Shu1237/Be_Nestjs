@@ -30,18 +30,16 @@ import { VersionPaginationDto } from 'src/common/pagination/dto/version/versionP
 export class VersionController {
   constructor(private readonly versionService: VersionService) { }
 
+
+
+  // GET - Lấy danh sách versions cho user
   @Get('user')
   @ApiOperation({ summary: 'Get all versions for users' })
   async getAllVersionsUser() {
     return await this.versionService.getAllVersionsUser();
   }
-  @Post()
-  @ApiOperation({ summary: 'Create a new version (admin only)' })
-  async create(@Body() createVersionDto: CreateVersionDto, @Req() req) {
-    checkAdminEmployeeRole(req.user, 'Only admin can create a version');
-    return await this.versionService.create(createVersionDto);
-  }
-  
+
+  // GET - Lấy danh sách versions cho admin (với phân trang)
   @Get('admin')
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
@@ -65,16 +63,28 @@ export class VersionController {
     });
   }
 
-
+  // GET - Lấy version theo ID
   @Get(':id')
   @ApiOperation({ summary: 'Get version by ID' })
   async findOne(@Param('id') id: number) {
     return await this.versionService.findOne(id);
   }
 
+
+
+  // POST - Tạo version mới
+  @Post()
+  @ApiOperation({ summary: 'Create a new version (admin only)' })
+  async create(@Body() createVersionDto: CreateVersionDto, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Only admin can create a version');
+    return await this.versionService.create(createVersionDto);
+  }
+
+ 
+
+  // PUT - Cập nhật version theo ID
   @Put(':id')
   @ApiOperation({ summary: 'Update a version by ID (admin only)' })
-
   async update(
     @Param('id') id: number,
     @Body() updateVersionDto: UpdateVersionDto,
@@ -84,6 +94,9 @@ export class VersionController {
     return await this.versionService.update(id, updateVersionDto);
   }
 
+
+
+  // PATCH - Soft delete version
   @Patch(':id/soft-delete')
   @ApiOperation({ summary: 'Soft delete a version (admin, employee only)' })
   async softDeleteVersion(@Param('id', ParseIntPipe) id: number, @Req() req) {
@@ -92,6 +105,19 @@ export class VersionController {
   }
 
 
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/restore')
+  @ApiOperation({ summary: 'Restore a soft-deleted version (admin, employee only)' })
+  async restoreVersion(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Only admin or employee can restore a version.');
+    return await this.versionService.restoreVersion(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+
+  
+
+  // DELETE - Xóa version vĩnh viễn
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a version by ID (admin only)' })
   async remove(@Param('id') id: number, @Req() req) {

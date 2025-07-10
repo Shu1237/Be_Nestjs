@@ -21,4 +21,9 @@ export class OrderPaginationDto extends BasePaginationDto {
     @IsOptional()
     @IsString()
     paymentMethod?: string;
+
+    @IsOptional()
+    @IsString()
+    email?: string;
+
 }

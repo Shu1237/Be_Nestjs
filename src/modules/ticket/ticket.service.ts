@@ -56,15 +56,34 @@ export class TicketService {
         name: ticket.seat.seatType.seat_type_name,
       }
     };
-  } 
-   
- async getAllTicketsUser() {
+  }
+  async getTicketOverview() {
+    const result = await this.ticketRepository
+      .createQueryBuilder("ticket")
+      .select([
+        "COUNT(*) AS totalTickets",
+        "COUNT(CASE WHEN ticket.is_used = false AND ticket.status = true THEN 1 END) AS totalAvailable",
+      ])
+      .getRawOne();
+
+    const totalTickets = parseInt(result.totalTickets, 10);
+    const totalAvailable = parseInt(result.totalAvailable, 10);
+    const totalUsed = totalTickets - totalAvailable;
+
+    return {
+      totalTickets,
+      totalAvailable,
+      totalUsed,
+    };
+  }
+
+  async getAllTicketsUser() {
     const tickets = await this.ticketRepository.find({
       where: { is_used: false, status: true },
       relations: ['schedule', 'schedule.movie', 'schedule.cinemaRoom', 'seat', 'seat.seatType', 'ticketType']
     });
     return tickets.map((ticket) => this.summaryTicket(ticket));
- }
+  }
   async getAllTickets(fillters: TicketPaginationDto) {
     const qb = this.ticketRepository
       .createQueryBuilder('ticket')

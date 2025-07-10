@@ -68,7 +68,7 @@ export class MovieService {
       relations: ['gernes', 'actors', 'versions'],
     });
     return movies.map((movie) => this.getMovieSummary(movie));
-  }
+  } 
   async getAllMovies(fillters: MoviePaginationDto) {
     const qb = this.movieRepository.createQueryBuilder('movie')
       .leftJoinAndSelect('movie.actors', 'actor')
@@ -78,12 +78,10 @@ export class MovieService {
     applyCommonFilters(qb, fillters, movieFieldMapping);
 
     const allowedFields = [
+      'movie.id',
       'movie.name',
       'movie.director',
       'movie.nation',
-      'version.name',
-      'gerne.genre_name',
-      'actor.name',
     ];
     applySorting(qb, fillters.sortBy, fillters.sortOrder, allowedFields, 'movie.name');
     applyPagination(qb, {
@@ -268,6 +266,21 @@ export class MovieService {
     movie.is_deleted = true;
     await this.movieRepository.save(movie);
     return { msg: 'Movie soft-deleted successfully', movie };
+  }
+
+  async restoreMovie(id: number) {
+    const movie = await this.movieRepository.findOne({ where: { id } });
+    if (!movie) {
+      throw new NotFoundException(`Movie with ID ${id} not found`);
+    }
+    if (!movie.is_deleted) {
+      throw new BadRequestException(
+        `Movie with ID ${id} is not soft-deleted`,
+      );
+    }
+    movie.is_deleted = false;
+    await this.movieRepository.save(movie);
+    return { msg: 'Movie restored successfully', movie };
   }
 
   async getActorsOfMovie(

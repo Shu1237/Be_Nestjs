@@ -12,14 +12,15 @@ import { JWTUserType } from 'src/common/utils/type';
 import { ScanQrCodeDto } from './dto/qrcode.dto';
 import { InternalServerErrorException } from 'src/common/exceptions/internal-server-error.exception';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
+import { ForbiddenException } from 'src/common/exceptions/forbidden.exception';
 import { StatusOrder } from 'src/common/enums/status-order.enum';
+import { Role } from 'src/common/enums/roles.enum';
 import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 import { OrderPaginationDto } from 'src/common/pagination/dto/order/orderPagination.dto';
 import { VisaService } from './payment-menthod/visa/visa.service';
 import { ConfigService } from '@nestjs/config';
 import { checkUserRole } from 'src/common/role/user';
-
-
+import { OrderBillUserAgainDto } from './dto/order-bill-user-again.dto';
 
 @ApiBearerAuth()
 @Controller('order')
@@ -34,6 +35,7 @@ export class OrderController {
     private readonly configService: ConfigService,
   ) { }
 
+  // POST /order - Create new order
   @UseGuards(JwtAuthGuard)
   @Post()
   @ApiOperation({ summary: 'Create a new order' })
@@ -47,113 +49,74 @@ export class OrderController {
     return this.orderService.createOrder(req.user, body, clientIp);
   }
 
-  @ApiExcludeEndpoint()
-  @Get('momo/return')
-  async handleMomoReturn(@Query() query: any, @Res() res: Response) {
-    try {
-      const result = await this.momoService.handleReturn(query);
-      return res.redirect(result);
-    } catch (error) {
-      const failureUrl = this.configService.get<string>('redirectUrls.failureUrl') || 'http://localhost:3000/payment/failed';
-      return res.redirect(failureUrl);
-    }
+  // POST /order/scan-qr - Scan QR code
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get order by Order ID' })
+  @ApiBody({ type: ScanQrCodeDto })
+  @ApiBearerAuth()
+  @Post('scan-qr')
+  scanQrCode(@Body() data: ScanQrCodeDto, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can scan QR code.');
+    return this.orderService.scanQrCode(data.qrCode);
   }
-  @ApiExcludeEndpoint()
-  @Get('paypal/success/return')
-  async handlePaypalSuccess(
-    @Query('token') orderId: string,
-    @Res() res: Response,
+
+  // POST /order/user/process-payment - User re-payment for pending order
+  @UseGuards(JwtAuthGuard)
+  @Post('user/process-payment/:orderId')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'User re-payment for pending order', })
+  async userProcessOrderPayment(
+    @Param('orderId', ParseIntPipe) orderId: number,
+    @Body() orderData: OrderBillUserAgainDto,
+    @Req() req,
   ) {
-    try {
-      const result = await this.payPalService.handleReturnSuccessPaypal(orderId);
-      if (!result) {
-        throw new BadRequestException('Invalid order ID or token');
-      }
-      return res.redirect(result);
-    } catch (error) {
-      const failureUrl = this.configService.get<string>('redirectUrls.failureUrl') || 'http://localhost:3000/payment/failed';
-      return res.redirect(failureUrl);
+    const user = req.user as JWTUserType;
+
+    // Kiểm tra role user
+    if (user.role_id !== Role.USER) {
+      throw new ForbiddenException('Only users can process their own orders');
     }
-  }
-  @ApiExcludeEndpoint()
-  @Get('paypal/cancel/return')
-  async handlePaypalCancel(@Query('token') orderId: string, @Res() res: Response) {
-    try {
-      const result = await this.payPalService.handleReturnCancelPaypal(orderId);
-      return res.redirect(result);
-    } catch (error) {
-      const failureUrl = this.configService.get<string>('redirectUrls.failureUrl') || 'http://localhost:3000/payment/failed';
-      return res.redirect(failureUrl);
+
+    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    if (!clientIp) {
+      throw new InternalServerErrorException('Client IP address not found');
     }
+
+    return this.orderService.userProcessOrderPayment(
+      { ...orderData, orderId: orderId }, 
+      clientIp,
+      user.account_id
+    );
   }
 
 
+  // POST /order/admin/update-order/:orderId - Admin/Employee update pending order
+  @UseGuards(JwtAuthGuard)
+  @Post('admin/update-order/:orderId')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Admin/Employee update pending order', })
+  async adminUpdateOrder(
+    @Param('orderId', ParseIntPipe) orderId: number,
+    @Body() updateData: CreateOrderBillDto,
+    @Req() req,
+  ) {
+    const user = req.user as JWTUserType;
+    checkAdminEmployeeRole(user, 'Only admin or employee can update orders');
 
+    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    if (!clientIp) {
+      throw new InternalServerErrorException('Client IP address not found');
+    }
 
-  // Visa (Stripe)
-  @ApiExcludeEndpoint()
-  @Get('visa/success/return')
-  async handleVisaSuccess(@Query('session_id') sessionId: string, @Res() res: Response) {
-    try {
-      if (!sessionId) {
-        throw new BadRequestException('Missing session_id parameter');
-      }
-      const result = await this.visaService.handleReturnSuccessVisa(sessionId);
-      if (!result) {
-        throw new BadRequestException('Invalid session ID');
-      }
-      return res.redirect(result);
-    } catch (error) {
-      const failureUrl = this.configService.get<string>('redirectUrls.failureUrl') || 'http://localhost:3000/payment/failed';
-      return res.redirect(failureUrl);
-    }
-  }
-  @ApiExcludeEndpoint()
-  @Get('visa/cancel/return')
-  async handleVisaCancel(@Query('session_id') sessionId: string, @Res() res: Response) {
-    try {
-      if (!sessionId) {
-        throw new BadRequestException('Missing session_id parameter');
-      }
-      const result = await this.visaService.handleReturnCancelVisa(sessionId);
-      return res.redirect(result);
-    } catch (error) {
-      const failureUrl = this.configService.get<string>('redirectUrls.failureUrl') || 'http://localhost:3000/payment/failed';
-      return res.redirect(failureUrl);
-    }
+    return this.orderService.adminUpdateAndProcessOrder(
+      orderId,
+      updateData,
+      clientIp,
+      user.account_id
+    );
   }
 
-
-  // VnPay
-  @ApiExcludeEndpoint()
-  @Get('vnpay/return')
-  async handleVnPayReturn(@Query() query: any, @Res() res: Response) {
-    try {
-      const result = await this.vnpayService.handleReturnVnPay(query);
-      return res.redirect(result);
-    } catch (error) {
-      const failureUrl = this.configService.get<string>('redirectUrls.failureUrl') || 'http://localhost:3000/payment/failed';
-      return res.redirect(failureUrl);
-    }
-  }
-
-
-  // ZaloPay
-  @ApiExcludeEndpoint()
-  @Get('zalopay/return')
-  async handleZaloPayReturn(@Query() query: any, @Res() res: Response) {
-    try {
-      const result = await this.zalopayService.handleReturnZaloPay(query);
-      return res.redirect(result);
-    } catch (error) {
-      const failureUrl = this.configService.get<string>('redirectUrls.failureUrl') || 'http://localhost:3000/payment/failed';
-      return res.redirect(failureUrl);
-    }
-  }
-
-
-
-  // View All Orders
+  // GET /order/admin - View all orders for admin
   @UseGuards(JwtAuthGuard)
   @Get('admin')
   @ApiBearerAuth()
@@ -204,8 +167,7 @@ export class OrderController {
     });
   }
 
-
-
+  // GET /order/getOrdersByUserId - View my orders
   @UseGuards(JwtAuthGuard)
   @Get('getOrdersByUserId')
   @ApiBearerAuth()
@@ -235,7 +197,8 @@ export class OrderController {
       userId: user.account_id,
     });
   }
-  // // Get Order by Id 
+
+  // GET /order/:id - View Order by ID
   @UseGuards(JwtAuthGuard)
   @Get(':id')
   @ApiBearerAuth()
@@ -243,18 +206,112 @@ export class OrderController {
   async getMyOrder(@Param('id', ParseIntPipe) id: number, @Req() req) {
     return this.orderService.getOrderByIdEmployeeAndAdmin(id);
   }
-  @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Get order by Order ID' })
-  @ApiBody({ type: ScanQrCodeDto })
-  @ApiBearerAuth()
-  @Post('scan-qr')
-  scanQrCode(@Body() data: ScanQrCodeDto, @Req() req) {
-    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can scan QR code.');
-    return this.orderService.scanQrCode(data.qrCode);
+
+  // Payment callback endpoints (excluded from Swagger)
+  
+  // GET /order/momo/return - MoMo payment callback
+  @ApiExcludeEndpoint()
+  @Get('momo/return')
+  async handleMomoReturn(@Query() query: any, @Res() res: Response) {
+    try {
+      const result = await this.momoService.handleReturn(query);
+      return res.redirect(result);
+    } catch (error) {
+      const failureUrl = this.configService.get<string>('redirectUrls.failureUrl') || 'http://localhost:3000/payment/failed';
+      return res.redirect(failureUrl);
+    }
   }
 
+  // GET /order/paypal/success/return - PayPal success callback
+  @ApiExcludeEndpoint()
+  @Get('paypal/success/return')
+  async handlePaypalSuccess(
+    @Query('token') orderId: string,
+    @Res() res: Response,
+  ) {
+    try {
+      const result = await this.payPalService.handleReturnSuccessPaypal(orderId);
+      if (!result) {
+        throw new BadRequestException('Invalid order ID or token');
+      }
+      return res.redirect(result);
+    } catch (error) {
+      const failureUrl = this.configService.get<string>('redirectUrls.failureUrl') || 'http://localhost:3000/payment/failed';
+      return res.redirect(failureUrl);
+    }
+  }
 
+  // GET /order/paypal/cancel/return - PayPal cancel callback
+  @ApiExcludeEndpoint()
+  @Get('paypal/cancel/return')
+  async handlePaypalCancel(@Query('token') orderId: string, @Res() res: Response) {
+    try {
+      const result = await this.payPalService.handleReturnCancelPaypal(orderId);
+      return res.redirect(result);
+    } catch (error) {
+      const failureUrl = this.configService.get<string>('redirectUrls.failureUrl') || 'http://localhost:3000/payment/failed';
+      return res.redirect(failureUrl);
+    }
+  }
 
+  // GET /order/visa/success/return - Visa success callback
+  @ApiExcludeEndpoint()
+  @Get('visa/success/return')
+  async handleVisaSuccess(@Query('session_id') sessionId: string, @Res() res: Response) {
+    try {
+      if (!sessionId) {
+        throw new BadRequestException('Missing session_id parameter');
+      }
+      const result = await this.visaService.handleReturnSuccessVisa(sessionId);
+      if (!result) {
+        throw new BadRequestException('Invalid session ID');
+      }
+      return res.redirect(result);
+    } catch (error) {
+      const failureUrl = this.configService.get<string>('redirectUrls.failureUrl') || 'http://localhost:3000/payment/failed';
+      return res.redirect(failureUrl);
+    }
+  }
 
+  // GET /order/visa/cancel/return - Visa cancel callback
+  @ApiExcludeEndpoint()
+  @Get('visa/cancel/return')
+  async handleVisaCancel(@Query('session_id') sessionId: string, @Res() res: Response) {
+    try {
+      if (!sessionId) {
+        throw new BadRequestException('Missing session_id parameter');
+      }
+      const result = await this.visaService.handleReturnCancelVisa(sessionId);
+      return res.redirect(result);
+    } catch (error) {
+      const failureUrl = this.configService.get<string>('redirectUrls.failureUrl') || 'http://localhost:3000/payment/failed';
+      return res.redirect(failureUrl);
+    }
+  }
 
+  // GET /order/vnpay/return - VnPay callback
+  @ApiExcludeEndpoint()
+  @Get('vnpay/return')
+  async handleVnPayReturn(@Query() query: any, @Res() res: Response) {
+    try {
+      const result = await this.vnpayService.handleReturnVnPay(query);
+      return res.redirect(result);
+    } catch (error) {
+      const failureUrl = this.configService.get<string>('redirectUrls.failureUrl') || 'http://localhost:3000/payment/failed';
+      return res.redirect(failureUrl);
+    }
+  }
+
+  // GET /order/zalopay/return - ZaloPay callback
+  @ApiExcludeEndpoint()
+  @Get('zalopay/return')
+  async handleZaloPayReturn(@Query() query: any, @Res() res: Response) {
+    try {
+      const result = await this.zalopayService.handleReturnZaloPay(query);
+      return res.redirect(result);
+    } catch (error) {
+      const failureUrl = this.configService.get<string>('redirectUrls.failureUrl') || 'http://localhost:3000/payment/failed';
+      return res.redirect(failureUrl);
+    }
+  }
 }

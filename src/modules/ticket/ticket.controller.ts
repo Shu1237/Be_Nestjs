@@ -3,9 +3,7 @@ import { TicketService } from './ticket.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { JWTUserType } from 'src/common/utils/type';
 import { ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
-import { GetAllTicketsDto } from './dto/get-all-tickets.dto';
 import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
-import { checkUserRole } from 'src/common/role/user';
 import { TicketPaginationDto } from 'src/common/pagination/dto/ticket/ticket-pagination.dto';
 
 @UseGuards(JwtAuthGuard)
@@ -13,12 +11,17 @@ import { TicketPaginationDto } from 'src/common/pagination/dto/ticket/ticket-pag
 export class TicketController {
   constructor(private readonly ticketService: TicketService) { }
 
+  // ============ GET ENDPOINTS ============
+
+  // GET - Lấy danh sách tickets cho user
   @Get('user')
   @ApiOperation({ summary: 'Get all tickets for users' })
   async getAllTicketsUser(@Req() req) {
-     checkAdminEmployeeRole(req.user, 'You do not have permission to view all tickets');
+    checkAdminEmployeeRole(req.user, 'You do not have permission to view all tickets');
     return await this.ticketService.getAllTicketsUser();
   }
+
+  // GET - Lấy danh sách tickets cho admin (với phân trang)
   @Get('admin')
   @ApiOperation({ summary: 'Get all tickets for admin' })
   @ApiBearerAuth()
@@ -47,8 +50,7 @@ export class TicketController {
     });
   }
 
-
-
+  // GET - Lấy tickets theo user ID
   @Get('tickets-by-user-id')
   @ApiOperation({ summary: 'Get tickets by user ID with filters, search, sort' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
@@ -66,8 +68,6 @@ export class TicketController {
     @Query() query: TicketPaginationDto,
   ) {
     const user = req.user as JWTUserType;
-    // checkUserRole(user, 'You can only view your own tickets');
-
     // Trích xuất các giá trị từ query
     const {
       page = 1,
@@ -78,16 +78,22 @@ export class TicketController {
     return this.ticketService.getTicketsByUserId({
       page,
       take: Math.min(take, 100),
-      userId: user.account_id,
       ...restFilters,
+      userId: user.account_id,
     });
   }
+
+  // GET - Lấy ticket theo ID
   @Get(':id')
   @ApiOperation({ summary: 'Get ticket by ID' })
   @ApiBearerAuth()
   getTicketById(@Param('id') id: string) {
     return this.ticketService.getTicketById(id);
   }
+
+  // ============ PATCH ENDPOINTS ============
+
+  // PATCH - Mark tickets as used (commented out)
   // @Patch('tickets/mark-used')
   // @ApiOperation({ summary: 'Mark tickets as used' })
   // @ApiBearerAuth()

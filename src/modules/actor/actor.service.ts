@@ -24,12 +24,11 @@ export class ActorService {
     @InjectRepository(Movie)
     private readonly movieRepository: Repository<Movie>,
   ) { }
-  
+
 
   async getAllActorsUser(): Promise<Actor[]> {
     return await this.actorRepository.find({
       where: { is_deleted: false },
-      relations: ['movies'],
     });
   }
 
@@ -69,27 +68,22 @@ export class ActorService {
     });
     const [actors, total] = await qb.getManyAndCount();
 
-    // Get total male / female
-    const genderStats = await this.actorRepository
+    const counts = await this.actorRepository
       .createQueryBuilder('actor')
-      .select('actor.gender', 'gender')
-      .addSelect('COUNT(*)', 'count')
-      .groupBy('actor.gender')
-      .getRawMany();
+      .select([
+        `SUM(CASE WHEN actor.is_deleted = false THEN 1 ELSE 0 END) AS activeCount`,
+        `SUM(CASE WHEN actor.is_deleted = true THEN 1 ELSE 0 END) AS deletedCount`,
+      ])
+      .getRawOne();
 
-    const genderCount = Object.fromEntries(
-      genderStats.map((item) => [item.gender, parseInt(item.count, 10)])
-    );
-
-    const totalMale = genderCount['male'] || 0;
-    const totalFemale = genderCount['female'] || 0;
-
+    const activeCount = parseInt(counts?.activeCount || '0', 10);
+    const deletedCount = parseInt(counts?.deletedCount || '0', 10);
     return buildPaginationResponse(actors, {
       total,
       page: filters.page,
       take: filters.take,
-      totalMale,
-      totalFemale,
+      activeCount,
+      deletedCount,
     });
   }
 
@@ -147,6 +141,21 @@ export class ActorService {
     actor.is_deleted = true;
     await this.actorRepository.save(actor);
     return { msg: 'Actor soft deleted successfully' };
+  }
+
+  async restoreActor(id: number): Promise<{ msg: string }> {
+    const actor = await this.actorRepository.findOne({ where: { id } });
+    if (!actor) {
+      throw new NotFoundException(`Actor with ID ${id} not found`);
+    }
+    if (!actor.is_deleted) {
+      throw new BadRequestException(
+        `Actor with ID ${id} is not soft-deleted`,
+      );
+    }
+    actor.is_deleted = false;
+    await this.actorRepository.save(actor);
+    return { msg: 'Actor restored successfully' };
   }
 
   async removeActor(id: number): Promise<void> {

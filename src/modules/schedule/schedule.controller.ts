@@ -29,12 +29,15 @@ import { SchedulePaginationDto } from 'src/common/pagination/dto/shedule/schedul
 @ApiBearerAuth()
 export class ScheduleController {
   constructor(private readonly scheduleService: ScheduleService) { }
+
+  // GET - Lấy danh sách schedules cho user
   @Get('user')
   @ApiOperation({ summary: 'Get all schedules for users' })
   async findAllUser() {
     return await this.scheduleService.findAllUser();
   }
 
+  // GET - Lấy danh sách schedules cho admin (với phân trang)
   @Get('admin')
   @ApiOperation({ summary: 'Get all schedules for admin' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
@@ -47,7 +50,6 @@ export class ScheduleController {
   @ApiQuery({ name: 'is_deleted', required: false, type: Boolean, example: false })
   @ApiQuery({ name: 'sortBy', required: false, type: String, example: 'schedule.id' })
   @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], example: 'DESC' })
-  @ApiOperation({ summary: 'Get all schedules' })
   async findAll(@Query() query: SchedulePaginationDto, @Req() req) {
     checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can access this endpoint.');
     const {
@@ -60,10 +62,16 @@ export class ScheduleController {
       take: Math.min(take, 100),
       ...restFilters,
     });
-
   }
 
+  // GET - Lấy schedule theo ID
+  @Get(':id')
+  @ApiOperation({ summary: 'Get schedule by ID' })
+  async findOut(@Param('id') id: number) {
+    return await this.scheduleService.findOut(id);
+  }
 
+  // POST - Tạo schedule mới
   @Post()
   @ApiOperation({ summary: 'Create a new schedule (admin, employee only)' })
   async create(@Body() createScheduleDto: CreateScheduleDto, @Req() req) {
@@ -71,18 +79,7 @@ export class ScheduleController {
     return await this.scheduleService.create(createScheduleDto);
   }
 
-
-
-
-  @Get(':id')
-  @ApiOperation({ summary: 'Get schedule by ID' })
-  async findOut(@Param('id') id: number) {
-    return await this.scheduleService.findOut(id);
-  }
-
-
-
-
+  // PUT - Cập nhật schedule theo ID
   @Put(':id')
   @ApiOperation({ summary: 'Update schedule by ID (admin, employee only)' })
   async update(
@@ -94,6 +91,7 @@ export class ScheduleController {
     return await this.scheduleService.update(id, updateScheduleDto);
   }
 
+  // PATCH - Soft delete schedule
   @Patch(':id/soft-delete')
   @ApiOperation({ summary: 'Soft delete a schedule (admin, employee only)' })
   async softDeleteSchedule(@Param('id', ParseIntPipe) id: number, @Req() req) {
@@ -101,6 +99,16 @@ export class ScheduleController {
     return await this.scheduleService.softDeleteSchedule(id);
   }
 
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/restore')
+  @ApiOperation({ summary: 'Restore a soft-deleted schedule (admin, employee only)' })
+  async restoreSchedule(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can restore a schedule.');
+    return await this.scheduleService.restoreSchedule(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete schedule by ID (admin, employee only)' })

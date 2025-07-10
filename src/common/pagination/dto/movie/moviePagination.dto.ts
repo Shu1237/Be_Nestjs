@@ -1,5 +1,6 @@
+import { Transform } from 'class-transformer';
 import { BasePaginationDto } from '../basePagination.dto';
-import { IsOptional, IsString, IsIn } from 'class-validator';
+import { IsOptional, IsString, IsIn, IsBoolean } from 'class-validator';
 
 export class MoviePaginationDto extends BasePaginationDto {
   @IsOptional()
@@ -16,11 +17,11 @@ export class MoviePaginationDto extends BasePaginationDto {
 
   @IsOptional()
   @IsString()
-  from_date?: string; 
+  fromDate?: string;
 
   @IsOptional()
   @IsString()
-  to_date?: string;
+  toDate?: string;
 
 
   @IsOptional()
@@ -34,4 +35,9 @@ export class MoviePaginationDto extends BasePaginationDto {
   @IsOptional()
   @IsString()
   version_id?: string;
+
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsOptional()
+  @IsBoolean()
+  is_deleted?: boolean;
 }

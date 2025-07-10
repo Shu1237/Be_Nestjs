@@ -221,7 +221,7 @@ export type ZaloReturnQuery = {
 
 
 // pagination
-type Operator = '=' | 'LIKE' | 'ILIKE' | 'BETWEEN'| '<>' | '!=' | '>' | '<' | '>=' | '<=' | 'IN' | 'NOT IN' | 'IS NULL' | 'IS NOT NULL';
+type Operator = '=' | 'LIKE' | 'ILIKE' | 'BETWEEN' | '<>' | '!=' | '>' | '<' | '>=' | '<=' | 'IN' | 'NOT IN' | 'IS NULL' | 'IS NOT NULL';
 export type PaginationParams = {
   page: number;
   take: number;
@@ -235,7 +235,6 @@ export interface FilterField {
 }
 
 export type MetaOptions = {
-
   total: number;
   page: number;
   take: number;
@@ -243,6 +242,7 @@ export type MetaOptions = {
   totalFailed?: number;
   totalPending?: number;
   revenue?: string | number;
-  [key: string]: any; // more properties 
+  [key: string]: any;
 }
+
 

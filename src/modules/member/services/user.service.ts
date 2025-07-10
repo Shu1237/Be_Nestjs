@@ -4,12 +4,16 @@ import { Repository } from 'typeorm';
 import { User } from '../../../database/entities/user/user';
 import { UpdateUserDto } from '../dtos/update-user.dto';
 import { NotFoundException } from 'src/common/exceptions/not-found.exception';
+
+import { BadRequestException } from '@nestjs/common';
+
 import { UserPaginationDto } from 'src/common/pagination/dto/user/userPagination.dto';
 import { applyCommonFilters } from 'src/common/pagination/applyCommonFilters';
 import { userFieldMapping } from 'src/common/pagination/fillters/user-filed-mapping';
 import { applySorting } from 'src/common/pagination/apply_sort';
 import { applyPagination } from 'src/common/pagination/applyPagination';
 import { buildPaginationResponse } from 'src/common/pagination/pagination-response';
+
 
 @Injectable()
 export class UserService {
@@ -75,5 +79,23 @@ export class UserService {
     const user = await this.findOne(id);
     user.is_deleted = true;
     await this.userRepository.save(user);
+  }
+
+  async restore(id: string): Promise<{ msg: string }> {
+    const user = await this.userRepository.findOne({
+      where: { id },
+      relations: ['role'],
+    });
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+    if (!user.is_deleted) {
+      throw new BadRequestException(
+        `User with ID ${id} is not soft-deleted`,
+      );
+    }
+    user.is_deleted = false;
+    await this.userRepository.save(user);
+    return { msg: 'User restored successfully' };
   }
 }

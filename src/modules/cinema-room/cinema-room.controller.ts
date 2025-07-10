@@ -31,11 +31,14 @@ import { CinemaRoomPaginationDto } from 'src/common/pagination/dto/cinmeroom/cin
 export class CinemaRoomController {
   constructor(private readonly cinemaRoomService: CinemaRoomService) { }
 
+  // GET - Lấy danh sách cinema rooms cho user
   @Get('user')
   @ApiOperation({ summary: 'Get all cinema rooms for users' })
   async getAllCinemaRoomsUser() {
     return await this.cinemaRoomService.getAllCinemaRoomsUser();
   }
+
+  // GET - Lấy danh sách cinema rooms cho admin (với phân trang)
   @Get('admin')
   @ApiOperation({ summary: 'Get all cinema rooms for admin' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
@@ -55,6 +58,15 @@ export class CinemaRoomController {
       ...restFilters,
     });
   }
+
+  // GET - Lấy cinema room theo ID
+  @Get(':id')
+  @ApiOperation({ summary: 'Get cinema room by ID' })
+  async findOne(@Param('id') id: number) {
+    return await this.cinemaRoomService.findOne(id);
+  }
+
+  // POST - Tạo cinema room mới
   @Post()
   @ApiOperation({ summary: 'Create a new cinema room (admin, employee only)' })
   async create(@Body() createCinemaRoomDto: CreateCinemaRoomDto, @Req() req) {
@@ -62,15 +74,7 @@ export class CinemaRoomController {
     return await this.cinemaRoomService.create(createCinemaRoomDto);
   }
 
-
-
-  @Get(':id')
-  @ApiOperation({ summary: 'Get cinema room by ID' })
-  async findOne(@Param('id') id: number) {
-    return await this.cinemaRoomService.findOne(id);
-  }
-
-
+  // PUT - Cập nhật cinema room theo ID
   @Put(':id')
   @ApiOperation({ summary: 'Update cinema room by ID (admin, employee only)' })
   async update(
@@ -82,6 +86,7 @@ export class CinemaRoomController {
     return await this.cinemaRoomService.update(id, updateCinemaRoomDto);
   }
 
+  // PATCH - Soft delete cinema room
   @Patch(':id/soft-delete')
   @ApiOperation({ summary: 'Soft delete a cinema room (admin, employee only)' })
   async softDeleteCinemaRoom(
@@ -92,6 +97,21 @@ export class CinemaRoomController {
     return await this.cinemaRoomService.softDeleteCinemaRoom(id);
   }
 
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/restore')
+  @ApiOperation({ summary: 'Restore a soft-deleted cinema room (admin, employee only)' })
+  async restoreCinemaRoom(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req,
+  ) {
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can restore a cinema room.');
+    return await this.cinemaRoomService.restoreCinemaRoom(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+
+  // DELETE - Xóa cinema room theo ID
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete cinema room by ID (admin, employee only)' })

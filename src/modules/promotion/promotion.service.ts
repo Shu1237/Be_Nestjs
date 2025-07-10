@@ -77,7 +77,20 @@ export class PromotionService {
 
     this.validateDates(dto.start_time, dto.end_time, dto.is_active);
 
-    const promo = this.promotionRepository.create(dto);
+    // Tạo promotion với promotion_type_id
+    const promo = this.promotionRepository.create({
+      title: dto.title,
+      detail: dto.detail,
+      code: dto.code,
+      discount: dto.discount,
+      start_time: dto.start_time ? new Date(dto.start_time) : undefined,
+      end_time: dto.end_time ? new Date(dto.end_time) : undefined,
+      exchange: dto.exchange,
+      is_active: dto.is_active ?? true,
+      // Gán promotion_type_id bằng cách tạo reference
+      promotionType: { id: dto.promotion_type_id } as any,
+    });
+
     await this.promotionRepository.save(promo);
     return { msg: 'Promotion created successfully' };
   }
