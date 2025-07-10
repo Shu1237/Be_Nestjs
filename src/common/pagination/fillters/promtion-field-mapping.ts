@@ -10,7 +10,9 @@ export const promotionFieldMapping: Record<string, FilterField> = {
     field: 'promotion.exchange',
     operator: '>=',
     customWhere: (qb: SelectQueryBuilder<any>, value: number) => {
-      qb.andWhere('promotion.exchange >= :exchangeFrom', { exchangeFrom: value });
+      qb.andWhere('promotion.exchange >= :exchangeFrom', {
+        exchangeFrom: value,
+      });
     },
   },
   exchangeTo: {
@@ -20,7 +22,7 @@ export const promotionFieldMapping: Record<string, FilterField> = {
       qb.andWhere('promotion.exchange <= :exchangeTo', { exchangeTo: value });
     },
   },
-  promotion_type_id: {
+  promtion_type_id: {
     field: 'promotion.promotion_type_id',
     operator: '=',
   },
