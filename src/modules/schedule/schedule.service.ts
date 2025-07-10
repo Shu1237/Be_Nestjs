@@ -10,6 +10,12 @@ import { ISchedule } from 'src/common/utils/type';
 import { NotFoundException } from 'src/common/exceptions/not-found.exception';
 import { Version } from 'src/database/entities/cinema/version';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
+import { SchedulePaginationDto } from 'src/common/pagination/dto/shedule/schedulePagination.dto';
+import { applyCommonFilters } from 'src/common/pagination/applyCommonFilters';
+import { scheduleFieldMapping } from 'src/common/pagination/fillters/scheduleFieldMapping';
+import { applySorting } from 'src/common/pagination/apply_sort';
+import { applyPagination } from 'src/common/pagination/applyPagination';
+import { buildPaginationResponse } from 'src/common/pagination/pagination-response';
 @Injectable()
 export class ScheduleService {
   constructor(
@@ -24,7 +30,7 @@ export class ScheduleService {
 
     @InjectRepository(Version)
     private readonly versionRepository: Repository<Version>,
-  ) {}
+  ) { }
   private getScheduleSummary(schedule: Schedule): ISchedule {
     return {
       id: schedule.id,
@@ -38,11 +44,20 @@ export class ScheduleService {
       },
       version: schedule.version
         ? {
-            id: schedule.version.id,
-            name: schedule.version.name,
-          }
+          id: schedule.version.id,
+          name: schedule.version.name,
+        }
         : null, // Nếu version là null, trả về null
     };
+  }
+  async findAllUser(): Promise<ISchedule[]> {
+    const schedules = await this.scheduleRepository.find({
+      where: { is_deleted: false }, 
+      relations: ['movie', 'cinemaRoom', 'version'], 
+    });
+
+    
+    return schedules.map((schedule) => this.getScheduleSummary(schedule));
   }
   async create(
     createScheduleDto: CreateScheduleDto,
@@ -122,14 +137,61 @@ export class ScheduleService {
       message: 'create successfully schedule', // Trả về phiên bản cụ thể
     };
   }
+  async findAll(fillters: SchedulePaginationDto) {
+    const qb = this.scheduleRepository.createQueryBuilder('schedule')
+      .leftJoinAndSelect('schedule.movie', 'movie')
+      .leftJoinAndSelect('schedule.cinemaRoom', 'cinemaRoom')
+      .leftJoinAndSelect('schedule.version', 'version') 
+
+    applyCommonFilters(qb, fillters, scheduleFieldMapping);
+    const allowedFields = [
+      'schedule.id',
+      'movie.name',
+      'version.id',
+      'cinemaRoom.cinema_room_name',
+    ];
+    applySorting(qb, fillters.sortBy, fillters.sortOrder, allowedFields, 'schedule.id');
+
+    applyPagination(qb, {
+      page: fillters.page,
+      take: fillters.take
+    })
+
+    const [schedules, total] = await qb.getManyAndCount();
+    const summaries = schedules.map((schedule) =>
+      this.getScheduleSummary(schedule),
+    );
+
+    const counts = await this.scheduleRepository
+      .createQueryBuilder('schedule')
+      .select([
+        `SUM(CASE WHEN schedule.is_deleted = false THEN 1 ELSE 0 END) AS activeCount`,
+        `SUM(CASE WHEN schedule.is_deleted = true THEN 1 ELSE 0 END) AS deletedCount`,
+      ])
+      .getRawOne();
+
+    const activeCount = parseInt(counts.activeCount, 10) || 0;
+    const deletedCount = parseInt(counts.deletedCount, 10) || 0;
+
+    return buildPaginationResponse(summaries, {
+      total,
+      page: fillters.page,
+      take: fillters.take,
+      activeCount,
+      deletedCount,
+    });
+  }
+
+
   async find(): Promise<ISchedule[]> {
     const schedules = await this.scheduleRepository.find({
-      relations: ['movie', 'cinemaRoom', 'version'], // Lấy thông tin liên quan đến movie và cinemaRoom
+      relations: ['movie', 'cinemaRoom', 'version'],
     });
 
     // Gói gọn dữ liệu trả về
     return schedules.map((schedule) => this.getScheduleSummary(schedule));
   }
+
 
   async findOut(id: number): Promise<ISchedule> {
     const schedule = await this.scheduleRepository.findOne({

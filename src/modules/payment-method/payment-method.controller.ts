@@ -22,7 +22,19 @@ import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 @ApiBearerAuth()
 @Controller('payment-methods')
 export class PaymentMethodController {
-  constructor(private readonly paymentMethodService: PaymentMethodService) {}
+  constructor(private readonly paymentMethodService: PaymentMethodService) { }
+
+  @Get()
+  @ApiOperation({ summary: 'Lấy tất cả phương thức thanh toán' })
+  findAll() {
+    return this.paymentMethodService.findAll();
+  }
+  @Get(':id')
+  @ApiOperation({ summary: 'Lấy phương thức thanh toán theo ID' })
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.paymentMethodService.findOne(id);
+  }
+
 
   @UseGuards(JwtAuthGuard)
   @Post()
@@ -37,17 +49,6 @@ export class PaymentMethodController {
     return this.paymentMethodService.create(createDto);
   }
 
-  @Get()
-  @ApiOperation({ summary: 'Lấy tất cả phương thức thanh toán' })
-  findAll() {
-    return this.paymentMethodService.findAll();
-  }
-
-  @Get(':id')
-  @ApiOperation({ summary: 'Lấy phương thức thanh toán theo ID' })
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.paymentMethodService.findOne(id);
-  }
 
   @UseGuards(JwtAuthGuard)
   @Put(':id')
@@ -65,7 +66,18 @@ export class PaymentMethodController {
     );
     return this.paymentMethodService.update(id, updateDto);
   }
-
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id')
+  @ApiOperation({
+    summary: 'Xóa mềm phương thức thanh toán (admin, employee only)',
+  })
+  async softDelete(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    checkAdminEmployeeRole(
+      req.user,
+      'Unauthorized: Only admin or employee can soft delete a payment method.',
+    );
+    return this.paymentMethodService.softDelete(id);
+  }
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
   @ApiOperation({
@@ -79,18 +91,6 @@ export class PaymentMethodController {
     return this.paymentMethodService.remove(id);
   }
 
-  @UseGuards(JwtAuthGuard)
-  @Patch(':id')
-  @ApiOperation({
-    summary: 'Xóa mềm phương thức thanh toán (admin, employee only)',
-  })
-  async softDelete(@Param('id', ParseIntPipe) id: number, @Req() req) {
-    checkAdminEmployeeRole(
-      req.user,
-      'Unauthorized: Only admin or employee can soft delete a payment method.',
-    );
-    return this.paymentMethodService.softDelete(id);
-  }
 
   @UseGuards(JwtAuthGuard)
   @Patch(':id/restore')
@@ -104,4 +104,6 @@ export class PaymentMethodController {
     );
     return this.paymentMethodService.restore(id);
   }
+
+
 }

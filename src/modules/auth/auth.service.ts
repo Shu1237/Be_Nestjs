@@ -202,7 +202,7 @@ export class AuthService {
       if (!role) throw new NotFoundException('Role not found');
       //qr code
       const id = uuidv4();
-      const qrCode = await this.qrcodeService.generateQrCode(id);
+      const qrCode = await this.qrcodeService.generateQrCode(id,'User');
       user = this.userRepository.create({
         id: id,
         sub: sub,
@@ -241,19 +241,22 @@ export class AuthService {
       if (!user.status) {
         throw new ForbiddenException('Account is disabled');
       }
-    }
-    // check token và refreshtoken trong refreshtoken table 
+    } 
+  
+
+    // check token
+    let needNewToken = false;
     const newestRefreshToken = await this.refreshTokenRepository.findOne({
       where: { user: { id: user.id }, revoked: false },
       order: { id: 'DESC' },
     });
-    // check token
-    let needNewToken = false;
+
     if (newestRefreshToken) {
       try {
         this.jwtService.verify(newestRefreshToken.access_token, {
           secret: this.configService.get<string>('jwt.secret'),
         });
+
         return {
           msg: 'Login successful',
           token: {
@@ -262,8 +265,10 @@ export class AuthService {
           },
         };
       } catch (error) {
+        needNewToken = true;
+
         if (error.name === 'TokenExpiredError') {
-          this.logger.warn(`Access token expired at ${error.expiredAt.toISOString()}`);
+          this.logger.warn(`Access token expired at ${error.expiredAt?.toISOString?.()}`);
         } else {
           this.logger.warn(`Access token invalid: ${error.message}`);
         }
@@ -271,6 +276,7 @@ export class AuthService {
     } else {
       needNewToken = true;
     }
+ 
 
     if (needNewToken) {
       const payload: JWTUserType = {
@@ -278,6 +284,7 @@ export class AuthService {
         username: user.username,
         role_id: user.role.role_id,
       };
+
 
       return {
         msg: 'Login successful',

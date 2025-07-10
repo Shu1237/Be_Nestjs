@@ -86,29 +86,30 @@ import { PaymentMethodModule } from './modules/payment-method/payment-method.mod
     }),
 
     // Application Modules
+    ActorModule,
     AuthModule,
-    TesterModule,
-    UserModule,
+    CinemaRoomModule,
+    GerneModule,
+    HistoryScoreModule,
     MovieModule,
     OrderModule,
-    PromotionModule,
-    ActorModule,
-    GerneModule,
-    VersionModule,
-    CinemaRoomModule,
-    ScheduleByDb,
-    SeatModule,
-    TicketModule,
-    ScheduleSeatModule,
     ProductModule,
-    HistoryScoreModule,
+    PromotionModule,
+    PaymentMethodModule,
+    ScheduleByDb,
+    ScheduleSeatModule,
+    SeatModule,
+    TesterModule,
+    TicketModule,
+    UserModule,
+    VersionModule,
 
     // Shared Modules
     CronModule,
     MyGateWayModule,
     S3Module,
-    PaymentMethodModule,
+
   ],
 
 })
-export class AppModule {}
+export class AppModule { }

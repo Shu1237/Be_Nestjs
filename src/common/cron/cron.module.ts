@@ -13,13 +13,15 @@ import { Order } from 'src/database/entities/order/order';
 import { OrderCronService } from './order/orderCron.service';
 import { Promotion } from 'src/database/entities/promotion/promotion';
 import { PromotionCronService } from './promotion/PromotionCron.Service';
+import { OrderExtra } from 'src/database/entities/order/order-extra';
+import { Transaction } from 'src/database/entities/order/transaction';
 
 
 @Module({
   imports: [
     RedisModule,
     MyGateWayModule,
-    TypeOrmModule.forFeature([RefreshToken, ScheduleSeat, Schedule, Movie, Order, Promotion]),
+    TypeOrmModule.forFeature([RefreshToken, ScheduleSeat, Schedule, Movie, Order, Promotion,OrderExtra,Transaction]),
   ],
   providers: [
     RefreshTokenService, 

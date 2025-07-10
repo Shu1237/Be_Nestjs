@@ -8,18 +8,67 @@ import { Drink } from "src/database/entities/item/drink";
 import { Combo } from "src/database/entities/item/combo";
 import { Food } from "src/database/entities/item/food";
 import { UpdateProductDto } from "./dto/updateProduct.dto";
+
 import { BadRequestException } from "@nestjs/common";
+
+import { ProductPaginationDto } from "src/common/pagination/dto/product/productPagination.dto";
+import { applyCommonFilters } from "src/common/pagination/applyCommonFilters";
+import { productFieldMapping } from "src/common/pagination/fillters/product-filed-mapping";
+import { applySorting } from "src/common/pagination/apply_sort";
+import { applyPagination } from "src/common/pagination/applyPagination";
+import { buildPaginationResponse } from "src/common/pagination/pagination-response";
+
 
 
 @Injectable()
+@Injectable()
 export class ProductService {
-    constructor() { }
-    @InjectRepository(Product)
-    private productRepository: Repository<Product>
-    async getAllProducts() {
-        const products = await this.productRepository.find()
-        return products;
+    constructor(
+        @InjectRepository(Product)
+        private readonly productRepository: Repository<Product>
+    ) { }
 
+    async getAllProductsUser(): Promise<Product[]> {
+        return await this.productRepository.find({
+            where: { is_deleted: false }
+        });
+    }
+
+    async getAllProducts(fillters: ProductPaginationDto) {
+        const qb = this.productRepository.createQueryBuilder('product')
+
+        applyCommonFilters(qb, fillters, productFieldMapping)
+
+        const allowedFields = [
+            'product.name',
+            'product.price',
+            'product.type',
+            'product.category',
+        ];
+        applySorting(qb, fillters.sortBy, fillters.sortOrder, allowedFields, 'product.name');
+        applyPagination(qb, {
+            page: fillters.page,
+            take: fillters.take,
+        })
+        const [products, total] = await qb.getManyAndCount();
+        const counts = await this.productRepository
+            .createQueryBuilder('product')
+            .select([
+                `SUM(CASE WHEN product.is_deleted = false THEN 1 ELSE 0 END) AS activeCount`,
+                `SUM(CASE WHEN product.is_deleted = true THEN 1 ELSE 0 END) AS deletedCount`,
+            ])
+            .getRawOne();
+        const activeCount = Number(counts.activeCount) || 0;
+        const deletedCount = Number(counts.deletedCount) || 0;
+        return buildPaginationResponse(products, {
+            total,
+            page: fillters.page,
+            take: fillters.take,
+            activeCount,
+            deletedCount,
+
+
+        });
     }
 
 

@@ -17,6 +17,7 @@ import { JWTUserType } from 'src/common/utils/type';
 import { BarcodeService } from 'src/common/barcode/barcode.service';
 import { ScanQrCodeDto } from 'src/modules/order/dto/qrcode.dto';
 import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
+import { checkEmployeeRole } from 'src/common/role/emloyee';
 
 @ApiTags('Profile')
 @ApiBearerAuth()
@@ -36,14 +37,16 @@ export class ProfileController {
   }
 
   @Put('me')
-  @ApiOperation({ summary: 'Update user profile (admin and member only)' })
+  @ApiOperation({ summary: 'Update user profile' })
   async updateProfile(
     @Req() req: Request,
     @Body() updateUserDto: UpdateUserDto,
   ) {
+
     const user = req.user as JWTUserType;
-    checkAdminEmployeeRole(user, 'Unauthorized: Only admin can update profile.');
     return this.profileService.updateProfile(user.account_id, updateUserDto);
+
+
   }
 
   @Get('barcode')
