@@ -74,14 +74,6 @@ export class MovieController {
     return this.movieService.getMovieById(id);
   }
 
-  // GET - Lấy actors của movie
-  @UseGuards(JwtAuthGuard)
-  @Get(':movieId/actors')
-  @ApiOperation({ summary: 'Get all actors of a movie' })
-  getActorsOfMovie(@Param('movieId', ParseIntPipe) movieId: number) {
-    return this.movieService.getActorsOfMovie(movieId);
-  }
-
   // GET - Lấy genres của movie
   @UseGuards(JwtAuthGuard)
   @Get(':movieId/gernes')
@@ -92,13 +84,6 @@ export class MovieController {
     return this.movieService.getGernesOfMovie(movieId);
   }
 
-  // GET - Lấy versions của movie
-  @UseGuards(JwtAuthGuard)
-  @Get(':movieId/versions')
-  @ApiOperation({ summary: 'Get all versions of a movie' })
-  getVersionsOfMovie(@Param('movieId', ParseIntPipe) movieId: number) {
-    return this.movieService.getVersionsOfMovie(movieId);
-  }
 
   // POST - Tạo movie mới
   @UseGuards(JwtAuthGuard)
@@ -140,31 +125,7 @@ export class MovieController {
     checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can restore a movie.');
     return await this.movieService.restoreMovie(id);
   }
-  @Get()
-  @ApiOperation({ summary: 'Get all movies (with pagination or all)' })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  getAllMoviesPaginated(
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-  ): Promise<any> {
-    if (!page && !limit) {
-      // Không truyền page, limit => trả về toàn bộ
-      return this.movieService.getAllMovies();
-    }
-    // Có page, limit => phân trang
-    return this.movieService.getMoviesPaginated(
-      Number(page) || 1,
-      Number(limit) || 10,
-    );
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Get(':movieId/actors')
-  @ApiOperation({ summary: 'Get all actors of a movie' })
-  getActorsOfMovie(@Param('movieId', ParseIntPipe) movieId: number) {
-    return this.movieService.getActorsOfMovie(movieId);
-  }
+  
 
   // DELETE - Xóa movie vĩnh viễn
   @UseGuards(JwtAuthGuard)
