@@ -35,7 +35,10 @@ export class ScheduleService {
     return {
       id: schedule.id,
       is_deleted: schedule.is_deleted,
-      cinema_room_id: schedule.cinemaRoom.id,
+      cinemaRoom: {
+        id: schedule.cinemaRoom.id,
+        name: schedule.cinemaRoom.cinema_room_name,
+      },
       start_movie_time: schedule.start_movie_time,
       end_movie_time: schedule.end_movie_time,
       movie: {
@@ -52,11 +55,11 @@ export class ScheduleService {
   }
   async findAllUser(): Promise<ISchedule[]> {
     const schedules = await this.scheduleRepository.find({
-      where: { is_deleted: false }, 
-      relations: ['movie', 'cinemaRoom', 'version'], 
+      where: { is_deleted: false },
+      relations: ['movie', 'cinemaRoom', 'version'],
     });
 
-    
+
     return schedules.map((schedule) => this.getScheduleSummary(schedule));
   }
   async create(
@@ -141,7 +144,7 @@ export class ScheduleService {
     const qb = this.scheduleRepository.createQueryBuilder('schedule')
       .leftJoinAndSelect('schedule.movie', 'movie')
       .leftJoinAndSelect('schedule.cinemaRoom', 'cinemaRoom')
-      .leftJoinAndSelect('schedule.version', 'version') 
+      .leftJoinAndSelect('schedule.version', 'version');
 
     applyCommonFilters(qb, fillters, scheduleFieldMapping);
     const allowedFields = [

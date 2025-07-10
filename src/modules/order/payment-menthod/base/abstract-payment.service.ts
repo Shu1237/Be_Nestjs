@@ -166,23 +166,23 @@ export abstract class AbstractPaymentService {
         return `${this.configService.get<string>('redirectUrls.successUrl')}?orderId=${savedOrder.id}&total=${savedOrder.total_prices}&paymentMethod=${transaction.paymentMethod.name}`;
     }
     async handleReturnFailed(transaction: Transaction): Promise<string> {
-        const order = transaction.order;
-        for (const detail of order.orderDetails) {
-            const ticket = detail.ticket;
-            if (ticket?.seat && ticket.schedule) {
-                await this.changeStatusScheduleSeat([ticket.seat.id], ticket.schedule.id);
-            }
-        }
-        if (order.orderExtras && order.orderExtras.length > 0) {
-            for (const extra of order.orderExtras) {
-                extra.status = StatusOrder.FAILED;
-                await this.orderExtraRepository.save(extra);
-            }
-        }
-        this.gateway.onCancelBookSeat({
-            schedule_id: order.orderDetails[0].ticket.schedule.id,
-            seatIds: order.orderDetails.map(detail => detail.ticket.seat.id),
-        });
+        // const order = transaction.order;
+        // for (const detail of order.orderDetails) {
+        //     const ticket = detail.ticket;
+        //     if (ticket?.seat && ticket.schedule) {
+        //         await this.changeStatusScheduleSeat([ticket.seat.id], ticket.schedule.id);
+        //     }
+        // }
+        // if (order.orderExtras && order.orderExtras.length > 0) {
+        //     for (const extra of order.orderExtras) {
+        //         extra.status = StatusOrder.FAILED;
+        //         await this.orderExtraRepository.save(extra);
+        //     }
+        // }
+        // this.gateway.onCancelBookSeat({
+        //     schedule_id: order.orderDetails[0].ticket.schedule.id,
+        //     seatIds: order.orderDetails.map(detail => detail.ticket.seat.id),
+        // });
 
         return `${this.configService.get<string>('redirectUrls.failureUrl')}`;
     }

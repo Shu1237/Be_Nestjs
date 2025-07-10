@@ -137,7 +137,10 @@ export type ISchedule = {
   start_movie_time: Date;
   end_movie_time: Date;
   movie: IMovieBasic;
-  cinema_room_id: number;
+  cinemaRoom: {
+    id: number;
+    name: string; // Chỉ chứa id và name
+  };
   is_deleted: boolean;
   version?: { id: number; name: string } | null; // Cho phép giá trị null
 
@@ -243,6 +246,8 @@ export type MetaOptions = {
   totalPending?: number;
   revenue?: string | number;
   [key: string]: any;
+  // totalMovieAvailable?: number;
+  // totalMovieDeleted?: number;
 }
 
 
