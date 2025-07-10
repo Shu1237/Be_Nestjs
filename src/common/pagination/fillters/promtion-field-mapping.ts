@@ -1,3 +1,4 @@
+import { Search } from '@nestjs/common';
 import { FilterField } from 'src/common/utils/type';
 import { SelectQueryBuilder } from 'typeorm';
 
@@ -7,28 +8,20 @@ export const promotionFieldMapping: Record<string, FilterField> = {
     operator: '=',
   },
   exchangeFrom: {
-    field: 'promotion.exchange',
-    operator: '>=',
     customWhere: (qb: SelectQueryBuilder<any>, value: number) => {
-      qb.andWhere('promotion.exchange >= :exchangeFrom', {
-        exchangeFrom: value,
-      });
+      qb.andWhere('promotion.exchange >= :exchangeFrom', { exchangeFrom: value });
     },
   },
   exchangeTo: {
-    field: 'promotion.exchange',
-    operator: '<=',
     customWhere: (qb: SelectQueryBuilder<any>, value: number) => {
       qb.andWhere('promotion.exchange <= :exchangeTo', { exchangeTo: value });
     },
   },
-  promtion_type_id: {
+  promotion_type_id: {
     field: 'promotion.promotion_type_id',
     operator: '=',
   },
   startTime: {
-    field: 'promotion.start_time',
-    operator: '>=',
     customWhere: (qb: SelectQueryBuilder<any>, value: string) => {
       qb.andWhere('promotion.start_time >= :startTime', {
         startTime: `${value} 00:00:00`,
@@ -36,8 +29,6 @@ export const promotionFieldMapping: Record<string, FilterField> = {
     },
   },
   endTime: {
-    field: 'promotion.end_time',
-    operator: '<=',
     customWhere: (qb: SelectQueryBuilder<any>, value: string) => {
       qb.andWhere('promotion.end_time <= :endTime', {
         endTime: `${value} 23:59:59`,
@@ -48,7 +39,7 @@ export const promotionFieldMapping: Record<string, FilterField> = {
     field: 'promotion.is_active',
     operator: '=',
   },
-   search: {
+  search: {
     customWhere(qb: SelectQueryBuilder<any>, value: string) {
       qb.andWhere(
         `(promotion.title LIKE :search OR promotion.detail LIKE :search)`,
