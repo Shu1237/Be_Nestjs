@@ -75,6 +75,14 @@ export class VersionController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Patch(':id/restore')
+  @ApiOperation({ summary: 'Restore a soft-deleted version (admin, employee only)' })
+  async restoreVersion(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Only admin or employee can restore a version.');
+    return await this.versionService.restoreVersion(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a version by ID (admin only)' })
   async remove(@Param('id') id: number, @Req() req) {

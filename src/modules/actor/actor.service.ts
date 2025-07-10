@@ -96,6 +96,21 @@ export class ActorService {
     return { msg: 'Actor soft deleted successfully' };
   }
 
+  async restoreActor(id: number): Promise<{ msg: string }> {
+    const actor = await this.actorRepository.findOne({ where: { id } });
+    if (!actor) {
+      throw new NotFoundException(`Actor with ID ${id} not found`);
+    }
+    if (!actor.is_deleted) {
+      throw new BadRequestException(
+        `Actor with ID ${id} is not soft-deleted`,
+      );
+    }
+    actor.is_deleted = false;
+    await this.actorRepository.save(actor);
+    return { msg: 'Actor restored successfully' };
+  }
+
   async removeActor(id: number): Promise<void> {
     const actor = await this.actorRepository.findOne({ where: { id } });
     if (!actor) {

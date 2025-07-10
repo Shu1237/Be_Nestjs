@@ -87,6 +87,21 @@ export class GerneService {
     return { msg: 'Gerne soft-deleted successfully', gerne };
   }
 
+  async restoreGerne(id: number): Promise<{ msg: string; gerne: Gerne }> {
+    const gerne = await this.gerneRepository.findOne({ where: { id } });
+    if (!gerne) {
+      throw new NotFoundException(`Gerne with ID ${id} not found`);
+    }
+    if (!gerne.is_deleted) {
+      throw new BadRequestException(
+        `Gerne with ID ${id} is not soft-deleted`,
+      );
+    }
+    gerne.is_deleted = false;
+    await this.gerneRepository.save(gerne);
+    return { msg: 'Gerne restored successfully', gerne };
+  }
+
   async getMoviesOfGerne(gerneId: number): Promise<Movie[]> {
     const gerne = await this.gerneRepository.findOne({
       where: { id: gerneId },

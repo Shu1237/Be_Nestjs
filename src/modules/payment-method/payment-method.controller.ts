@@ -91,4 +91,17 @@ export class PaymentMethodController {
     );
     return this.paymentMethodService.softDelete(id);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/restore')
+  @ApiOperation({
+    summary: 'Khôi phục phương thức thanh toán đã xóa mềm (admin, employee only)',
+  })
+  async restore(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    checkAdminEmployeeRole(
+      req.user,
+      'Unauthorized: Only admin or employee can restore a payment method.',
+    );
+    return this.paymentMethodService.restore(id);
+  }
 }

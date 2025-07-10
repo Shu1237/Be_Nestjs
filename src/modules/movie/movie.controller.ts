@@ -78,6 +78,14 @@ export class MovieController {
     await this.movieService.softDeleteMovie(id);
     return { message: 'Movie soft deleted successfully' };
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/restore')
+  @ApiOperation({ summary: 'Restore a soft-deleted movie by ID (admin, employee only)' })
+  async restoreMovie(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can restore a movie.');
+    return await this.movieService.restoreMovie(id);
+  }
   @Get()
   @ApiOperation({ summary: 'Get all movies (with pagination or all)' })
   @ApiQuery({ name: 'page', required: false, type: Number })

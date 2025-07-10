@@ -54,6 +54,13 @@ export class UserController {
     return { msg: 'Delete successfully' };
   }
 
+  @Patch(':id/restore')
+  @ApiOperation({ summary: 'Restore soft-deleted user by ID (admin only)' })
+  async restore(@Param('id') id: string, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Only admin can restore users');
+    return await this.userService.restore(id);
+  }
+
   // @Put(':id/status')
   // @ApiOperation({ summary: 'Toggle user status by ID (admin only)' })
   // async changeStatus(@Param('id') id: string, @Req() req: Request) {

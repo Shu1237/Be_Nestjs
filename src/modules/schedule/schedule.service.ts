@@ -220,4 +220,21 @@ export class ScheduleService {
 
     return { msg: 'Schedule soft-deleted successfully', schedule };
   }
+
+  async restoreSchedule(
+    id: number,
+  ): Promise<{ msg: string; schedule: Schedule }> {
+    const schedule = await this.scheduleRepository.findOne({ where: { id } });
+    if (!schedule) {
+      throw new NotFoundException(`Schedule with ID ${id} not found`);
+    }
+    if (!schedule.is_deleted) {
+      throw new BadRequestException(
+        `Schedule with ID ${id} is not soft-deleted`,
+      );
+    }
+    schedule.is_deleted = false;
+    await this.scheduleRepository.save(schedule);
+    return { msg: 'Schedule restored successfully', schedule };
+  }
 }

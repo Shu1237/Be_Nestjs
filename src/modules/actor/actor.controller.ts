@@ -82,6 +82,15 @@ export class ActorController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Patch(':id/restore')
+  @ApiOperation({ summary: 'Restore a soft-deleted actor (admin, employee only)' })
+  async restoreActor(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    const user = req.user as JWTUserType;
+    checkAdminEmployeeRole(user, 'Unauthorized: Only admin or employee can restore an actor.');
+    return await this.actorService.restoreActor(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Delete(':id')
   @ApiOperation({ summary: 'Permanently delete an actor' })
   async removeActor(@Req() req, @Param('id') id: string) {

@@ -73,6 +73,14 @@ export class GerneController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Patch(':id/restore')
+  @ApiOperation({ summary: 'Restore a soft-deleted genre (admin, employee only)' })
+  async restoreGerne(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can restore a genre.');
+    return await this.gerneService.restoreGerne(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete genre by ID (admin only)' })
   async deleteGerne(

@@ -5,6 +5,7 @@ import { User } from '../../../database/entities/user/user';
 import { Role } from '../../../database/entities/user/roles';
 import { UpdateUserDto } from '../dtos/update-user.dto';
 import { NotFoundException } from 'src/common/exceptions/not-found.exception';
+import { BadRequestException } from '@nestjs/common';
 
 @Injectable()
 export class UserService {
@@ -49,5 +50,23 @@ export class UserService {
     const user = await this.findOne(id);
     user.is_deleted = true;
     await this.userRepository.save(user);
+  }
+
+  async restore(id: string): Promise<{ msg: string }> {
+    const user = await this.userRepository.findOne({
+      where: { id },
+      relations: ['role'],
+    });
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+    if (!user.is_deleted) {
+      throw new BadRequestException(
+        `User with ID ${id} is not soft-deleted`,
+      );
+    }
+    user.is_deleted = false;
+    await this.userRepository.save(user);
+    return { msg: 'User restored successfully' };
   }
 }
