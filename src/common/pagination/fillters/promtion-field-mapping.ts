@@ -48,4 +48,12 @@ export const promotionFieldMapping: Record<string, FilterField> = {
     field: 'promotion.is_active',
     operator: '=',
   },
+   search: {
+    customWhere(qb: SelectQueryBuilder<any>, value: string) {
+      qb.andWhere(
+        `(promotion.title LIKE :search OR promotion.detail LIKE :search)`,
+        { search: `%${value}%` }
+      );
+     },
+  }
 };
