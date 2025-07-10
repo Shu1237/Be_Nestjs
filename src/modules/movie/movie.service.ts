@@ -268,6 +268,21 @@ export class MovieService {
     return { msg: 'Movie soft-deleted successfully', movie };
   }
 
+  async restoreMovie(id: number) {
+    const movie = await this.movieRepository.findOne({ where: { id } });
+    if (!movie) {
+      throw new NotFoundException(`Movie with ID ${id} not found`);
+    }
+    if (!movie.is_deleted) {
+      throw new BadRequestException(
+        `Movie with ID ${id} is not soft-deleted`,
+      );
+    }
+    movie.is_deleted = false;
+    await this.movieRepository.save(movie);
+    return { msg: 'Movie restored successfully', movie };
+  }
+
   async getActorsOfMovie(
     movieId: number,
   ): Promise<{ id: number; name: string }[]> {

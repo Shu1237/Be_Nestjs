@@ -1,3 +1,5 @@
+
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put, Req, UseGuards, Patch } from "@nestjs/common";
 import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put, Query, Req, UseGuards } from "@nestjs/common";
 import { ProductService } from "./product.service";
 import { JwtAuthGuard } from "src/common/guards/jwt.guard";
@@ -81,6 +83,20 @@ export class ProductController {
     async deleteProduct(@Param('id', ParseIntPipe) id: number, @Req() req) {
         checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can delete a product.');
         return this.productService.deleteProduct(id);
+    }
+
+    @Patch(':id/soft-delete')
+    @ApiOperation({ summary: 'Soft delete a product by ID (admin, employee only)' })
+    async softDeleteProduct(@Param('id', ParseIntPipe) id: number, @Req() req) {
+        checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can soft delete a product.');
+        return this.productService.softDeleteProduct(id);
+    }
+
+    @Patch(':id/restore')
+    @ApiOperation({ summary: 'Restore a soft-deleted product by ID (admin, employee only)' })
+    async restoreProduct(@Param('id', ParseIntPipe) id: number, @Req() req) {
+        checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can restore a product.');
+        return this.productService.restoreProduct(id);
     }
 
 

@@ -119,6 +119,23 @@ export class VersionService {
     return { msg: 'Version soft-deleted successfully', version };
   }
 
+  async restoreVersion(
+    id: number,
+  ): Promise<{ msg: string; version: Version }> {
+    const version = await this.versionRepository.findOne({ where: { id } });
+    if (!version) {
+      throw new NotFoundException(`Version with ID ${id} not found`);
+    }
+    if (!version.is_deleted) {
+      throw new BadRequestException(
+        `Version with ID ${id} is not soft-deleted`,
+      );
+    }
+    version.is_deleted = false;
+    await this.versionRepository.save(version);
+    return { msg: 'Version restored successfully', version };
+  }
+
   async remove(id: number): Promise<{ msg: string }> {
     const version = await this.findOne(id);
     await this.versionRepository.remove(version);

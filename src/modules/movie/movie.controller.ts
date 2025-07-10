@@ -132,6 +132,40 @@ export class MovieController {
     return { message: 'Movie soft deleted successfully' };
   }
 
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/restore')
+  @ApiOperation({ summary: 'Restore a soft-deleted movie by ID (admin, employee only)' })
+  async restoreMovie(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can restore a movie.');
+    return await this.movieService.restoreMovie(id);
+  }
+  @Get()
+  @ApiOperation({ summary: 'Get all movies (with pagination or all)' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  getAllMoviesPaginated(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ): Promise<any> {
+    if (!page && !limit) {
+      // Không truyền page, limit => trả về toàn bộ
+      return this.movieService.getAllMovies();
+    }
+    // Có page, limit => phân trang
+    return this.movieService.getMoviesPaginated(
+      Number(page) || 1,
+      Number(limit) || 10,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get(':movieId/actors')
+  @ApiOperation({ summary: 'Get all actors of a movie' })
+  getActorsOfMovie(@Param('movieId', ParseIntPipe) movieId: number) {
+    return this.movieService.getActorsOfMovie(movieId);
+  }
+
   // DELETE - Xóa movie vĩnh viễn
   @UseGuards(JwtAuthGuard)
   @Delete(':id')

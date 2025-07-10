@@ -122,4 +122,23 @@ export class CinemaRoomService {
 
     return { msg: 'Cinema Room soft-deleted successfully', cinemaRoom };
   }
+
+  async restoreCinemaRoom(
+    id: number,
+  ): Promise<{ msg: string; cinemaRoom: CinemaRoom }> {
+    const cinemaRoom = await this.cinemaRoomRepository.findOne({
+      where: { id },
+    });
+    if (!cinemaRoom) {
+      throw new NotFoundException(`Cinema Room with ID ${id} not found`);
+    }
+    if (!cinemaRoom.is_deleted) {
+      throw new BadRequestException(
+        `Cinema Room with ID ${id} is not soft-deleted`,
+      );
+    }
+    cinemaRoom.is_deleted = false;
+    await this.cinemaRoomRepository.save(cinemaRoom);
+    return { msg: 'Cinema Room restored successfully', cinemaRoom };
+  }
 }

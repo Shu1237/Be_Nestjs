@@ -99,7 +99,17 @@ export class ScheduleController {
     return await this.scheduleService.softDeleteSchedule(id);
   }
 
-  // DELETE - Xóa schedule theo ID
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/restore')
+  @ApiOperation({ summary: 'Restore a soft-deleted schedule (admin, employee only)' })
+  async restoreSchedule(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can restore a schedule.');
+    return await this.scheduleService.restoreSchedule(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+
   @Delete(':id')
   @ApiOperation({ summary: 'Delete schedule by ID (admin, employee only)' })
   async remove(@Param('id') id: number, @Req() req) {
