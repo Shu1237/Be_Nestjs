@@ -11,8 +11,12 @@ import { TicketPaginationDto } from 'src/common/pagination/dto/ticket/ticket-pag
 export class TicketController {
   constructor(private readonly ticketService: TicketService) { }
 
-  // ============ GET ENDPOINTS ============
 
+  // @Get('overview-ticket')
+  // @ApiOperation({ summary: 'Get overview of tickets' })
+  // async getOverviewTicket() {
+  //   return this.ticketService.getTicketOverview();
+  // }
   // GET - Lấy danh sách tickets cho user
   @Get('user')
   @ApiOperation({ summary: 'Get all tickets for users' })

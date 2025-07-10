@@ -15,20 +15,16 @@ export const scheduleFieldMapping: Record<string, FilterField> = {
     operator: '=',
   },
   scheduleStartTime: {
-    field: 'schedule.start_movie_time',
-    operator: 'BETWEEN',
     customWhere: (qb: SelectQueryBuilder<any>, value: string) => {
       qb.andWhere('schedule.start_movie_time >= :startTime', {
-        startTime: `${value} 00:00:00`,
+        startTime: value,
       });
     },
   },
   scheduleEndTime: {
-    field: 'schedule.start_movie_time',
-    operator: 'BETWEEN',
     customWhere: (qb: SelectQueryBuilder<any>, value: string) => {
       qb.andWhere('schedule.start_movie_time <= :endTime', {
-        endTime: `${value} 23:59:59`,
+        endTime: value,
       });
     },
   },

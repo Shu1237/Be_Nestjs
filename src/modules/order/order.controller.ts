@@ -60,12 +60,13 @@ export class OrderController {
     return this.orderService.scanQrCode(data.qrCode);
   }
 
-  // POST /order/user/process-payment - User re-payment for pending order
+  // POST /order/user/process-payment/:orderId - User re-payment for pending order
   @UseGuards(JwtAuthGuard)
-  @Post('user/process-payment')
+  @Post('user/process-payment/:orderId')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'User re-payment for pending order', })
   async userProcessOrderPayment(
+    @Param('orderId', ParseIntPipe) orderId: number,
     @Body() orderData: OrderBillUserAgainDto,
     @Req() req,
   ) {
@@ -82,7 +83,7 @@ export class OrderController {
     }
 
     return this.orderService.userProcessOrderPayment(
-      orderData,
+      { ...orderData, orderId: orderId }, 
       clientIp,
       user.account_id
     );
@@ -114,8 +115,14 @@ export class OrderController {
     );
   }
 
-  // GET /order/admin - View all orders for admin
-  @UseGuards(JwtAuthGuard)
+  // // GET /order/admin - View all orders for admin
+  //  @Get('overview-order')
+  //  getOverviewOrder() {
+  //   return this.orderService.getOrderOverview();
+  // }
+
+
+  // @UseGuards(JwtAuthGuard)
   @Get('admin')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'View all orders for admin' })
@@ -145,7 +152,7 @@ export class OrderController {
     @Query() query: OrderPaginationDto,
   ) {
     const user = req.user;
-    checkAdminEmployeeRole(user, 'You do not have permission to view all orders');
+    // checkAdminEmployeeRole(user, 'You do not have permission to view all orders');
 
     const {
       page = 1,

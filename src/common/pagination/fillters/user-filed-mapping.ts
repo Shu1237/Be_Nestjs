@@ -11,8 +11,6 @@ export const userFieldMapping: Record<string, FilterField> = {
         operator: '=',
     },
     search: {
-        operator: 'LIKE',
-        field: '',
         customWhere: (qb: SelectQueryBuilder<any>, value: string) => {
             qb.andWhere(
                 `(user.username LIKE :search OR user.email LIKE :search)`,
