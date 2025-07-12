@@ -257,7 +257,7 @@ export class OrderService {
 
       // Fetch seat IDs
       const seatIds = orderBill.seats.map((seat: SeatInfo) => seat.id);
-      const scheduleId = orderBill.schedule_id.toString();
+      const scheduleId = orderBill.schedule_id;
 
       // check redis
       const check = await this.validateBeforeOrder(scheduleId, user.id, seatIds);
@@ -523,14 +523,17 @@ export class OrderService {
         });
 
       }
-      // socket emit
-      (Number(orderBill.payment_method_id) === Method.CASH
-        ? this.gateway.emitBookSeat
-        : this.gateway.emitHoldSeat
-      )({
-        schedule_id: orderBill.schedule_id,
-        seatIds: orderBill.seats.map(seat => seat.id),
-      });
+      if (Number(orderBill.payment_method_id) === Method.CASH) {
+        this.gateway.emitBookSeat({
+          schedule_id: orderBill.schedule_id,
+          seatIds: orderBill.seats.map(seat => seat.id),
+        });
+      } else {
+        this.gateway.emitHoldSeat({
+          schedule_id: orderBill.schedule_id,
+          seatIds: orderBill.seats.map(seat => seat.id),
+        });
+      }
 
       return { payUrl: paymentCode.payUrl };
     } catch (error) {
@@ -539,7 +542,7 @@ export class OrderService {
   }
 
   private async validateBeforeOrder(
-    scheduleId: string,
+    scheduleId: number,
     userId: string,
     requestSeatIds: string[],
   ): Promise<boolean> {
@@ -549,11 +552,10 @@ export class OrderService {
 
     if (!data) {
       // socket seat return not yet
-      this.gateway.server.to(`schedule-${scheduleId}`).emit('seat_cancel_hold_update', {
-        seatIds: requestSeatIds,
+      this.gateway.emitCancelBookSeat({
         schedule_id: scheduleId,
-        status: StatusSeat.NOT_YET,
-      });
+        seatIds: requestSeatIds,
+      })
       throw new BadRequestException('Your seat hold has expired. Please select seats again.');
     }
 
@@ -1248,7 +1250,8 @@ export class OrderService {
       // 6. Validate và đặt ghế mới
       const newSeatIds = updateData.seats.map(seat => seat.id);
       const newScheduleSeats = await this.getScheduleSeatsByIds(newSeatIds, updateData.schedule_id);
-      const check = await this.validateBeforeOrder(updateData.schedule_id.toString(), adminId, newSeatIds);
+      const check = await this.validateBeforeOrder(updateData.schedule_id, adminId, newSeatIds);
+      // check redis
       if (!check) {
         throw new ConflictException('Seats are being held by another user. Please try again later.');
       }
@@ -1262,8 +1265,6 @@ export class OrderService {
           `Seats are already booked: ${unavailableSeats.map(s => `${s.id}`).join(', ')}`
         );
       }
-      // check redis
-
 
       // 7. Tính toán giá tiền
       let totalSeats = 0;
@@ -1331,9 +1332,6 @@ export class OrderService {
       if (existingOrder.orderExtras && existingOrder.orderExtras.length > 0) {
         await this.orderExtraRepository.remove(existingOrder.orderExtras);
       }
-      // check redis 
-
-
       // 9. Đặt ghế mới
       for (const scheduleSeat of newScheduleSeats) {
         scheduleSeat.status = StatusSeat.HELD;
