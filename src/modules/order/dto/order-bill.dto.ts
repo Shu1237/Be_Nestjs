@@ -16,15 +16,7 @@ class SeatInfoDto {
   @ApiProperty({ example: 'abc123', description: 'Seat ID' })
   @IsString()
   id: string;
-
-  @ApiProperty({ example: 'A', description: 'Seat row (e.g., A, B, C...)' })
-  @IsString()
-  seat_row: string;
-
-  @ApiProperty({ example: '5', description: 'Seat column number' })
-  @IsString()
-  seat_column: string;
-
+  
   @ApiProperty({ enum: AudienceType, description: 'Audience type' })
   @IsEnum(AudienceType)
   audience_type: AudienceType;
@@ -42,9 +34,9 @@ class ProductItemDto {
 }
 
 export class CreateOrderBillDto {
-  @ApiProperty({ example: "1", description: 'Payment method ID' })
-  @IsString()
-  payment_method_id: string;
+  @ApiProperty({ example: 1, description: 'Payment method ID' })
+  @IsNumber()
+  payment_method_id: number;
 
   @ApiProperty({ example: '250000', description: 'Total price as string' })
   @IsString()

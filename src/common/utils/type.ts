@@ -49,13 +49,11 @@ export type ProductOrderItem = {
 };
 export type SeatInfo = {
   id: string;
-  seat_row: string;
-  seat_column: string;
   audience_type: AudienceType;
 };
 
 export type OrderBillType = {
-  payment_method_id: string;
+  payment_method_id: number;
   total_prices: string;
   promotion_id: number;
   schedule_id: number;

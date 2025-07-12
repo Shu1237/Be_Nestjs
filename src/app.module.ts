@@ -101,7 +101,7 @@ import { OverviewModule } from './modules/overview/overview.module';
     ScheduleByDb,
     ScheduleSeatModule,
     SeatModule,
-    TesterModule,
+    // TesterModule,
     TicketModule,
     UserModule,
     VersionModule,

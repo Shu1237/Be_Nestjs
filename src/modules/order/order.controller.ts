@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, Res, UseGuards, Req, Param, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Res, UseGuards, Req, Param, ParseIntPipe, Patch } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { MomoService } from './payment-menthod/momo/momo.service';
 import { PayPalService } from './payment-menthod/paypal/paypal.service';
@@ -12,15 +12,12 @@ import { JWTUserType } from 'src/common/utils/type';
 import { ScanQrCodeDto } from './dto/qrcode.dto';
 import { InternalServerErrorException } from 'src/common/exceptions/internal-server-error.exception';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
-import { ForbiddenException } from 'src/common/exceptions/forbidden.exception';
 import { StatusOrder } from 'src/common/enums/status-order.enum';
-import { Role } from 'src/common/enums/roles.enum';
 import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 import { OrderPaginationDto } from 'src/common/pagination/dto/order/orderPagination.dto';
 import { VisaService } from './payment-menthod/visa/visa.service';
 import { ConfigService } from '@nestjs/config';
 import { checkUserRole } from 'src/common/role/user';
-import { OrderBillUserAgainDto } from './dto/order-bill-user-again.dto';
 
 @ApiBearerAuth()
 @Controller('order')
@@ -67,25 +64,20 @@ export class OrderController {
   @ApiOperation({ summary: 'User re-payment for pending order', })
   async userProcessOrderPayment(
     @Param('orderId', ParseIntPipe) orderId: number,
-    @Body() orderData: OrderBillUserAgainDto,
+    @Body() orderData: CreateOrderBillDto,
     @Req() req,
   ) {
     const user = req.user as JWTUserType;
-
-    // Kiểm tra role user
-    if (user.role_id !== Role.USER) {
-      throw new ForbiddenException('Only users can process their own orders');
-    }
-
     const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     if (!clientIp) {
       throw new InternalServerErrorException('Client IP address not found');
     }
 
     return this.orderService.userProcessOrderPayment(
-      { ...orderData, orderId: orderId }, 
-      clientIp,
-      user.account_id
+      orderId,
+      orderData,
+      user.account_id,
+      clientIp
     );
   }
 
@@ -122,6 +114,19 @@ export class OrderController {
   //   return this.orderService.getOrderOverview();
   // }
 
+  @UseGuards(JwtAuthGuard)
+  @Patch('admin/cancel-order/:orderId')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Admin/Employee cancel order', })
+  async adminCancelOrder(
+    @Param('orderId', ParseIntPipe) orderId: number,
+    @Req() req,
+  ) {
+    const user = req.user as JWTUserType;
+    checkAdminEmployeeRole(user, 'Only admin or employee can cancel orders');
+
+    return this.orderService.adminCancelOrder(orderId);
+  }
 
   // @UseGuards(JwtAuthGuard)
   @Get('admin')
@@ -214,7 +219,7 @@ export class OrderController {
   }
 
   // Payment callback endpoints (excluded from Swagger)
-  
+
   // GET /order/momo/return - MoMo payment callback
   @ApiExcludeEndpoint()
   @Get('momo/return')

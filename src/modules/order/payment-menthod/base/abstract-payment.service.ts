@@ -4,9 +4,10 @@ import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { Role } from "src/common/enums/roles.enum";
 import { StatusOrder } from "src/common/enums/status-order.enum";
+import { StatusSeat } from "src/common/enums/status_seat.enum";
 import { MyGateWay } from "src/common/gateways/seat.gateway";
 import { QrCodeService } from "src/common/qrcode/qrcode.service";
-import { ScheduleSeat, SeatStatus } from "src/database/entities/cinema/schedule_seat";
+import { ScheduleSeat } from "src/database/entities/cinema/schedule_seat";
 import { HistoryScore } from "src/database/entities/order/history_score";
 import { Order } from "src/database/entities/order/order";
 import { OrderExtra } from "src/database/entities/order/order-extra";
@@ -61,7 +62,7 @@ export abstract class AbstractPaymentService {
         return transaction;
     }
 
-    async changeStatusScheduleSeat(seatIds: string[], scheduleId: number): Promise<void> {
+    async changeStatusScheduleSeatToFailed(seatIds: string[], scheduleId: number): Promise<void> {
         if (!seatIds || seatIds.length === 0) {
             throw new NotFoundException('Seat IDs are required');
         }
@@ -79,7 +80,30 @@ export abstract class AbstractPaymentService {
         }
 
         for (const seat of foundSeats) {
-            seat.status = SeatStatus.NOT_YET;
+            seat.status = StatusSeat.NOT_YET;
+            await this.scheduleSeatRepository.save(seat);
+        }
+    }
+
+    async changeStatusScheduleSeatToBooked(seatIds: string[], scheduleId: number): Promise<void> {
+        if (!seatIds || seatIds.length === 0) {
+            throw new NotFoundException('Seat IDs are required');
+        }
+
+        const foundSeats = await this.scheduleSeatRepository.find({
+            where: {
+                schedule: { id: scheduleId },
+                seat: { id: In(seatIds) },
+            },
+            relations: ['seat', 'schedule'],
+        });
+
+        if (!foundSeats || foundSeats.length === 0) {
+            throw new NotFoundException('Seats not found for the given schedule');
+        }
+
+        for (const seat of foundSeats) {
+            seat.status = StatusSeat.BOOKED;
             await this.scheduleSeatRepository.save(seat);
         }
     }
@@ -144,6 +168,11 @@ export abstract class AbstractPaymentService {
             }
         }
 
+        // Change seat status from HELD to BOOKED when payment is successful
+        const seatIds = order.orderDetails.map(detail => detail.ticket.seat.id);
+        const scheduleId = order.orderDetails[0].ticket.schedule.id;
+        await this.changeStatusScheduleSeatToBooked(seatIds, scheduleId);
+
         if (order.orderExtras && order.orderExtras.length > 0) {
             for (const extra of order.orderExtras) {
                 extra.status = StatusOrder.SUCCESS;
@@ -154,11 +183,11 @@ export abstract class AbstractPaymentService {
         try {
             await this.sendOrderConfirmationEmail(order, transaction);
         } catch (error) {
-            console.error('Mailer error:', error);
+            // console.error('Mailer error:', error);
             throw new NotFoundException('Failed to send confirmation email');
         }
 
-        this.gateway.onBookSeat({
+        this.gateway.emitBookSeat({
             schedule_id: order.orderDetails[0].ticket.schedule.id,
             seatIds: order.orderDetails.map(detail => detail.ticket.seat.id),
         });
@@ -167,18 +196,24 @@ export abstract class AbstractPaymentService {
     }
     async handleReturnFailed(transaction: Transaction): Promise<string> {
         // const order = transaction.order;
+        
+        // // Change seat status from HELD to NOT_YET when payment fails
         // for (const detail of order.orderDetails) {
         //     const ticket = detail.ticket;
         //     if (ticket?.seat && ticket.schedule) {
-        //         await this.changeStatusScheduleSeat([ticket.seat.id], ticket.schedule.id);
+        //         await this.changeStatusScheduleSeatToFailed([ticket.seat.id], ticket.schedule.id);
         //     }
         // }
+        
+        // // Update order extras status to FAILED
         // if (order.orderExtras && order.orderExtras.length > 0) {
         //     for (const extra of order.orderExtras) {
         //         extra.status = StatusOrder.FAILED;
         //         await this.orderExtraRepository.save(extra);
         //     }
         // }
+        
+        // // Notify via socket that seats are cancelled
         // this.gateway.onCancelBookSeat({
         //     schedule_id: order.orderDetails[0].ticket.schedule.id,
         //     seatIds: order.orderDetails.map(detail => detail.ticket.seat.id),
