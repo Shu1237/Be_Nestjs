@@ -10,22 +10,23 @@ import { OrderDetail } from "src/database/entities/order/order-detail";
 import { OrderExtra } from "src/database/entities/order/order-extra";
 import { Schedule } from "src/database/entities/cinema/schedule";
 import { In, Repository } from "typeorm";
-import { 
-    OverviewResponseDto, 
-    TicketTypeSaleDto, 
-    BestSellingComboDto, 
-    TimeSlotReportDto, 
-    PeakHoursRevenueDto, 
-    TopMovieDto, 
-    TopCustomerDto 
+import {
+    OverviewResponseDto,
+    TicketTypeSaleDto,
+    BestSellingComboDto,
+    TimeSlotReportDto,
+    PeakHoursRevenueDto,
+    TopMovieDto,
+    TopCustomerDto
 } from "./dtos/overview-response.dto";
 import { StatusOrder } from "src/common/enums/status-order.enum";
 
 
 
+
 @Injectable()
 export class OverviewService {
-     constructor(
+    constructor(
         @InjectRepository(Order)
         private readonly orderRepository: Repository<Order>,
         @InjectRepository(Movie)
@@ -44,7 +45,7 @@ export class OverviewService {
         private readonly orderExtraRepository: Repository<OrderExtra>,
         @InjectRepository(Schedule)
         private readonly scheduleRepository: Repository<Schedule>,
-     ){}
+    ) { }
 
     async getOverview(): Promise<OverviewResponseDto> {
         const [
@@ -96,7 +97,7 @@ export class OverviewService {
             .select('SUM(CAST(order.total_prices AS DECIMAL(10,2)))', 'totalRevenue')
             .where('order.status = :status', { status: StatusOrder.SUCCESS })
             .getRawOne();
-        
+
         return parseFloat(result?.totalRevenue || '0');
     }
 
@@ -106,9 +107,9 @@ export class OverviewService {
             .createQueryBuilder('ticket')
             .innerJoin('ticket.orderDetail', 'orderDetail')
             .innerJoin('orderDetail.order', 'order')
-            .where('order.status = :status', { status:  StatusOrder.SUCCESS})
+            .where('order.status = :status', { status: StatusOrder.SUCCESS })
             .getCount();
-        
+
         return result;
     }
 
@@ -117,7 +118,7 @@ export class OverviewService {
         const result = await this.userRepository
             .createQueryBuilder('user')
             .getCount();
-        
+
         return result;
     }
 
@@ -129,7 +130,7 @@ export class OverviewService {
             .where('movie.from_date <= :currentDate', { currentDate })
             .andWhere('movie.to_date >= :currentDate', { currentDate })
             .getCount();
-        
+
         return result;
     }
 
@@ -216,7 +217,7 @@ export class OverviewService {
     //  Revenue by Peak Hours
     private async getRevenueByPeakHours(): Promise<PeakHoursRevenueDto[]> {
         const timeSlots = await this.getTimeSlotReport();
-        
+
         // Define peak hours categories
         const peakCategories = [
             { name: 'Morning (6-12)', hours: [6, 7, 8, 9, 10, 11] },
@@ -226,23 +227,45 @@ export class OverviewService {
         ];
 
         return peakCategories.map(category => {
-            const categoryData = timeSlots.filter(slot => 
+            const categoryData = timeSlots.filter(slot =>
                 category.hours.includes(slot.hour)
             );
-            
+
             return {
                 category: category.name,
                 totalRevenue: categoryData.reduce((sum, slot) => sum + slot.revenue, 0),
                 totalTickets: categoryData.reduce((sum, slot) => sum + slot.ticketsSold, 0),
-                averageRevenuePerHour: categoryData.length > 0 
-                    ? categoryData.reduce((sum, slot) => sum + slot.revenue, 0) / categoryData.length 
+                averageRevenuePerHour: categoryData.length > 0
+                    ? categoryData.reduce((sum, slot) => sum + slot.revenue, 0) / categoryData.length
                     : 0
             };
         });
     }
 
+    async getNowShowing() {
+        const currentDate = new Date();
+        const result = await this.movieRepository
+            .createQueryBuilder('movie')
+            .where('movie.from_date <= :currentDate', { currentDate })
+            .andWhere('movie.to_date >= :currentDate', { currentDate })
+            .getMany();
+
+        const nowShowing = result.map(movie => ({
+            id: movie.id,
+            name: movie.name,
+            director: movie.director,
+            duration: movie.duration,
+            thumbnail: movie.thumbnail,
+            trailer: movie.trailer || '',
+            description: movie.content || '',
+        }));
+
+        return nowShowing;
+    }
+
+
     //  Top Movies by Revenue
-    private async getTopMoviesByRevenue(): Promise<TopMovieDto[]> {
+    async getTopMoviesByRevenue(): Promise<TopMovieDto[]> {
         const result = await this.movieRepository
             .createQueryBuilder('movie')
             .innerJoin('movie.schedules', 'schedule')
@@ -253,13 +276,15 @@ export class OverviewService {
                 'movie.director as director',
                 'movie.duration as duration',
                 'movie.thumbnail as thumbnail',
+                'movie.trailer as trailer',
+                'movie.content as description',
                 'COUNT(DISTINCT orderDetail.id) as ticketsSold',
                 'SUM(CAST(orderDetail.total_each_ticket AS DECIMAL(10,2))) as totalRevenue'
             ])
             .where('order.status = :status', { status: StatusOrder.SUCCESS })
             .groupBy('movie.id')
             .orderBy('totalRevenue', 'DESC')
-            .limit(10)
+            .limit(5)
             .getRawMany();
 
         return result.map(item => ({
@@ -267,6 +292,8 @@ export class OverviewService {
             director: item.director,
             duration: parseInt(item.duration),
             thumbnail: item.thumbnail,
+            trailer: item.trailer || '',
+            description: item.description || '',
             ticketsSold: parseInt(item.ticketsSold || '0'),
             totalRevenue: parseFloat(item.totalRevenue || '0')
         }));
@@ -315,8 +342,8 @@ export class OverviewService {
             this.getRevenueForPeriod(previousPeriodStart, currentPeriodStart)
         ]);
 
-        const growthPercentage = previousRevenue > 0 
-            ? ((currentRevenue - previousRevenue) / previousRevenue) * 100 
+        const growthPercentage = previousRevenue > 0
+            ? ((currentRevenue - previousRevenue) / previousRevenue) * 100
             : 0;
 
         return {
@@ -333,7 +360,7 @@ export class OverviewService {
             .select('AVG(CAST(order.total_prices AS DECIMAL(10,2)))', 'avgOrderValue')
             .where('order.status = :status', { status: StatusOrder.SUCCESS })
             .getRawOne();
-        
+
         return parseFloat(result?.avgOrderValue || '0');
     }
 
@@ -353,8 +380,8 @@ export class OverviewService {
             .having('COUNT(order.id) > 1')
             .getCount();
 
-        const retentionRate = totalCustomersResult > 0 
-            ? (returningCustomersResult / totalCustomersResult) * 100 
+        const retentionRate = totalCustomersResult > 0
+            ? (returningCustomersResult / totalCustomersResult) * 100
             : 0;
 
         return {
@@ -367,12 +394,12 @@ export class OverviewService {
     // 🕐 Peak Hours Analysis
     async getPeakHoursAnalysis(): Promise<{ peakHour: number; peakRevenue: number; averageHourlyRevenue: number }> {
         const hourlyData = await this.getTimeSlotReport();
-        
+
         if (hourlyData.length === 0) {
             return { peakHour: 0, peakRevenue: 0, averageHourlyRevenue: 0 };
         }
 
-        const peakHourData = hourlyData.reduce((max, current) => 
+        const peakHourData = hourlyData.reduce((max, current) =>
             current.revenue > max.revenue ? current : max
         );
 
@@ -395,7 +422,7 @@ export class OverviewService {
             .andWhere('order.order_date >= :startDate', { startDate })
             .andWhere('order.order_date <= :endDate', { endDate })
             .getRawOne();
-        
+
         return parseFloat(result?.totalRevenue || '0');
     }
 
@@ -436,7 +463,7 @@ export class OverviewService {
         // Calculate average from the results
         const totalRevenue = movieRevenues.reduce((sum, movie) => sum + parseFloat(movie.totalRevenue || '0'), 0);
         const averageRevenue = totalRevenue / movieRevenues.length;
-        
+
         return Math.round(averageRevenue * 100) / 100;
     }
 }

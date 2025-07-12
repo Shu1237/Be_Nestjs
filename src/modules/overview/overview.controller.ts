@@ -10,7 +10,7 @@ import { ApiBearerAuth } from "@nestjs/swagger/dist/decorators/api-bearer.decora
 @Controller("overview")
 @ApiBearerAuth()
 export class OverviewController {
-  constructor(private readonly overviewService: OverviewService) {}
+  constructor(private readonly overviewService: OverviewService) { }
 
   @Get()
   getOverview(@Req() req) {
@@ -19,13 +19,20 @@ export class OverviewController {
     return this.overviewService.getOverview();
   }
 
-//   @Get('revenue-growth')
-//   getRevenueGrowth(@Req() req, @Query('days') days?: string) {
-//     const user = req.user as JWTUserType;
-//     checkAdminEmployeeRole(user, 'Only admin and employee can access revenue growth data');
-//     const periodDays = days ? parseInt(days) : 30;
-//     return this.overviewService.getRevenueGrowth(periodDays);
-//   }
+  @Get('top-movies')
+  getTopMovies(@Req() req) {
+    const user = req.user as JWTUserType;
+    checkAdminEmployeeRole(user, 'Only admin and employee can access revenue growth data');
+    return this.overviewService.getTopMoviesByRevenue()
+  }
+
+  @Get('now-showing')
+  getNowShowing(@Req() req ) {
+    const user = req.user as JWTUserType;
+    checkAdminEmployeeRole(user, 'Only admin and employee can access revenue growth data');
+    return this.overviewService.getNowShowing()
+
+  }
 
   @Get('average-order-value')
   getAverageOrderValue(@Req() req) {

@@ -37,6 +37,8 @@ export interface TopMovieDto {
   director: string;
   duration: number;
   thumbnail: string;
+  trailer: string;
+  description: string;
   ticketsSold: number;
   totalRevenue: number;
 }
