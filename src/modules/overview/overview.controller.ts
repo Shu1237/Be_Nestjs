@@ -6,7 +6,7 @@ import { JWTUserType } from "src/common/utils/type";
 import { ApiBearerAuth } from "@nestjs/swagger/dist/decorators/api-bearer.decorator";
 
 
-// @UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard)
 @Controller("overview")
 @ApiBearerAuth()
 export class OverviewController {
