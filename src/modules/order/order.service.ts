@@ -1,3 +1,4 @@
+
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
@@ -43,12 +44,10 @@ import { orderFieldMapping } from 'src/common/pagination/fillters/order-field-ma
 import { applySorting } from 'src/common/pagination/apply_sort';
 import { buildPaginationResponse } from 'src/common/pagination/pagination-response';
 import { applyPagination } from 'src/common/pagination/applyPagination';
-import { OrderBillUserAgainDto } from './dto/order-bill-user-again.dto';
-
-
-
 @Injectable()
 export class OrderService {
+
+
   constructor(
     @InjectRepository(Transaction)
     private transactionRepository: Repository<Transaction>,
@@ -193,6 +192,28 @@ export class OrderService {
     return scheduleSeats;
   }
 
+  private async changeStatusScheduleSeatToBooked(seatIds: string[], scheduleId: number): Promise<void> {
+    if (!seatIds || seatIds.length === 0) {
+      throw new NotFoundException('Seat IDs are required');
+    }
+
+    const foundSeats = await this.scheduleSeatRepository.find({
+      where: {
+        schedule: { id: scheduleId },
+        seat: { id: In(seatIds) },
+      },
+      relations: ['seat', 'schedule'],
+    });
+
+    if (!foundSeats || foundSeats.length === 0) {
+      throw new NotFoundException('Seats not found for the given schedule');
+    }
+
+    for (const seat of foundSeats) {
+      seat.status = StatusSeat.BOOKED;
+      await this.scheduleSeatRepository.save(seat);
+    }
+  }
 
   async createOrder(userData: JWTUserType, orderBill: OrderBillType, clientIp: string) {
     try {
@@ -262,7 +283,7 @@ export class OrderService {
 
       const promotionDiscount = parseFloat(promotion?.discount ?? '0');
       const isPercentage = promotion?.promotionType?.type === 'percentage';
-      // console.log(promotion)
+
 
 
 
@@ -304,7 +325,6 @@ export class OrderService {
       }
 
       const seatRatio = totalSeats / totalBeforePromotion;
-
       const seatDiscount = Math.round(promotionAmount * seatRatio);
       const productDiscount = promotionAmount - seatDiscount;
       // Tạo transaction
@@ -382,7 +402,8 @@ export class OrderService {
           throw new NotFoundException(`Seat ${seatData.id} not found in scheduleSeats`);
         }
 
-        seat.status = StatusSeat.BOOKED;
+        // Set seat status to HELD when creating order (regardless of payment method)
+        seat.status = StatusSeat.HELD;
         updatedSeats.push(seat);
 
         const newTicket = this.ticketRepository.create({
@@ -412,61 +433,66 @@ export class OrderService {
       await this.orderDetailRepository.save(orderDetails);
 
       // Create order extras
-      const productTotals = orderExtras.map(p => {
-        const quantity = orderBill.products?.find(item => item.product_id === p.id)?.quantity || 0;
-        return {
-          product: p,
-          quantity,
-          total: Number(p.price) * quantity,
-        };
-      });
-
-      const totalProductBeforePromo = productTotals.reduce((sum, item) => sum + item.total, 0);
-      const orderExtrasToSave: Omit<OrderExtra, 'id'>[] = [];
-
-      for (const item of productTotals) {
-        const shareRatio = item.total / totalProductBeforePromo || 0;
-        const isCombo = item.product.type.toLocaleLowerCase() === ProductTypeEnum.COMBO
-
-
-        const basePrice = Number(item.product.price);
-        let unit_price_after_discount = basePrice;
-
-        if (isPercentage) {
-          const unitDiscount = basePrice * (productDiscount / totalProductBeforePromo);
-          unit_price_after_discount = Math.round(basePrice - unitDiscount);
-        } else {
-          const productDiscountShare = productDiscount * shareRatio;
-          const unitDiscount = productDiscountShare / item.quantity;
-          unit_price_after_discount = Math.round(basePrice - unitDiscount);
-        }
-
-
-        if (isCombo) {
-          const comboProduct = item.product as Combo;
-          if (comboProduct.discount != null && !isNaN(comboProduct.discount)) {
-            unit_price_after_discount *= (1 - comboProduct.discount / 100);
-          }
-        }
-
-        orderExtrasToSave.push({
-          quantity: item.quantity,
-          unit_price: roundUpToNearest(unit_price_after_discount, 1000).toString(),
-          order: newOrder,
-          product: item.product,
-          status:
-            Number(orderBill.payment_method_id) === Method.CASH
-              ? StatusOrder.SUCCESS
-              : StatusOrder.PENDING,
+      if (orderExtras.length > 0) {
+        const productTotals = orderExtras.map(p => {
+          const quantity = orderBill.products?.find(item => item.product_id === p.id)?.quantity || 0;
+          return {
+            product: p,
+            quantity,
+            total: Number(p.price) * quantity,
+          };
         });
+
+        const totalProductBeforePromo = productTotals.reduce((sum, item) => sum + item.total, 0);
+        const orderExtrasToSave: Omit<OrderExtra, 'id'>[] = [];
+
+        for (const item of productTotals) {
+          const shareRatio = item.total / totalProductBeforePromo || 0;
+          const isCombo = item.product.type.toLocaleLowerCase() === ProductTypeEnum.COMBO
+
+
+          const basePrice = Number(item.product.price);
+          let unit_price_after_discount = basePrice;
+
+          if (isPercentage) {
+            const unitDiscount = basePrice * (productDiscount / totalProductBeforePromo);
+            unit_price_after_discount = Math.round(basePrice - unitDiscount);
+          } else {
+            const productDiscountShare = productDiscount * shareRatio;
+            const unitDiscount = productDiscountShare / item.quantity;
+            unit_price_after_discount = Math.round(basePrice - unitDiscount);
+          }
+
+
+          if (isCombo) {
+            const comboProduct = item.product as Combo;
+            if (comboProduct.discount != null && !isNaN(comboProduct.discount)) {
+              unit_price_after_discount *= (1 - comboProduct.discount / 100);
+            }
+          }
+
+          orderExtrasToSave.push({
+            quantity: item.quantity,
+            unit_price: roundUpToNearest(unit_price_after_discount, 1000).toString(),
+            order: newOrder,
+            product: item.product,
+            status:
+              Number(orderBill.payment_method_id) === Method.CASH
+                ? StatusOrder.SUCCESS
+                : StatusOrder.PENDING,
+          });
+        }
+
+        await this.orderExtraRepository.save(orderExtrasToSave);
+
       }
 
-      await this.orderExtraRepository.save(orderExtrasToSave);
-      // socket
-      this.gateway.onBookSeat({
-        schedule_id: orderBill.schedule_id,
-        seatIds: orderBill.seats.map(seat => seat.id)
-      });
+      // If payment method is CASH, immediately change seat status to BOOKED
+      if (Number(orderBill.payment_method_id) === Method.CASH) {
+        const seatIds = orderBill.seats.map(seat => seat.id);
+        await this.changeStatusScheduleSeatToBooked(seatIds, orderBill.schedule_id);
+      }
+
 
       // add score for user , employee order
       if (
@@ -495,7 +521,17 @@ export class OrderService {
           user: customer,
           order: newOrder,
         });
+
       }
+      // socket emit
+      (Number(orderBill.payment_method_id) === Method.CASH
+        ? this.gateway.emitBookSeat
+        : this.gateway.emitHoldSeat
+      )({
+        schedule_id: orderBill.schedule_id,
+        seatIds: orderBill.seats.map(seat => seat.id),
+      });
+
       return { payUrl: paymentCode.payUrl };
     } catch (error) {
       throw error;
@@ -660,7 +696,7 @@ export class OrderService {
     return {
       totalRevenue: orders.reduce((sum, order) => sum + Number(order.total_prices), 0),
       totalOrders: orders.length,
-      averageOrderValue: orders.length > 0 ? 
+      averageOrderValue: orders.length > 0 ?
         orders.reduce((sum, order) => sum + Number(order.total_prices), 0) / orders.length : 0,
       revenueByPaymentMethod,
       revenueByMovie,
@@ -732,7 +768,7 @@ export class OrderService {
     }, {} as Record<string, number>);
 
     return Object.entries(frequency)
-      .sort(([,a], [,b]) => b - a)[0]?.[0] || '';
+      .sort(([, a], [, b]) => b - a)[0]?.[0] || '';
   }
 
   async getAllOrders(filters: OrderPaginationDto) {
@@ -1021,15 +1057,18 @@ export class OrderService {
 
 
   async userProcessOrderPayment(
-    orderData: OrderBillUserAgainDto,
-    clientIp: string,
-    userId: string
+    orderId: number,
+    orderData: OrderBillType,
+    userId: string,
+    clientIp: string
+
   ) {
+
     try {
       // 1. Kiểm tra user và order
       const user = await this.getUserById(userId);
       const order = await this.orderRepository.findOne({
-        where: { id: orderData.orderId },
+        where: { id: orderId },
         relations: [
           'user',
           'transaction',
@@ -1045,7 +1084,7 @@ export class OrderService {
       });
 
       if (!order) {
-        throw new NotFoundException(`Order with ID ${orderData.orderId} not found`);
+        throw new NotFoundException(`Order with ID ${orderId} not found`);
       }
 
       // 2. Kiểm tra quyền sở hữu đơn hàng
@@ -1093,9 +1132,10 @@ export class OrderService {
           throw new BadRequestException('Products cannot be changed when re-processing payment');
         }
       }
-
+      const price1 = parseFloat(order.total_prices).toFixed(2);
+      const price2 = parseFloat(orderData.total_prices).toFixed(2);
       // Kiểm tra total_prices
-      if (orderData.total_prices !== order.total_prices) {
+      if (price1 !== price2) {
         throw new BadRequestException('Total price cannot be changed when re-processing payment');
       }
 
@@ -1109,7 +1149,7 @@ export class OrderService {
       }
 
       // 6. Tạo payment URL mới
-      const paymentCode = await this.getPaymentCode(orderData as any, clientIp);
+      const paymentCode = await this.getPaymentCode(orderData as OrderBillType, clientIp);
 
       if (!paymentCode?.payUrl || !paymentCode?.orderId) {
         throw new BadRequestException('Failed to create payment URL');
@@ -1125,15 +1165,14 @@ export class OrderService {
       order.order_date = new Date();
       await this.orderRepository.save(order);
 
-
-
       return {
         payUrl: paymentCode.payUrl,
       };
 
     } catch (error) {
-     throw new BadRequestException('Failed to process order payment');
-     
+      console.error('Error processing order payment:', error);
+      throw new BadRequestException('Failed to process order payment');
+
     }
   }
 
@@ -1144,7 +1183,6 @@ export class OrderService {
     clientIp: string,
     adminId: string
   ) {
- 
     try {
       // 1. Kiểm tra admin/employee
       const admin = await this.getUserById(adminId);
@@ -1153,20 +1191,20 @@ export class OrderService {
       }
 
       // 2. Lấy order hiện tại
-      const existingOrder = await this.orderRepository.findOne({
-        where: { id: orderId },
-        relations: [
-          'user',
-          'transaction',
-          'transaction.paymentMethod',
-          'orderDetails',
-          'orderDetails.ticket',
-          'orderDetails.ticket.seat',
-          'orderDetails.ticket.schedule',
-          'orderExtras',
-          'promotion'
-        ]
-      });
+      const existingOrder = await this.orderRepository.createQueryBuilder('order')
+        .leftJoinAndSelect('order.user', 'user')
+        .leftJoinAndSelect('order.promotion', 'promotion')
+        .leftJoinAndSelect('order.transaction', 'transaction')
+        .leftJoinAndSelect('transaction.paymentMethod', 'paymentMethod')
+        .leftJoinAndSelect('order.orderDetails', 'orderDetail')
+        .leftJoinAndSelect('orderDetail.ticket', 'ticket')
+        .leftJoinAndSelect('ticket.seat', 'seat')
+        .leftJoinAndSelect('ticket.ticketType', 'ticketType')
+        .leftJoinAndSelect('orderDetail.schedule', 'schedule')
+        .leftJoinAndSelect('schedule.movie', 'movie')
+        .leftJoinAndSelect('order.orderExtras', 'orderExtras')
+        .where('order.id = :orderId', { orderId })
+        .getOne();
 
       if (!existingOrder) {
         throw new NotFoundException(`Order with ID ${orderId} not found`);
@@ -1195,19 +1233,25 @@ export class OrderService {
         const oldScheduleSeat = await this.scheduleSeatRepository.findOne({
           where: {
             seat: { id: detail.ticket.seat.id },
-            schedule: { id: detail.ticket.schedule.id }
+            schedule: { id: detail.schedule.id }
           }
         });
 
-        if (oldScheduleSeat && oldScheduleSeat.status === StatusSeat.BOOKED) {
+        if (oldScheduleSeat && oldScheduleSeat.status === StatusSeat.HELD) {
           oldScheduleSeat.status = StatusSeat.NOT_YET;
           await this.scheduleSeatRepository.save(oldScheduleSeat);
         }
       }
 
+
+
       // 6. Validate và đặt ghế mới
       const newSeatIds = updateData.seats.map(seat => seat.id);
       const newScheduleSeats = await this.getScheduleSeatsByIds(newSeatIds, updateData.schedule_id);
+      const check = await this.validateBeforeOrder(updateData.schedule_id.toString(), adminId, newSeatIds);
+      if (!check) {
+        throw new ConflictException('Seats are being held by another user. Please try again later.');
+      }
 
       const unavailableSeats = newScheduleSeats.filter(
         seat => seat.status === StatusSeat.BOOKED || seat.status === StatusSeat.HELD
@@ -1215,18 +1259,13 @@ export class OrderService {
 
       if (unavailableSeats.length > 0) {
         throw new BadRequestException(
-          `Seats are already booked: ${unavailableSeats.map(s => `${s.seat.seat_row}${s.seat.seat_column}`).join(', ')}`
+          `Seats are already booked: ${unavailableSeats.map(s => `${s.id}`).join(', ')}`
         );
       }
+      // check redis
 
-      // 6.1. Kiểm tra Redis seat holding (áp dụng cho admin/employee)
-      const scheduleId = updateData.schedule_id.toString();
-      const check = await this.validateBeforeOrder(scheduleId, adminId, newSeatIds);
-      if (!check) {
-        throw new ConflictException('Seats are being held by another user. Please try again later.');
-      }
 
-      // 7. Tính toán giá tiền như trong createOrder
+      // 7. Tính toán giá tiền
       let totalSeats = 0;
       let totalProduct = 0;
       let totalPrice = 0;
@@ -1275,25 +1314,36 @@ export class OrderService {
       const seatDiscount = Math.round(promotionAmount * seatRatio);
       const productDiscount = promotionAmount - seatDiscount;
 
-      // 8. Xóa orderDetails và tickets cũ
-      for (const detail of existingOrder.orderDetails) {
-        await this.ticketRepository.delete({ id: detail.ticket.id });
-        await this.orderDetailRepository.delete({ id: detail.id });
+      // 8. Xóa dữ liệu cũ (orderDetails, tickets, orderExtras)
+      // Lưu lại danh sách tickets để xóa sau
+      const ticketsToDelete = existingOrder.orderDetails.map(detail => detail.ticket);
+
+      // Xóa orderDetails trước (vì có foreign key constraint)
+      await this.orderDetailRepository.remove(existingOrder.orderDetails);
+
+
+      // Sau đó xóa tickets
+      if (ticketsToDelete.length > 0) {
+        await this.ticketRepository.remove(ticketsToDelete);
       }
 
-      // 9. Xóa orderExtras cũ
-      await this.orderExtraRepository.delete({ order: { id: existingOrder.id } });
+      // Xóa orderExtras
+      if (existingOrder.orderExtras && existingOrder.orderExtras.length > 0) {
+        await this.orderExtraRepository.remove(existingOrder.orderExtras);
+      }
+      // check redis 
 
-      // 10. Đặt ghế mới
+
+      // 9. Đặt ghế mới
       for (const scheduleSeat of newScheduleSeats) {
-        scheduleSeat.status = StatusSeat.BOOKED;
-        await this.scheduleSeatRepository.save(scheduleSeat);
+        scheduleSeat.status = StatusSeat.HELD;
       }
+      await this.scheduleSeatRepository.save(newScheduleSeats);
 
-      // 11. Tạo tickets và orderDetails mới với giá tính toán
+      // 10. Tạo tickets và orderDetails mới
       const ticketsToSave: Ticket[] = [];
-      // const updatedSeats: ScheduleSeat[] = [];
-      const orderDetails: {
+      const updatedSeats: ScheduleSeat[] = [];
+      const orderDetailsToSave: {
         total_each_ticket: string;
         order: any;
         ticket: any;
@@ -1308,10 +1358,12 @@ export class OrderService {
         const shareRatio = priceBeforePromo / totalSeats;
         const promotionDiscountForThisSeat = seatDiscount * shareRatio;
         const finalPrice = Math.round(priceBeforePromo - promotionDiscountForThisSeat);
-
         if (!seat) {
           throw new NotFoundException(`Seat ${seatData.id} not found in scheduleSeats`);
         }
+        // Set seat status to HELD when creating order (regardless of payment method)
+        seat.status = StatusSeat.HELD;
+        updatedSeats.push(seat);
 
         const newTicket = this.ticketRepository.create({
           seat: seat.seat,
@@ -1322,22 +1374,21 @@ export class OrderService {
 
         ticketsToSave.push(newTicket);
 
-        orderDetails.push({
+        orderDetailsToSave.push({
           total_each_ticket: roundUpToNearest(finalPrice, 1000).toString(),
           order: existingOrder,
           ticket: newTicket,
           schedule: newSchedule,
         });
       }
-
       const savedTickets = await this.ticketRepository.save(ticketsToSave);
-      orderDetails.forEach((detail, index) => {
+      orderDetailsToSave.forEach((detail, index) => {
         detail.ticket = savedTickets[index];
       });
+      await this.scheduleSeatRepository.save(updatedSeats);
+      await this.orderDetailRepository.save(orderDetailsToSave);
 
-      await this.orderDetailRepository.save(orderDetails);
-
-      // 12. Tạo orderExtras mới với giá tính toán
+      // 11. Tạo order extras mới
       if (orderExtras.length > 0) {
         const productTotals = orderExtras.map(p => {
           const quantity = updateData.products?.find(item => item.product_id === p.id)?.quantity || 0;
@@ -1349,66 +1400,75 @@ export class OrderService {
         });
 
         const totalProductBeforePromo = productTotals.reduce((sum, item) => sum + item.total, 0);
-        const orderExtrasToSave: Omit<OrderExtra, 'id'>[] = [];
+        const orderExtrasToSave: OrderExtra[] = [];
 
         for (const item of productTotals) {
-          const shareRatio = item.total / totalProductBeforePromo || 0;
-          const isCombo = item.product.type.toLocaleLowerCase() === ProductTypeEnum.COMBO;
+          if (item.quantity > 0) {
+            const shareRatio = item.total / totalProductBeforePromo || 0;
+            const isCombo = item.product.type.toLowerCase() === ProductTypeEnum.COMBO;
 
-          const basePrice = Number(item.product.price);
-          let unit_price_after_discount = basePrice;
+            const basePrice = Number(item.product.price);
+            let unit_price_after_discount = basePrice;
 
-          if (isPercentage) {
-            const unitDiscount = basePrice * (productDiscount / totalProductBeforePromo);
-            unit_price_after_discount = Math.round(basePrice - unitDiscount);
-          } else {
-            const productDiscountShare = productDiscount * shareRatio;
-            const unitDiscount = productDiscountShare / item.quantity;
-            unit_price_after_discount = Math.round(basePrice - unitDiscount);
-          }
-
-          if (isCombo) {
-            const comboProduct = item.product as Combo;
-            if (comboProduct.discount != null && !isNaN(comboProduct.discount)) {
-              unit_price_after_discount *= (1 - comboProduct.discount / 100);
+            if (totalProductBeforePromo > 0) {
+              if (isPercentage) {
+                const unitDiscount = basePrice * (productDiscount / totalProductBeforePromo);
+                unit_price_after_discount = Math.round(basePrice - unitDiscount);
+              } else {
+                const productDiscountShare = productDiscount * shareRatio;
+                const unitDiscount = productDiscountShare / item.quantity;
+                unit_price_after_discount = Math.round(basePrice - unitDiscount);
+              }
             }
+
+            if (isCombo) {
+              const comboProduct = item.product as Combo;
+              if (comboProduct.discount != null && !isNaN(comboProduct.discount)) {
+                unit_price_after_discount *= (1 - comboProduct.discount / 100);
+              }
+            }
+
+            const orderExtra = this.orderExtraRepository.create({
+              quantity: item.quantity,
+              unit_price: roundUpToNearest(unit_price_after_discount, 1000).toString(),
+              order: existingOrder,
+              product: item.product,
+              status: Number(updateData.payment_method_id) === Method.CASH
+                ? StatusOrder.SUCCESS
+                : StatusOrder.PENDING,
+            });
+
+            orderExtrasToSave.push(orderExtra);
           }
-
-          orderExtrasToSave.push({
-            quantity: item.quantity,
-            unit_price: roundUpToNearest(unit_price_after_discount, 1000).toString(),
-            order: existingOrder,
-            product: item.product,
-            status: Number(updateData.payment_method_id) === Method.CASH ? StatusOrder.SUCCESS : StatusOrder.PENDING,
-          });
         }
-
         await this.orderExtraRepository.save(orderExtrasToSave);
+
       }
 
-      // 13. Cập nhật order
-      existingOrder.total_prices = updateData.total_prices.toString();
-      existingOrder.promotion = newPromotion;
-      existingOrder.order_date = new Date();
-      await this.orderRepository.save(existingOrder);
+      // 12. Nếu payment method là CASH, đổi trạng thái ghế thành BOOKED
+      if (Number(updateData.payment_method_id) === Method.CASH) {
+        const seatIds = updateData.seats.map(seat => seat.id);
+        await this.changeStatusScheduleSeatToBooked(seatIds, updateData.schedule_id);
+      }
 
-      // 14. Tạo payment URL
-      const orderBill = {
-        payment_method_id: updateData.payment_method_id.toString(),
-        total_prices: updateData.total_prices.toString(),
-        schedule_id: updateData.schedule_id,
-        promotion_id: updateData.promotion_id || 1,
-        seats: updateData.seats,
-        products: updateData.products || []
-      };
+      // 13. Cập nhật order (chỉ cập nhật total_prices, promotion, order_date)
+      await this.orderRepository.update(
+        { id: existingOrder.id },
+        {
+          total_prices: updateData.total_prices.toString(),
+          promotion: newPromotion,
+          order_date: new Date(),
+        }
+      );
 
-      const paymentCode = await this.getPaymentCode(orderBill as OrderBillType, clientIp);
+      // 14. Tạo payment code
+      const paymentCode = await this.getPaymentCode(updateData as OrderBillType, clientIp);
 
       if (!paymentCode?.payUrl || !paymentCode?.orderId) {
         throw new BadRequestException('Failed to create payment URL');
       }
 
-      // 15. Cập nhật transaction
+      // 15. Cập nhật transaction (chỉ cập nhật payment_method_id, transaction_code, transaction_date)
       const paymentMethod = await this.paymentMethodRepository.findOne({
         where: { id: Number(updateData.payment_method_id) }
       });
@@ -1421,23 +1481,157 @@ export class OrderService {
       existingOrder.transaction.transaction_date = new Date();
       await this.transactionRepository.save(existingOrder.transaction);
 
-      // Socket notification
-      this.gateway.onBookSeat({
-        schedule_id: updateData.schedule_id,
-        seatIds: updateData.seats.map(seat => seat.id)
-      });
 
-   
+
+      // add score for user , employee order
+      if (
+        updateData.customer_id &&
+        updateData.customer_id.trim() !== '' &&
+        Number(updateData.payment_method_id) === Method.CASH
+      ) {
+        const customer = await this.userRepository.findOne({
+          where: { id: updateData.customer_id },
+          relations: ['role'],
+        });
+
+        if (!customer || customer.role.role_id !== Role.USER) {
+          throw new ForbiddenException('Invalid customer for point accumulation');
+        }
+
+        const promotionExchange = newPromotion?.exchange ?? 0;
+        const orderScore = Math.floor(totalPrice / 1000);
+        const addScore = orderScore - promotionExchange;
+
+        customer.score += addScore;
+        await this.userRepository.save(customer);
+
+        await this.historyScoreRepository.save({
+          score_change: addScore,
+          user: customer,
+          order: existingOrder,
+        });
+      }
+      // 16 . Emit socket events
+      if (Number(updateData.payment_method_id) === Method.CASH) {
+        this.gateway.emitBookSeat({
+          schedule_id: updateData.schedule_id,
+          seatIds: updateData.seats.map(seat => seat.id),
+        });
+
+      } else {
+        // socket emit thông báo các ghế đã được giải phóng
+        this.gateway.emitCancelBookSeat({
+          schedule_id: updateData.schedule_id,
+          seatIds: existingOrder.orderDetails.map(detail => detail.ticket.seat.id),
+        })
+        // socket emit thông báo các ghế mới đã đc hold
+        this.gateway.emitHoldSeat({
+          schedule_id: updateData.schedule_id,
+          seatIds: newScheduleSeats.map(seat => seat.seat.id),
+        });
+
+      }
+
 
       return {
         payUrl: paymentCode.payUrl
       };
 
     } catch (error) {
+      console.log(error);
       throw new BadRequestException('Failed to update and process order');
-      
     }
   }
 
- 
+
+  async adminCancelOrder(orderId: number) {
+    const order = await this.orderRepository.findOne({
+      where: { id: orderId },
+      relations: [
+        'transaction',
+        'orderDetails',
+        'orderDetails.ticket',
+        'orderDetails.ticket.seat',
+        'orderDetails.schedule',
+        'orderExtras'
+      ]
+    });
+
+    if (!order) {
+      throw new NotFoundException(`Order with ID ${orderId} not found`);
+    }
+
+    // check status
+    if (order.status !== StatusOrder.PENDING) {
+      throw new BadRequestException('Only pending orders can be cancelled');
+    }
+
+    try {
+      // 1. Free up the seats that were booked for this order
+      if (order.orderDetails && order.orderDetails.length > 0) {
+        const scheduleId = order.orderDetails[0].schedule.id;
+        const seatIds = order.orderDetails.map(detail => detail.ticket.seat.id);
+
+        // Update schedule seats status to NOT_YET
+        const scheduleSeats = await this.scheduleSeatRepository.find({
+          where: {
+            seat: { id: In(seatIds) },
+            schedule: { id: scheduleId }
+          }
+        });
+
+        for (const scheduleSeat of scheduleSeats) {
+          if (scheduleSeat.status === StatusSeat.HELD) {
+            scheduleSeat.status = StatusSeat.NOT_YET;
+          }
+        }
+
+        await this.scheduleSeatRepository.save(scheduleSeats);
+
+        // Socket notification for seat status change
+        this.gateway.emitCancelBookSeat({
+          schedule_id: scheduleId,
+          seatIds: seatIds
+        })
+      }
+
+      // 2. Update order status
+      order.status = StatusOrder.FAILED;
+
+      // 3. Update transaction status
+      if (order.transaction) {
+        order.transaction.status = StatusOrder.FAILED;
+        await this.transactionRepository.save(order.transaction);
+      }
+
+      // 4. Update order extras status
+      if (order.orderExtras && order.orderExtras.length > 0) {
+        for (const extra of order.orderExtras) {
+          extra.status = StatusOrder.FAILED;
+        }
+        await this.orderExtraRepository.save(order.orderExtras);
+      }
+
+      // 5. Update ticket status
+      if (order.orderDetails && order.orderDetails.length > 0) {
+        const ticketIds = order.orderDetails.map(detail => detail.ticket.id);
+        await this.ticketRepository.update(
+          { id: In(ticketIds) },
+          { status: false }
+        );
+      }
+
+      // 6. Save the order
+      await this.orderRepository.save(order);
+
+      return {
+        message: 'Order cancelled successfully',
+      };
+
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      throw new InternalServerErrorException('Failed to cancel order');
+    }
+  }
 }
+

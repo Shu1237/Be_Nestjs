@@ -7,19 +7,15 @@ import {
 } from 'typeorm';
 import { Schedule } from './schedule';
 import { Seat } from './seat';
+import { StatusSeat } from 'src/common/enums/status_seat.enum';
 
-export enum SeatStatus {
-  NOT_YET = 1,
-  HELD = 2,
-  BOOKED = 3,
-}
 
 @Entity('schedule_seat')
 export class ScheduleSeat {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'tinyint', default: SeatStatus.NOT_YET })
+  @Column({ type: 'tinyint', default: StatusSeat.NOT_YET })
   status: number;
 
   @ManyToOne(() => Schedule, (schedule) => schedule.scheduleSeats)

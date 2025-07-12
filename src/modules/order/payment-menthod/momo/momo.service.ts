@@ -7,7 +7,7 @@ import { Transaction } from 'src/database/entities/order/transaction';
 import { Order } from 'src/database/entities/order/order';
 import { Ticket } from 'src/database/entities/order/ticket';
 import { MailerService } from '@nestjs-modules/mailer';
-import { ScheduleSeat, SeatStatus } from 'src/database/entities/cinema/schedule_seat';
+import { ScheduleSeat } from 'src/database/entities/cinema/schedule_seat';
 import { Role } from 'src/common/enums/roles.enum';
 import { StatusOrder } from 'src/common/enums/status-order.enum';
 import { HistoryScore } from 'src/database/entities/order/history_score';
