@@ -1512,11 +1512,14 @@ export class OrderService {
       }
       // 16 . Emit socket events
       if (Number(updateData.payment_method_id) === Method.CASH) {
+        this.gateway.emitCancelBookSeat({
+          schedule_id: updateData.schedule_id,
+          seatIds: existingOrder.orderDetails.map(detail => detail.ticket.seat.id),
+        })
         this.gateway.emitBookSeat({
           schedule_id: updateData.schedule_id,
           seatIds: updateData.seats.map(seat => seat.id),
         });
-
       } else {
         // socket emit thông báo các ghế đã được giải phóng
         this.gateway.emitCancelBookSeat({
@@ -1528,9 +1531,7 @@ export class OrderService {
           schedule_id: updateData.schedule_id,
           seatIds: newScheduleSeats.map(seat => seat.seat.id),
         });
-
       }
-
 
       return {
         payUrl: paymentCode.payUrl
