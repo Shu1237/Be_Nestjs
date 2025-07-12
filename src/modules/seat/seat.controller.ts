@@ -126,6 +126,13 @@ export class SeatController {
   //   return this.seatService.cancelHoldSeat(data, req.user);
   // }
 
+  @Patch(':id/restore')
+  @ApiOperation({ summary: 'Restore soft-deleted seat by ID (admin only)' })
+  restoreSeat(@Param('id') id: string, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Only admin can restore seats');
+    return this.seatService.restoreSeat(id);
+  }
+
   // @Put(':id/status')
   // @ApiOperation({ summary: 'Toggle seat status by ID (admin only)' })
   // updateSeatStatus(@Param('id') id: string, @Body() updateSeatStatusDto: UpdateSeatStatusDto, @Req() req) {

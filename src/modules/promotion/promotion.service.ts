@@ -14,13 +14,12 @@ import { applySorting } from 'src/common/pagination/apply_sort';
 import { applyPagination } from 'src/common/pagination/applyPagination';
 import { buildPaginationResponse } from 'src/common/pagination/pagination-response';
 
-
 @Injectable()
 export class PromotionService {
   constructor(
     @InjectRepository(Promotion)
     private readonly promotionRepository: Repository<Promotion>,
-  ) { }
+  ) {}
   async getAllPromotionsUser(): Promise<Promotion[]> {
     return await this.promotionRepository.find({
       where: { is_active: true },
@@ -28,32 +27,36 @@ export class PromotionService {
     });
   }
   async getAllPromotions(fillters: PromotionPaginationDto) {
-    const qb = this.promotionRepository.createQueryBuilder('promotion')
-      .leftJoinAndSelect('promotion.promotionType', 'promotionType')
+    const qb = this.promotionRepository
+      .createQueryBuilder('promotion')
+      .leftJoinAndSelect('promotion.promotionType', 'promotionType');
 
     applyCommonFilters(qb, fillters, promotionFieldMapping);
 
-    const allowedFields = [
-      'promotion.exchange',
-      'promotionType.id',
-    ];
-    applySorting(qb, fillters.sortBy, fillters.sortOrder, allowedFields, 'promotion.id');
+    const allowedFields = ['promotion.exchange', 'promotionType.id'];
+    applySorting(
+      qb,
+      fillters.sortBy,
+      fillters.sortOrder,
+      allowedFields,
+      'promotion.id',
+    );
 
     applyPagination(qb, {
       page: fillters.page,
       take: fillters.take,
-    })
+    });
     const [promotions, total] = await qb.getManyAndCount();
-   const counts = await this.promotionRepository
-  .createQueryBuilder('promotion')
-  .select([
-    `SUM(CASE WHEN promotion.is_active = false THEN 1 ELSE 0 END) AS activeCount`,
-    `SUM(CASE WHEN promotion.is_active = true THEN 1 ELSE 0 END) AS deletedCount`,
-  ])
-  .getRawOne();
+    const counts = await this.promotionRepository
+      .createQueryBuilder('promotion')
+      .select([
+        `SUM(CASE WHEN promotion.is_active = false THEN 1 ELSE 0 END) AS activeCount`,
+        `SUM(CASE WHEN promotion.is_active = true THEN 1 ELSE 0 END) AS deletedCount`,
+      ])
+      .getRawOne();
 
-  const activeCount = counts.activeCount || 0;
-  const deletedCount = counts.deletedCount || 0;
+    const activeCount = counts.activeCount || 0;
+    const deletedCount = counts.deletedCount || 0;
 
     return buildPaginationResponse(promotions, {
       total,
@@ -74,7 +77,20 @@ export class PromotionService {
 
     this.validateDates(dto.start_time, dto.end_time, dto.is_active);
 
-    const promo = this.promotionRepository.create(dto);
+    // Tạo promotion với promotion_type_id
+    const promo = this.promotionRepository.create({
+      title: dto.title,
+      detail: dto.detail,
+      code: dto.code,
+      discount: dto.discount,
+      start_time: dto.start_time ? new Date(dto.start_time) : undefined,
+      end_time: dto.end_time ? new Date(dto.end_time) : undefined,
+      exchange: dto.exchange,
+      is_active: dto.is_active ?? true,
+      // Gán promotion_type_id bằng cách tạo reference
+      promotionType: { id: dto.promotion_type_id } as any,
+    });
+
     await this.promotionRepository.save(promo);
     return { msg: 'Promotion created successfully' };
   }
@@ -134,7 +150,6 @@ export class PromotionService {
 
     return { msg: 'Promotion deleted successfully' };
   }
-
 
   private validateDates(
     start_time?: string,

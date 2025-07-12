@@ -328,6 +328,34 @@ export class SeatService {
     return { msg: 'Seat deleted successfully' };
   }
 
+  async restoreSeat(id: string) {
+    const seat = await this.seatRepository.findOne({
+      where: { id, is_deleted: false },
+      relations: ['seatType', 'cinemaRoom'],
+    });
+
+    if (!seat) {
+      const deletedSeat = await this.seatRepository.findOne({
+        where: { id },
+        relations: ['seatType', 'cinemaRoom'],
+      });
+      
+      if (!deletedSeat) {
+        throw new NotFoundException('Seat not found');
+      }
+      
+      if (!deletedSeat.is_deleted) {
+        throw new BadRequestException('Seat is not soft-deleted');
+      }
+      
+      deletedSeat.is_deleted = false;
+      await this.seatRepository.save(deletedSeat);
+      return { msg: 'Seat restored successfully' };
+    }
+
+    throw new BadRequestException('Seat is not soft-deleted');
+  }
+
   async updateSeatStatus(id: string) {
     const seat = await this.seatRepository.findOne({
       where: { id, is_deleted: false },

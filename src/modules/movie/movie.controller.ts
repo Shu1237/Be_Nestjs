@@ -74,14 +74,6 @@ export class MovieController {
     return this.movieService.getMovieById(id);
   }
 
-  // GET - Lấy actors của movie
-  @UseGuards(JwtAuthGuard)
-  @Get(':movieId/actors')
-  @ApiOperation({ summary: 'Get all actors of a movie' })
-  getActorsOfMovie(@Param('movieId', ParseIntPipe) movieId: number) {
-    return this.movieService.getActorsOfMovie(movieId);
-  }
-
   // GET - Lấy genres của movie
   @UseGuards(JwtAuthGuard)
   @Get(':movieId/gernes')
@@ -92,13 +84,6 @@ export class MovieController {
     return this.movieService.getGernesOfMovie(movieId);
   }
 
-  // GET - Lấy versions của movie
-  @UseGuards(JwtAuthGuard)
-  @Get(':movieId/versions')
-  @ApiOperation({ summary: 'Get all versions of a movie' })
-  getVersionsOfMovie(@Param('movieId', ParseIntPipe) movieId: number) {
-    return this.movieService.getVersionsOfMovie(movieId);
-  }
 
   // POST - Tạo movie mới
   @UseGuards(JwtAuthGuard)
@@ -131,6 +116,16 @@ export class MovieController {
     await this.movieService.softDeleteMovie(id);
     return { message: 'Movie soft deleted successfully' };
   }
+
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/restore')
+  @ApiOperation({ summary: 'Restore a soft-deleted movie by ID (admin, employee only)' })
+  async restoreMovie(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can restore a movie.');
+    return await this.movieService.restoreMovie(id);
+  }
+  
 
   // DELETE - Xóa movie vĩnh viễn
   @UseGuards(JwtAuthGuard)

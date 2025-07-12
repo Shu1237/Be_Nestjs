@@ -50,7 +50,7 @@ import { OverviewModule } from './modules/overview/overview.module';
       useFactory: (configService: ConfigService) => ({
         type: 'mysql',
         url: configService.get<string>('database.url'),
-        // host: configService.get<string>('database.host'),
+        host: configService.get<string>('database.host'),
         // port: configService.get<number>('database.port'),
         // username: configService.get<string>('database.username'),
         // password: configService.get<string>('database.password'),
@@ -114,4 +114,4 @@ import { OverviewModule } from './modules/overview/overview.module';
   ],
 
 })
-export class AppModule { }
+export class AppModule {}

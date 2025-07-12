@@ -229,9 +229,9 @@ export type PaginationParams = {
 }
 
 export interface FilterField {
-  field?: string;//  scchedule.id
+  field?: string;
   operator?: Operator;
-  paramName?: string; // nick name Schedule
+  paramName?: string;
   customWhere?: (qb: SelectQueryBuilder<any>, value: any) => void; // optional custom where function
 }
 
