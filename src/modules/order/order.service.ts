@@ -788,7 +788,8 @@ export class OrderService {
       .leftJoinAndSelect('schedule.movie', 'movie')
       .leftJoinAndSelect('schedule.cinemaRoom', 'cinemaRoom')
       .leftJoinAndSelect('order.orderExtras', 'orderExtra')
-      .leftJoinAndSelect('orderExtra.product', 'product');
+      .leftJoinAndSelect('orderExtra.product', 'product')
+      .where('order.id NOT IN (:...excludedIds)', { excludedIds: [173, 174] });
 
     //  Apply filters
     applyCommonFilters(qb, filters, orderFieldMapping);
