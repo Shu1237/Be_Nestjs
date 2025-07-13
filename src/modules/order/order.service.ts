@@ -276,6 +276,12 @@ export class OrderService {
           `Seats ${unavailableSeats.map(s => s.seat.id).join(', ')} are already booked or held.`,
         );
       }
+   // chuyen ghe thanh held
+         for (const seat of scheduleSeats) {
+        seat.status = StatusSeat.HELD;
+        await this.scheduleSeatRepository.save(seat);
+      }
+      
       // tinh toan tổng tiền
       let totalSeats = 0;
       let totalProduct = 0;
