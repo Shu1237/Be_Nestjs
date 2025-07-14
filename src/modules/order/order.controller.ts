@@ -83,6 +83,7 @@ export class OrderController {
 
   @Post('refund/:id')
   async refundOrder(@Param('id', ParseIntPipe) id: number) {
+     checkAdminEmployeeRole(req.user, 'Only admin or employee can refund orders');
     return this.orderService.refundOrder(id);
   }
   @Post('refundbySchedule/:scheduleId')
