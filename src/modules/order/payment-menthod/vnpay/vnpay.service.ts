@@ -17,48 +17,53 @@ import { Order } from 'src/database/entities/order/order';
 import { OrderExtra } from 'src/database/entities/order/order-extra';
 import { Ticket } from 'src/database/entities/order/ticket';
 import { User } from 'src/database/entities/user/user';
-import {  Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Transaction } from 'src/database/entities/order/transaction';
+import { OrderRefund } from 'src/database/entities/order/order_refund';
+
 
 
 @Injectable()
 export class VnpayService extends AbstractPaymentService {
-   constructor(
-     @InjectRepository(Transaction)
-     transactionRepository: Repository<Transaction>,
-     @InjectRepository(Order)
-     orderRepository: Repository<Order>,
-     @InjectRepository(Ticket)
-     ticketRepository: Repository<Ticket>,
-     @InjectRepository(ScheduleSeat)
-     scheduleSeatRepository: Repository<ScheduleSeat>,
-     @InjectRepository(HistoryScore)
-     historyScoreRepository: Repository<HistoryScore>,
-     @InjectRepository(User)
-     userRepository: Repository<User>,
-     @InjectRepository(OrderExtra)
-     orderExtraRepository: Repository<OrderExtra>,
-     mailerService: MailerService,
-     gateway: MyGateWay,
-     qrCodeService: QrCodeService,
-     configService: ConfigService,
-     jwtService: JwtService,
-   ) {
-     super(
-       transactionRepository,
-       orderRepository,
-       ticketRepository,
-       scheduleSeatRepository,
-       historyScoreRepository,
-       userRepository,
-       orderExtraRepository,
-       mailerService,
-       gateway,
-       qrCodeService,
-       configService,
-       jwtService,
-     );
-   }
+  constructor(
+    @InjectRepository(Transaction)
+    transactionRepository: Repository<Transaction>,
+    @InjectRepository(Order)
+    orderRepository: Repository<Order>,
+    @InjectRepository(Ticket)
+    ticketRepository: Repository<Ticket>,
+    @InjectRepository(ScheduleSeat)
+    scheduleSeatRepository: Repository<ScheduleSeat>,
+    @InjectRepository(HistoryScore)
+    historyScoreRepository: Repository<HistoryScore>,
+    @InjectRepository(User)
+    userRepository: Repository<User>,
+    @InjectRepository(OrderExtra)
+    orderExtraRepository: Repository<OrderExtra>,
+    @InjectRepository(OrderRefund)
+    orderRefundRepository: Repository<OrderRefund>,
+    mailerService: MailerService,
+    gateway: MyGateWay,
+    qrCodeService: QrCodeService,
+    configService: ConfigService,
+    jwtService: JwtService,
+  ) {
+    super(
+      transactionRepository,
+      orderRepository,
+      ticketRepository,
+      scheduleSeatRepository,
+      historyScoreRepository,
+      userRepository,
+      orderExtraRepository,
+      orderRefundRepository,
+      mailerService,
+      gateway,
+      qrCodeService,
+      configService,
+      jwtService,
+    );
+  }
 
   async createOrderVnPay(totalPrice: string, clientIp: string) {
     const date = new Date();
@@ -115,6 +120,7 @@ export class VnpayService extends AbstractPaymentService {
 
 
   async handleReturnVnPay(query: any) {
+    console.log('Received VnPay query:', query);
     const receivedParams = { ...query };
     const secureHash = receivedParams['vnp_SecureHash'];
 
@@ -144,8 +150,8 @@ export class VnpayService extends AbstractPaymentService {
         throw new NotFoundException('Transaction is not in pending state');
       }
       if (responseCode === '00') {
-        // Giao dịch thành công
-        return this.handleReturnSuccess(transaction);
+        // Giao dịch thành công - truyền receivedParams làm rawResponse
+        return this.handleReturnSuccess(transaction, receivedParams);
       } else {
         // Giao dịch thất bại
         return this.handleReturnFailed(transaction);
@@ -154,4 +160,132 @@ export class VnpayService extends AbstractPaymentService {
       return `${this.configService.get<string>('redirectUrls.failureUrl')}`;
     }
   }
+
+
+
+
+  // async createRefund({ orderId, clientIp }: { orderId: number; clientIp: string }) {
+  //   // First check if refund record already exists
+  //   const existingRefund = await this.orderRefundRepository.findOne({
+  //     where: { order: { id: orderId }, payment_gateway: PaymentGateway.VNPAY },
+  //     relations: ['order'],
+  //   });
+
+  //   if (!existingRefund) {
+  //     throw new NotFoundException('Refund record not found');
+  //   }
+
+  //   const order = await this.orderRepository.findOne({
+  //     where: { id: orderId },
+  //   });
+
+  //   if (!order) {
+  //     throw new NotFoundException('Order not found');
+  //   }
+
+  //   // Find transaction by order
+  //   const transaction = await this.transactionRepository.findOne({
+  //     where: { order: { id: orderId } },
+  //     relations: ['order','order.user'],
+  //   });
+
+  //   if (!transaction) {
+  //     throw new NotFoundException('Transaction not found');
+  //   }
+
+  //   const tmnCode = this.configService.get<string>('vnpay.tmnCode');
+  //   const secretKey = this.configService.get<string>('vnpay.hashSecret');
+  //   const refundUrl = this.configService.get<string>('vnpay.refundUrl');
+
+  //   if (!tmnCode || !secretKey || !refundUrl) {
+  //     throw new InternalServerErrorException('VNPAY configuration is missing');
+  //   }
+
+
+
+  //   // Use transaction creation date if available, otherwise use current date
+  //   const transactionDate = transaction.transaction_date
+  //     ? format(new Date(transaction.transaction_date), 'yyyyMMddHHmmss')
+  //     : format(new Date(), 'yyyyMMddHHmmss');
+
+  //   const vnpParams: Record<string, string> = {
+  //     vnp_RequestId: `VNPREFUND_${Date.now()}`,
+  //     vnp_Version: '2.1.0',
+  //     vnp_Command: 'refund',
+  //     vnp_TmnCode: tmnCode,
+  //     vnp_TransactionType: '02', // full refund
+  //     vnp_TxnRef: transaction.transaction_code,
+  //     vnp_Amount: transaction.order.total_prices,
+  //     vnp_OrderInfo: `Refund for order ${order.id}`,
+  //     vnp_TransactionNo: existingRefund.transaction_code, // This should be the original VNPay transaction number
+  //     vnp_TransactionDate: transactionDate, // Use actual transaction date
+  //     vnp_CreateBy: transaction.order.user.username || 'admin', // Use username or default to 'admin'
+  //     vnp_CreateDate: format(new Date(), 'yyyyMMddHHmmss'),
+  //     vnp_IpAddr: clientIp,
+
+  //   };
+
+  //   // Tạo data để hash theo chuẩn VNPAY
+  //   const hashData = [
+  //     vnpParams.vnp_RequestId,
+  //     vnpParams.vnp_Version,
+  //     vnpParams.vnp_Command,
+  //     vnpParams.vnp_TmnCode,
+  //     vnpParams.vnp_TransactionType,
+  //     vnpParams.vnp_TxnRef,
+  //     vnpParams.vnp_Amount,
+  //     vnpParams.vnp_TransactionNo,
+  //     vnpParams.vnp_TransactionDate,
+  //     vnpParams.vnp_CreateBy,
+  //     vnpParams.vnp_CreateDate,
+  //     vnpParams.vnp_IpAddr,
+  //     vnpParams.vnp_OrderInfo,
+  //   ].join('|');
+
+  //   vnpParams.vnp_SecureHash = crypto
+  //     .createHmac('sha512', secretKey)
+  //     .update(hashData)
+  //     .digest('hex');
+  //   try {
+
+
+  //     // Gửi yêu cầu hoàn tiền
+  //     const response = await axios.post(refundUrl, vnpParams, {
+  //       headers: { 'Content-Type': 'application/json' },
+  //     });
+
+
+
+  //     const data = response.data;
+
+  //     if (data.vnp_ResponseCode !== '00') {
+  //       throw new InternalServerErrorException(`Refund failed: ${data.vnp_Message}`);
+  //     }
+  //     const refund = this.orderRefundRepository.create({
+  //       order,
+  //       request_id: data.vnp_ResponseId || vnpParams.vnp_RequestId,
+  //       order_ref_id: data.vnp_TxnRef || vnpParams.vnp_TxnRef,
+  //       transaction_code: data.vnp_TransactionNo || vnpParams.vnp_TransactionNo,
+  //       refund_amount: transaction.order.total_prices.toString(),
+  //       payment_gateway: PaymentGateway.VNPAY,
+  //       description: vnpParams.vnp_OrderInfo,
+  //       signature: data.vnp_SecureHash || vnpParams.vnp_SecureHash,
+  //       timestamp: Date.now(),
+  //       refund_status: RefundStatus.SUCCESS,
+  //       created_at: new Date(),
+  //     });
+
+  //     await this.orderRefundRepository.save(refund);
+  //     console.log('VNPay Refund Response:', data);
+  //     return data;
+  //   } catch (error) {
+  //     console.error('VNPay Refund Error:', error?.response?.data || error.message);
+  //     throw new InternalServerErrorException(`Refund failed: ${error.message}`);
+  //   }
+  // }
+
+
+
+
+
 }

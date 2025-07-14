@@ -24,6 +24,7 @@ import { User } from 'src/database/entities/user/user';
 import { Repository } from 'typeorm';
 import { Transaction } from 'src/database/entities/order/transaction';
 import { AbstractPaymentService } from '../base/abstract-payment.service';
+import { OrderRefund } from 'src/database/entities/order/order_refund';
 
 @Injectable()
 export class ZalopayService extends AbstractPaymentService {
@@ -42,6 +43,8 @@ export class ZalopayService extends AbstractPaymentService {
     userRepository: Repository<User>,
     @InjectRepository(OrderExtra)
     orderExtraRepository: Repository<OrderExtra>,
+    @InjectRepository(OrderRefund)
+    orderRefundRepository: Repository<OrderRefund>,
     mailerService: MailerService,
     gateway: MyGateWay,
     qrCodeService: QrCodeService,
@@ -56,6 +59,7 @@ export class ZalopayService extends AbstractPaymentService {
       historyScoreRepository,
       userRepository,
       orderExtraRepository,
+      orderRefundRepository,
       mailerService,
       gateway,
       qrCodeService,
@@ -129,16 +133,15 @@ export class ZalopayService extends AbstractPaymentService {
           `ZaloPay error: ${res.data.sub_return_message}`,
         );
       }
-
+      // console.log('ZaloPay order created:', res.data);
       return {
         payUrl: res.data.order_url,
         orderId: app_trans_id,
       };
     } catch (error) {
-      console.error('ZaloPay API error:', error);
       throw new InternalServerErrorException(
         'ZaloPay API failed: ' +
-          (error.response?.data?.sub_return_message || error.message),
+        (error.response?.data?.sub_return_message || error.message),
       );
     }
   }
@@ -152,9 +155,63 @@ export class ZalopayService extends AbstractPaymentService {
     }
 
     if (status === '1') {
-      return this.handleReturnSuccess(transaction);
+      return this.handleReturnSuccess(transaction, query);
     } else {
       return this.handleReturnFailed(transaction);
     }
   }
+
+  // async createRefund() {
+  //   const { zp_trans_id, amount, description, refund_fee_amount } = params;
+
+  //   const app_id = this.configService.get<string>('zalopay.appId');
+  //   const key1 = this.configService.get<string>('zalopay.key1');
+  //   const endpoint = this.configService.get<string>('zalopay.refundEndpoint');
+
+  //   if (!app_id || !key1 || !endpoint) {
+  //     throw new InternalServerErrorException('ZaloPay refund config is missing');
+  //   }
+
+  //   const m_refund_id = `${moment().format('YYMMDD')}_${app_id}_${Date.now()}`;
+  //   const timestamp = Date.now();
+
+  //   // Build MAC input
+  //   let hmacInput: string;
+  //   if (typeof refund_fee_amount === 'number') {
+  //     hmacInput = `${app_id}|${zp_trans_id}|${amount}|${refund_fee_amount}|${description}|${timestamp}`;
+  //   } else {
+  //     hmacInput = `${app_id}|${zp_trans_id}|${amount}|${description}|${timestamp}`;
+  //   }
+
+  //   const mac = crypto.createHmac('sha256', key1).update(hmacInput).digest('hex');
+
+  //   const requestBody: any = {
+  //     m_refund_id,
+  //     app_id: Number(app_id),
+  //     zp_trans_id,
+  //     amount,
+  //     timestamp,
+  //     description,
+  //     mac,
+  //   };
+
+  //   if (typeof refund_fee_amount === 'number') {
+  //     requestBody.refund_fee_amount = refund_fee_amount;
+  //   }
+
+  //   try {
+  //     const response = await axios.post(endpoint, requestBody, {
+  //       headers: { 'Content-Type': 'application/json' },
+  //     });
+
+  //     return response.data;
+  //   } catch (error) {
+  //     console.error('ZaloPay refund error:', error?.response?.data || error.message);
+  //     throw new InternalServerErrorException(
+  //       'ZaloPay refund API failed: ' +
+  //       (error?.response?.data?.sub_return_message || error.message),
+  //     );
+  //   }
+  // }
+
 }

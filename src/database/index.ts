@@ -23,6 +23,7 @@ import { Role } from './entities/user/roles';
 import { User } from './entities/user/user';
 import { Product } from './entities/item/product';
 import { OrderExtra } from './entities/order/order-extra';
+import { OrderRefund } from './entities/order/order_refund';
 
 export const allEntities = [
   User,
@@ -49,5 +50,6 @@ export const allEntities = [
   ScheduleSeat,
   PromotionType,
   HistoryScore,
-  Product
+  Product,
+  OrderRefund
 ];
