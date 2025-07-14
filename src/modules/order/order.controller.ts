@@ -81,7 +81,15 @@ export class OrderController {
     );
   }
 
-
+  @Post('refund/:id')
+  async refundOrder(@Param('id', ParseIntPipe) id: number) {
+    return this.orderService.refundOrder(id);
+  }
+  @Post('refundbySchedule/:scheduleId')
+  async refundOrderBySchedule(@Param('scheduleId', ParseIntPipe) scheduleId: number, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Only admin or employee can refund orders');
+    return this.orderService.refundOrderBySchedule(scheduleId);
+  }
   // POST /order/admin/update-order/:orderId - Admin/Employee update pending order
   @UseGuards(JwtAuthGuard)
   @Post('admin/update-order/:orderId')
@@ -158,7 +166,7 @@ export class OrderController {
     @Query() query: OrderPaginationDto,
   ) {
     const user = req.user;
-    // checkAdminEmployeeRole(user, 'You do not have permission to view all orders');
+    checkAdminEmployeeRole(user, 'You do not have permission to view all orders');
 
     const {
       page = 1,
@@ -279,6 +287,7 @@ export class OrderController {
       }
       return res.redirect(result);
     } catch (error) {
+      console.error('Visa payment error:', error);
       const failureUrl = this.configService.get<string>('redirectUrls.failureUrl') || 'http://localhost:3000/payment/failed';
       return res.redirect(failureUrl);
     }
@@ -295,6 +304,7 @@ export class OrderController {
       const result = await this.visaService.handleReturnCancelVisa(sessionId);
       return res.redirect(result);
     } catch (error) {
+      console.error('Visa payment error:', error);
       const failureUrl = this.configService.get<string>('redirectUrls.failureUrl') || 'http://localhost:3000/payment/failed';
       return res.redirect(failureUrl);
     }

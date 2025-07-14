@@ -1,4 +1,3 @@
-
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
@@ -44,6 +43,9 @@ import { orderFieldMapping } from 'src/common/pagination/fillters/order-field-ma
 import { applySorting } from 'src/common/pagination/apply_sort';
 import { buildPaginationResponse } from 'src/common/pagination/pagination-response';
 import { applyPagination } from 'src/common/pagination/applyPagination';
+import { PaymentGateway } from 'src/common/enums/payment_gatewat.enum';
+import { OrderRefund } from 'src/database/entities/order/order_refund';
+import { RefundStatus } from 'src/common/enums/refund_status.enum';
 @Injectable()
 export class OrderService {
 
@@ -75,6 +77,8 @@ export class OrderService {
     private productRepository: Repository<Product>,
     @InjectRepository(HistoryScore)
     private historyScoreRepository: Repository<HistoryScore>,
+    @InjectRepository(OrderRefund)
+    private orderRefundRepository: Repository<OrderRefund>,
 
 
 
@@ -275,6 +279,11 @@ export class OrderService {
         throw new BadRequestException(
           `Seats ${unavailableSeats.map(s => s.seat.id).join(', ')} are already booked or held.`,
         );
+      }
+      // chuyển ghế sang held
+      for (const seat of scheduleSeats) {
+        seat.status = StatusSeat.HELD;
+        await this.scheduleSeatRepository.save(seat);
       }
       // tinh toan tổng tiền
       let totalSeats = 0;
@@ -537,7 +546,7 @@ export class OrderService {
 
       return { payUrl: paymentCode.payUrl };
     } catch (error) {
-      throw error;
+      throw new BadRequestException('Failed to process order payment');
     }
   }
 
@@ -654,124 +663,6 @@ export class OrderService {
     };
   }
 
-  // 📊 Advanced Analytics Methods
-  async getRevenueAnalytics(startDate?: string, endDate?: string) {
-    const qb = this.orderRepository
-      .createQueryBuilder('order')
-      .leftJoinAndSelect('order.transaction', 'transaction')
-      .leftJoinAndSelect('transaction.paymentMethod', 'paymentMethod')
-      .leftJoinAndSelect('order.orderDetails', 'orderDetail')
-      .leftJoinAndSelect('orderDetail.schedule', 'schedule')
-      .leftJoinAndSelect('schedule.movie', 'movie')
-      .where('order.status = :status', { status: StatusOrder.SUCCESS });
-
-    if (startDate) {
-      qb.andWhere('order.order_date >= :startDate', { startDate });
-    }
-    if (endDate) {
-      qb.andWhere('order.order_date <= :endDate', { endDate });
-    }
-
-    const orders = await qb.getMany();
-
-    // Revenue by payment method
-    const revenueByPaymentMethod = orders.reduce((acc, order) => {
-      const method = order.transaction.paymentMethod.name;
-      acc[method] = (acc[method] || 0) + Number(order.total_prices);
-      return acc;
-    }, {} as Record<string, number>);
-
-    // Revenue by movie
-    const revenueByMovie = orders.reduce((acc, order) => {
-      const movieName = order.orderDetails[0]?.schedule?.movie?.name || 'Unknown';
-      acc[movieName] = (acc[movieName] || 0) + Number(order.total_prices);
-      return acc;
-    }, {} as Record<string, number>);
-
-    // Daily revenue
-    const dailyRevenue = orders.reduce((acc, order) => {
-      const date = order.order_date.toISOString().split('T')[0];
-      acc[date] = (acc[date] || 0) + Number(order.total_prices);
-      return acc;
-    }, {} as Record<string, number>);
-
-    return {
-      totalRevenue: orders.reduce((sum, order) => sum + Number(order.total_prices), 0),
-      totalOrders: orders.length,
-      averageOrderValue: orders.length > 0 ?
-        orders.reduce((sum, order) => sum + Number(order.total_prices), 0) / orders.length : 0,
-      revenueByPaymentMethod,
-      revenueByMovie,
-      dailyRevenue,
-    };
-  }
-
-  async getPopularMoviesReport(limit: number = 10) {
-    const result = await this.orderRepository
-      .createQueryBuilder('order')
-      .leftJoinAndSelect('order.orderDetails', 'orderDetail')
-      .leftJoinAndSelect('orderDetail.schedule', 'schedule')
-      .leftJoinAndSelect('schedule.movie', 'movie')
-      .select('movie.id', 'movieId')
-      .addSelect('movie.name', 'movieName')
-      .addSelect('COUNT(order.id)', 'totalOrders')
-      .addSelect('SUM(order.total_prices)', 'totalRevenue')
-      .addSelect('COUNT(orderDetail.id)', 'totalTickets')
-      .where('order.status = :status', { status: StatusOrder.SUCCESS })
-      .groupBy('movie.id, movie.name')
-      .orderBy('totalRevenue', 'DESC')
-      .limit(limit)
-      .getRawMany();
-
-    return result.map(row => ({
-      movieId: row.movieId,
-      movieName: row.movieName,
-      totalOrders: Number(row.totalOrders),
-      totalRevenue: Number(row.totalRevenue),
-      totalTickets: Number(row.totalTickets),
-      averageTicketPrice: Number(row.totalRevenue) / Number(row.totalTickets),
-    }));
-  }
-
-  async getUserPurchaseHistory(userId: string, limit: number = 20) {
-    const orders = await this.orderRepository
-      .createQueryBuilder('order')
-      .leftJoinAndSelect('order.orderDetails', 'orderDetail')
-      .leftJoinAndSelect('orderDetail.schedule', 'schedule')
-      .leftJoinAndSelect('schedule.movie', 'movie')
-      .leftJoinAndSelect('order.transaction', 'transaction')
-      .leftJoinAndSelect('transaction.paymentMethod', 'paymentMethod')
-      .where('order.user.id = :userId', { userId })
-      .andWhere('order.status = :status', { status: StatusOrder.SUCCESS })
-      .orderBy('order.order_date', 'DESC')
-      .limit(limit)
-      .getMany();
-
-    return {
-      totalSpent: orders.reduce((sum, order) => sum + Number(order.total_prices), 0),
-      totalOrders: orders.length,
-      favoritePaymentMethod: this.getMostFrequent(
-        orders.map(o => o.transaction.paymentMethod.name)
-      ),
-      recentOrders: orders.map(order => ({
-        id: order.id,
-        movieName: order.orderDetails[0]?.schedule?.movie?.name,
-        orderDate: order.order_date,
-        totalPrice: order.total_prices,
-        paymentMethod: order.transaction.paymentMethod.name,
-      })),
-    };
-  }
-
-  private getMostFrequent(arr: string[]): string {
-    const frequency = arr.reduce((acc, item) => {
-      acc[item] = (acc[item] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    return Object.entries(frequency)
-      .sort(([, a], [, b]) => b - a)[0]?.[0] || '';
-  }
 
   async getAllOrders(filters: OrderPaginationDto) {
     const qb = this.orderRepository
@@ -1173,8 +1064,8 @@ export class OrderService {
       };
 
     } catch (error) {
-      console.error('Error processing order payment:', error);
-      throw new BadRequestException('Failed to process order payment');
+      // console.error('Error processing order payment:', error);
+      throw error;
 
     }
   }
@@ -1538,8 +1429,8 @@ export class OrderService {
       };
 
     } catch (error) {
-      console.log(error);
-      throw new BadRequestException('Failed to update and process order');
+      // console.log(error);
+      throw error;
     }
   }
 
@@ -1629,9 +1520,285 @@ export class OrderService {
       };
 
     } catch (error) {
-      console.error('Error cancelling order:', error);
-      throw new InternalServerErrorException('Failed to cancel order');
+      // console.error('Error cancelling order:', error);
+      throw error
     }
   }
+
+
+
+
+
+
+  // refund order
+  async refundOrder(orderId: number) {
+
+    // 1. Lấy order hiện tại
+    const existingOrder = await this.orderRepository.createQueryBuilder('order')
+      .leftJoinAndSelect('order.user', 'user')
+      .leftJoinAndSelect('order.promotion', 'promotion')
+      .leftJoinAndSelect('order.transaction', 'transaction')
+      .leftJoinAndSelect('transaction.paymentMethod', 'paymentMethod')
+      .leftJoinAndSelect('order.orderDetails', 'orderDetail')
+      .leftJoinAndSelect('orderDetail.ticket', 'ticket')
+      .leftJoinAndSelect('ticket.seat', 'seat')
+      .leftJoinAndSelect('ticket.ticketType', 'ticketType')
+      .leftJoinAndSelect('orderDetail.schedule', 'schedule')
+      .leftJoinAndSelect('schedule.movie', 'movie')
+      .leftJoinAndSelect('order.orderExtras', 'orderExtras')
+      .where('order.id = :orderId', { orderId })
+      .getOne();
+
+    if (!existingOrder) {
+      throw new NotFoundException(`Order with ID ${orderId} not found`);
+    }
+    // 2. Kiểm tra trạng thái đơn hàng
+    if (existingOrder.status !== StatusOrder.SUCCESS) {
+      throw new BadRequestException('Only successful orders can be refunded');
+    }
+
+    // // check schedule is in Date now
+    const currentDate = new Date();
+    const scheduleStartTime = existingOrder.orderDetails[0]?.schedule?.start_movie_time;
+    if (scheduleStartTime && scheduleStartTime < currentDate) {
+      throw new BadRequestException('Cannot refund orders for past schedules');
+    }
+
+    if (!existingOrder.transaction || !existingOrder.transaction.paymentMethod) {
+      throw new BadRequestException('Transaction or Payment Method not found');
+    }
+    // create request
+    const gateway = existingOrder.transaction?.paymentMethod?.name?.toUpperCase();
+    const refundExists = await this.orderRefundRepository.findOne({
+      where: {
+        order: { id: orderId },
+        payment_gateway: gateway as PaymentGateway,
+        refund_status: RefundStatus.SUCCESS
+      },
+    });
+    if (refundExists) {
+      throw new BadRequestException('Order already refunded');
+    }
+    try {
+      await this.createOrderRefund(gateway, orderId);
+    } catch (error) {
+      // console.error(`Error creating refund for Order ID ${orderId}:`, error);
+      throw error;
+
+    }
+
+    // 3. Giải phóng ghế đã đặt
+    if (existingOrder.orderDetails && existingOrder.orderDetails.length > 0) {
+      const scheduleId = existingOrder.orderDetails[0].schedule.id;
+      const seatIds = existingOrder.orderDetails.map(detail => detail.ticket.seat.id);
+
+      // Cập nhật trạng thái ghế về NOT_YET
+      const scheduleSeats = await this.scheduleSeatRepository.find({
+        where: {
+          seat: { id: In(seatIds) },
+          schedule: { id: scheduleId }
+        }
+      });
+      await this.scheduleSeatRepository.update(
+        {
+          seat: { id: In(seatIds) },
+          schedule: { id: scheduleId }
+        },
+        { status: StatusSeat.NOT_YET }
+      );
+
+
+      await this.scheduleSeatRepository.save(scheduleSeats);
+
+      // Socket thông báo hủy đặt ghế
+      this.gateway.emitCancelBookSeat({
+        schedule_id: scheduleId,
+        seatIds: seatIds
+      });
+    }
+    // 4. Cập nhật trạng thái đơn hàng
+    existingOrder.status = StatusOrder.REFUND;
+    // 5. Cập nhật trạng thái giao dịch
+    if (existingOrder.transaction) {
+      existingOrder.transaction.status = StatusOrder.REFUND;
+      await this.transactionRepository.save(existingOrder.transaction);
+    }
+    // 6. Cập nhật trạng thái order extras
+    if (existingOrder.orderExtras && existingOrder.orderExtras.length > 0) {
+      for (const extra of existingOrder.orderExtras) {
+        extra.status = StatusOrder.REFUND;
+      }
+      await this.orderExtraRepository.save(existingOrder.orderExtras);
+    }
+    // 7. Cập nhật trạng thái vé status = false 
+    if (existingOrder.orderDetails && existingOrder.orderDetails.length > 0) {
+      const ticketIds = existingOrder.orderDetails.map(detail => detail.ticket.id);
+      await this.ticketRepository.update(
+        { id: In(ticketIds) },
+        { status: false }
+      );
+    }
+    // 8. Lưu lại order
+    await this.orderRepository.save(existingOrder);
+
+    return {
+      message: 'Order refunded successfully',
+    };
+  }
+  async refundOrderBySchedule(scheduleId: number) {
+    const orders = await this.orderRepository.find({
+      where: {
+        orderDetails: {
+          schedule: { id: scheduleId },
+        },
+        status: StatusOrder.SUCCESS,
+      },
+      relations: [
+        'transaction',
+        'transaction.paymentMethod',
+        'orderDetails',
+        'orderDetails.ticket',
+        'orderDetails.ticket.seat',
+        'orderDetails.schedule',
+        'orderExtras',
+      ],
+    });
+
+    if (orders.length === 0) {
+      throw new NotFoundException(`No successful orders found for schedule ID ${scheduleId}`);
+    }
+
+    const allSeatIds = new Set<string>();
+    let totalRefundSuccess = 0;
+    let totalRefundFailed = 0;
+
+    for (const eachOrder of orders) {
+      const gateway = eachOrder.transaction?.paymentMethod?.name?.toUpperCase();
+
+      if (!gateway) {
+        console.warn(`Skipping order ${eachOrder.id} due to missing payment method`);
+        totalRefundFailed++;
+        continue;
+      }
+
+      const refundExists = await this.orderRefundRepository.findOne({
+        where: {
+          order: { id: eachOrder.id },
+          payment_gateway: gateway as PaymentGateway,
+          refund_status: RefundStatus.SUCCESS,
+        },
+      });
+
+      if (refundExists) {
+        console.log(`Order ID ${eachOrder.id} already refunded, skipping`);
+        continue;
+      }
+
+      try {
+        await this.createOrderRefund(gateway, eachOrder.id);
+      } catch (error) {
+        console.error(`Error creating refund for Order ID ${eachOrder.id}:`, error);
+        totalRefundFailed++;
+        continue;
+      }
+
+      // Giải phóng ghế đã đặt
+      if (eachOrder.orderDetails && eachOrder.orderDetails.length > 0) {
+        const seatIds = eachOrder.orderDetails.map(detail => detail.ticket.seat.id);
+        seatIds.forEach(id => allSeatIds.add(id));
+
+        await this.scheduleSeatRepository.update(
+          {
+            seat: { id: In(seatIds) },
+            schedule: { id: scheduleId }
+          },
+          { status: StatusSeat.NOT_YET }
+        );
+      }
+
+      // Cập nhật trạng thái đơn hàng
+      eachOrder.status = StatusOrder.REFUND;
+
+      // Cập nhật trạng thái giao dịch
+      if (eachOrder.transaction) {
+        eachOrder.transaction.status = StatusOrder.REFUND;
+        await this.transactionRepository.save(eachOrder.transaction);
+      }
+
+      // Cập nhật trạng thái order extras
+      if (eachOrder.orderExtras && eachOrder.orderExtras.length > 0) {
+        for (const extra of eachOrder.orderExtras) {
+          extra.status = StatusOrder.REFUND;
+        }
+        await this.orderExtraRepository.save(eachOrder.orderExtras);
+      }
+
+      // Cập nhật trạng thái vé
+      if (eachOrder.orderDetails && eachOrder.orderDetails.length > 0) {
+        const ticketIds = eachOrder.orderDetails.map(detail => detail.ticket.id);
+        await this.ticketRepository.update(
+          { id: In(ticketIds) },
+          { status: false }
+        );
+      }
+
+      await this.orderRepository.save(eachOrder);
+      totalRefundSuccess++;
+    }
+
+    // Gửi socket 1 lần duy nhất
+    if (allSeatIds.size > 0) {
+      this.gateway.emitCancelBookSeat({
+        schedule_id: scheduleId,
+        seatIds: Array.from(allSeatIds),
+      });
+    }
+
+    return {
+      totalOrders: orders.length,
+      totalRefundSuccess,
+      totalRefundFailed,
+    };
+  }
+
+
+
+  private async createOrderRefund(gateway: string, orderId: number) {
+    switch (gateway) {
+      case PaymentGateway.MOMO:
+      case 'MOMO':
+        await this.momoService.createRefund({ orderId });
+        break;
+
+      case PaymentGateway.PAYPAL:
+      case 'PAYPAL':
+        await this.paypalService.createRefund({ orderId });
+        break;
+
+      case PaymentGateway.VISA:
+      case 'VISA':
+        await this.visaService.createRefund({ orderId });
+        break;
+
+      case 'VNPAY':
+        // VNPAY refund is not implemented - skip refund API call
+        console.log(`VNPAY refund for order ${orderId} - only status update, no API refund`);
+        break;
+
+      case 'ZALOPAY':
+        // ZALOPAY refund is not implemented - skip refund API call
+        console.log(`ZALOPAY refund for order ${orderId} - only status update, no API refund`);
+        break;
+
+      case 'CASH':
+        // Cash payment doesn't need API refund, just update status
+        console.log(`Cash order ${orderId} refund processed locally`);
+        break;
+
+      default:
+        throw new BadRequestException(`Unsupported payment gateway: ${gateway}`);
+    }
+  }
+
 }
 
