@@ -9,9 +9,7 @@ import {
 import { OnModuleInit, Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import * as jwt from 'jsonwebtoken';
-
 import { SeatService } from 'src/modules/seat/seat.service';
-
 import { HoldSeatType, JWTUserType } from 'src/common/utils/type';
 import { ConfigService } from '@nestjs/config';
 import { StatusSeat } from '../enums/status_seat.enum';
@@ -124,6 +122,8 @@ export class MyGateWay implements OnGatewayConnection, OnModuleInit {
       client.emit('error_message', { msg: err.message || 'Failed to cancel hold seat' });
     }
   }
+
+
 
   // Method để xử lý order expired từ cron job
   // Thông báo huỷ đặt ghế khi order hết hạn cho tất cả client đang join schedule đó

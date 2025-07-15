@@ -6,10 +6,10 @@ import { Schedule } from '../../database/entities/cinema/schedule';
 import { Movie } from 'src/database/entities/cinema/movie';
 import { CinemaRoom } from 'src/database/entities/cinema/cinema-room';
 import { Version } from 'src/database/entities/cinema/version';
-import { OrderModule } from '../order/order.module';
+
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Schedule, Movie, CinemaRoom, Version]), OrderModule],
+  imports: [TypeOrmModule.forFeature([Schedule, Movie, CinemaRoom, Version])],
   controllers: [ScheduleController],
   providers: [ScheduleService],
 })

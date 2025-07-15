@@ -4,7 +4,6 @@ import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { Method } from "src/common/enums/payment-menthod.enum";
 import { PaymentGateway } from "src/common/enums/payment_gatewat.enum";
-import { RefundStatus } from "src/common/enums/refund_status.enum";
 import { Role } from "src/common/enums/roles.enum";
 import { StatusOrder } from "src/common/enums/status-order.enum";
 import { StatusSeat } from "src/common/enums/status_seat.enum";
@@ -15,7 +14,6 @@ import { ScheduleSeat } from "src/database/entities/cinema/schedule_seat";
 import { HistoryScore } from "src/database/entities/order/history_score";
 import { Order } from "src/database/entities/order/order";
 import { OrderExtra } from "src/database/entities/order/order-extra";
-import { OrderRefund } from "src/database/entities/order/order_refund";
 import { Ticket } from "src/database/entities/order/ticket";
 import { Transaction } from "src/database/entities/order/transaction";
 import { User } from "src/database/entities/user/user";
@@ -33,7 +31,6 @@ export abstract class AbstractPaymentService {
         protected readonly historyScoreRepository: Repository<HistoryScore>,
         protected readonly userRepository: Repository<User>,
         protected readonly orderExtraRepository: Repository<OrderExtra>,
-        protected readonly orderRefundRepository: Repository<OrderRefund>,
         protected readonly mailerService: MailerService,
         protected readonly gateway: MyGateWay,
         protected readonly qrCodeService: QrCodeService,
@@ -112,73 +109,73 @@ export abstract class AbstractPaymentService {
             await this.scheduleSeatRepository.save(seat);
         }
     }
-    async createOrderRefundRecord(params: {
-        order: Order;
-        transaction: Transaction;
-        gateway: PaymentGateway;
-        response: any;
-    }): Promise<OrderRefund> {
-        const { order, transaction, gateway, response } = params;
+    // async createOrderRefundRecord(params: {
+    //     order: Order;
+    //     transaction: Transaction;
+    //     gateway: PaymentGateway;
+    //     response: any;
+    // }): Promise<OrderRefund> {
+    //     const { order, transaction, gateway, response } = params;
 
-        const commonData = {
-            order,
-            payment_gateway: gateway,
-            order_ref_id: `refund_${Date.now()}`,
-            refund_amount: order.total_prices,
-            refund_status: RefundStatus.PENDING,
-            created_at: new Date(),
-            description: `Refund for order ${order.id} via ${gateway}`,
-        };
+    //     const commonData = {
+    //         order,
+    //         payment_gateway: gateway,
+    //         order_ref_id: `refund_${Date.now()}`,
+    //         refund_amount: order.total_prices,
+    //         refund_status: RefundStatus.PENDING,
+    //         created_at: new Date(),
+    //         description: `Refund for order ${order.id} via ${gateway}`,
+    //     };
 
-        if (gateway === PaymentGateway.MOMO) {
-            return this.orderRefundRepository.save(
-                this.orderRefundRepository.create({
-                    ...commonData,
-                    transaction_code: response.transId,
-                    partner_code: this.configService.get<string>('momo.partnerCode'),
-                    request_id: response.requestId,
-                    signature: response.signature,
-                    lang: 'vi',
-                }),
-            );
-        }
+    //     if (gateway === PaymentGateway.MOMO) {
+    //         return this.orderRefundRepository.save(
+    //             this.orderRefundRepository.create({
+    //                 ...commonData,
+    //                 transaction_code: response.transId,
+    //                 partner_code: this.configService.get<string>('momo.partnerCode'),
+    //                 request_id: response.requestId,
+    //                 signature: response.signature,
+    //                 lang: 'vi',
+    //             }),
+    //         );
+    //     }
 
-        if (gateway === PaymentGateway.PAYPAL) {
-            return this.orderRefundRepository.save(
-                this.orderRefundRepository.create({
-                    ...commonData,
-                    transaction_code: transaction.transaction_code,
-                    currency_code: 'USD',
-                    request_id: response?.purchase_units?.[0]?.payments?.captures?.[0]?.id || transaction.transaction_code,
-                }),
-            );
-        }
+    //     if (gateway === PaymentGateway.PAYPAL) {
+    //         return this.orderRefundRepository.save(
+    //             this.orderRefundRepository.create({
+    //                 ...commonData,
+    //                 transaction_code: transaction.transaction_code,
+    //                 currency_code: 'USD',
+    //                 request_id: response?.purchase_units?.[0]?.payments?.captures?.[0]?.id || transaction.transaction_code,
+    //             }),
+    //         );
+    //     }
 
-        if (gateway === PaymentGateway.VISA) {
-            // Handle both old format (sessionId|paymentIntentId) and new format (sessionId only)
-            const transactionCode = transaction.transaction_code;
-            const paymentIntentId = response?.payment_intent || null;
+    //     if (gateway === PaymentGateway.VISA) {
+    //         // Handle both old format (sessionId|paymentIntentId) and new format (sessionId only)
+    //         const transactionCode = transaction.transaction_code;
+    //         const paymentIntentId = response?.payment_intent || null;
             
-            const refundData = {
-                ...commonData,
-                transaction_code: transactionCode,
-                currency_code: 'USD',
-                request_id: paymentIntentId || transactionCode,
-                order_ref_id: transactionCode, // sessionId for retrieving session later
-            };
+    //         const refundData = {
+    //             ...commonData,
+    //             transaction_code: transactionCode,
+    //             currency_code: 'USD',
+    //             request_id: paymentIntentId || transactionCode,
+    //             order_ref_id: transactionCode, // sessionId for retrieving session later
+    //         };
             
-            // Only include payment_intent_id if it exists and is not null
-            if (paymentIntentId) {
-                (refundData as any).payment_intent_id = paymentIntentId;
-            }
+    //         // Only include payment_intent_id if it exists and is not null
+    //         if (paymentIntentId) {
+    //             (refundData as any).payment_intent_id = paymentIntentId;
+    //         }
             
-            return this.orderRefundRepository.save(
-                this.orderRefundRepository.create(refundData),
-            );
-        }
+    //         return this.orderRefundRepository.save(
+    //             this.orderRefundRepository.create(refundData),
+    //         );
+    //     }
 
-        throw new Error('Unsupported gateway for refund record');
-    }
+    //     throw new Error('Unsupported gateway for refund record');
+    // }
 
     async handleReturnSuccess(transaction: Transaction, rawResponse?: any): Promise<string> {
         const order = transaction.order;
@@ -186,29 +183,29 @@ export abstract class AbstractPaymentService {
         order.status = StatusOrder.SUCCESS;
 
         await this.transactionRepository.save(transaction);
-        const paymentMethodId = transaction.paymentMethod.id;
-        let gateway: PaymentGateway | null = null;
+        // const paymentMethodId = transaction.paymentMethod.id;
+        // let gateway: PaymentGateway | null = null;
 
-        switch (paymentMethodId) {
-            case Method.MOMO:
-                gateway = PaymentGateway.MOMO;
-                break;
-            case Method.PAYPAL:
-                gateway = PaymentGateway.PAYPAL;
-                break;
-            case Method.VISA:
-                gateway = PaymentGateway.VISA;
-                break;
-        }
+        // switch (paymentMethodId) {
+        //     case Method.MOMO:
+        //         gateway = PaymentGateway.MOMO;
+        //         break;
+        //     case Method.PAYPAL:
+        //         gateway = PaymentGateway.PAYPAL;
+        //         break;
+        //     case Method.VISA:
+        //         gateway = PaymentGateway.VISA;
+        //         break;
+        // }
 
-        if (gateway) {
-            await this.createOrderRefundRecord({
-                order,
-                transaction,
-                gateway,
-                response: rawResponse,
-            });
-        }
+        // if (gateway) {
+        //     await this.createOrderRefundRecord({
+        //         order,
+        //         transaction,
+        //         gateway,
+        //         response: rawResponse,
+        //     });
+        // }
 
         const endScheduleTime = order.orderDetails[0].ticket.schedule.end_movie_time;
         const endTime = new Date(endScheduleTime).getTime();

@@ -18,9 +18,7 @@ import { ConfigService } from '@nestjs/config';
 import { InternalServerErrorException } from 'src/common/exceptions/internal-server-error.exception';
 import { JwtService } from '@nestjs/jwt';
 import { AbstractPaymentService } from '../base/abstract-payment.service';
-import { OrderRefund } from 'src/database/entities/order/order_refund';
 import { PaymentGateway } from 'src/common/enums/payment_gatewat.enum';
-import { RefundStatus } from 'src/common/enums/refund_status.enum';
 @Injectable()
 export class MomoService extends AbstractPaymentService {
   constructor(
@@ -38,8 +36,6 @@ export class MomoService extends AbstractPaymentService {
     userRepository: Repository<User>,
     @InjectRepository(OrderExtra)
     orderExtraRepository: Repository<OrderExtra>,
-    @InjectRepository(OrderRefund)
-    orderRefundRepository: Repository<OrderRefund>,
     mailerService: MailerService,
     gateway: MyGateWay,
     qrCodeService: QrCodeService,
@@ -54,7 +50,6 @@ export class MomoService extends AbstractPaymentService {
       historyScoreRepository,
       userRepository,
       orderExtraRepository,
-      orderRefundRepository,
       mailerService,
       gateway,
       qrCodeService,
@@ -161,83 +156,117 @@ export class MomoService extends AbstractPaymentService {
     }
 
   }
-async createRefund({ orderId }: { orderId: number }) {
-  const accessKey = this.configService.get<string>('momo.accessKey');
-  const secretKey = this.configService.get<string>('momo.secretKey');
-  const partnerCode = this.configService.get<string>('momo.partnerCode');
+  // async createRefund({ orderId }: { orderId: number }) {
+  //   const accessKey = this.configService.get<string>('momo.accessKey');
+  //   const secretKey = this.configService.get<string>('momo.secretKey');
+  //   const partnerCode = this.configService.get<string>('momo.partnerCode');
 
-  if (!partnerCode || !accessKey || !secretKey) {
-    throw new InternalServerErrorException('Momo configuration is missing');
-  }
+  //   if (!partnerCode || !accessKey || !secretKey) {
+  //     throw new InternalServerErrorException('Momo configuration is missing');
+  //   }
 
-  const refund = await this.orderRefundRepository.findOne({
-    where: { order: { id: orderId }, payment_gateway: PaymentGateway.MOMO },
-    relations: ['order'],
-  });
+  //   const refund = await this.orderRefundRepository.findOne({
+  //     where: { order: { id: orderId }, payment_gateway: PaymentGateway.MOMO },
+  //     relations: ['order'],
+  //   });
 
-  if (!refund) {
-    throw new NotFoundException('Refund record not found');
-  }
+  //   if (!refund) {
+  //     throw new NotFoundException('Refund record not found');
+  //   }
 
-  const {
-    refund_amount,
-    description,
-    request_id,
-    transaction_code,
-    order_ref_id,
-  } = refund;
+  //   const {
+  //     refund_amount,
+  //     description,
+  //     request_id,
+  //     transaction_code,
+  //     order_ref_id,
+  //   } = refund;
 
-  // ✅ Tạo signature mới (chính xác)
-  const rawSignature = `accessKey=${accessKey}&amount=${Number(refund_amount)}&description=${description}&orderId=${order_ref_id}&partnerCode=${partnerCode}&requestId=${request_id}&transId=${transaction_code}`;
+  //   // ✅ Tạo signature mới (chính xác)
+  //   const rawSignature = `accessKey=${accessKey}&amount=${Number(refund_amount)}&description=${description}&orderId=${order_ref_id}&partnerCode=${partnerCode}&requestId=${request_id}&transId=${transaction_code}`;
 
-  const signature = crypto
-    .createHmac('sha256', secretKey)
-    .update(rawSignature)
-    .digest('hex');
+  //   const signature = crypto
+  //     .createHmac('sha256', secretKey)
+  //     .update(rawSignature)
+  //     .digest('hex');
 
-  const requestBody = {
-    partnerCode,
-    orderId: order_ref_id, // ✅ Dùng order_ref_id duy nhất
-    requestId: request_id,
-    amount: Number(refund_amount),
-    transId: transaction_code,
-    lang: refund.lang || 'vi',
-    description,
-    signature,
-  };
+  //   const requestBody = {
+  //     partnerCode,
+  //     orderId: order_ref_id, // ✅ Dùng order_ref_id duy nhất
+  //     requestId: request_id,
+  //     amount: Number(refund_amount),
+  //     transId: transaction_code,
+  //     lang: refund.lang || 'vi',
+  //     description,
+  //     signature,
+  //   };
 
 
-  try {
-    const res = await axios.post(
-      'https://test-payment.momo.vn/v2/gateway/api/refund',
-      requestBody,
-      {
-        headers: { 'Content-Type': 'application/json' },
-      },
-    );
+  //   try {
+  //     const res = await axios.post(
+  //       'https://test-payment.momo.vn/v2/gateway/api/refund',
+  //       requestBody,
+  //       {
+  //         headers: { 'Content-Type': 'application/json' },
+  //       },
+  //     );
 
-    if (res.data.resultCode !== 0) {
-      throw new InternalServerErrorException(`Refund failed: ${res.data.message}`);
+  //     if (res.data.resultCode !== 0) {
+  //       throw new InternalServerErrorException(`Refund failed: ${res.data.message}`);
+  //     }
+
+  //     // ✅ Cập nhật trạng thái + lưu lại signature chính xác nếu cần
+  //     refund.refund_status = RefundStatus.SUCCESS;
+  //     refund.signature = signature;
+
+
+  //     await this.orderRefundRepository.save(refund);
+
+
+  //     return res.data;
+  //   } catch (error) {
+  //     throw new InternalServerErrorException(
+  //       'Refund request failed: ' + (error?.response?.data?.message || error.message),
+  //     );
+  //   }
+  // }
+  async queryOrderStatusMomo(orderId: string) {
+    const accessKey = this.configService.get<string>('momo.accessKey');
+    const secretKey = this.configService.get<string>('momo.secretKey');
+    const partnerCode = this.configService.get<string>('momo.partnerCode');
+    const endpoint = this.configService.get<string>('momo.queryUrl');
+    if (!accessKey || !secretKey || !partnerCode || !endpoint) {
+      throw new InternalServerErrorException('Momo configuration is missing');
     }
 
-    // ✅ Cập nhật trạng thái + lưu lại signature chính xác nếu cần
-    refund.refund_status = RefundStatus.SUCCESS;
-    refund.signature = signature;
+    const requestId = partnerCode + Date.now(); // Hoặc có thể dùng UUID
 
+    const rawSignature = `accessKey=${accessKey}&orderId=${orderId}&partnerCode=${partnerCode}&requestId=${requestId}`;
+    const signature = crypto.createHmac('sha256', secretKey).update(rawSignature).digest('hex');
 
-    await this.orderRefundRepository.save(refund);
+    const body = {
+      partnerCode,
+      requestId,
+      orderId,
+      lang: 'vi',
+      signature,
+    };
 
-  
-    return res.data;
-  } catch (error) {
-    throw new InternalServerErrorException(
-      'Refund request failed: ' + (error?.response?.data?.message || error.message),
-    );
+    try {
+      const response = await axios.post(
+        endpoint,
+        body,
+        { headers: { 'Content-Type': 'application/json' } },
+      );
+      return {
+        method: PaymentGateway.MOMO,
+        status: response.data.resultCode === 0 ? 'PAID' : 'UNPAID',
+        paid: response.data.resultCode === 0,
+      };
+    } catch (error: any) {
+      throw new InternalServerErrorException('Failed to query MoMo order', error?.response?.data);
+    }
   }
-}
-
-
-
 
 
 

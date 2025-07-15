@@ -19,12 +19,15 @@ import { Ticket } from 'src/database/entities/order/ticket';
 import { User } from 'src/database/entities/user/user';
 import { Repository } from 'typeorm';
 import { Transaction } from 'src/database/entities/order/transaction';
-import { OrderRefund } from 'src/database/entities/order/order_refund';
+import axios from 'axios';
+import { PaymentGateway } from 'src/common/enums/payment_gatewat.enum';
+import { formatDate } from 'src/common/utils/helper';
 
 
 
 @Injectable()
 export class VnpayService extends AbstractPaymentService {
+  [x: string]: any;
   constructor(
     @InjectRepository(Transaction)
     transactionRepository: Repository<Transaction>,
@@ -40,8 +43,6 @@ export class VnpayService extends AbstractPaymentService {
     userRepository: Repository<User>,
     @InjectRepository(OrderExtra)
     orderExtraRepository: Repository<OrderExtra>,
-    @InjectRepository(OrderRefund)
-    orderRefundRepository: Repository<OrderRefund>,
     mailerService: MailerService,
     gateway: MyGateWay,
     qrCodeService: QrCodeService,
@@ -56,7 +57,6 @@ export class VnpayService extends AbstractPaymentService {
       historyScoreRepository,
       userRepository,
       orderExtraRepository,
-      orderRefundRepository,
       mailerService,
       gateway,
       qrCodeService,
@@ -120,7 +120,6 @@ export class VnpayService extends AbstractPaymentService {
 
 
   async handleReturnVnPay(query: any) {
-    console.log('Received VnPay query:', query);
     const receivedParams = { ...query };
     const secureHash = receivedParams['vnp_SecureHash'];
 
@@ -283,6 +282,71 @@ export class VnpayService extends AbstractPaymentService {
   //     throw new InternalServerErrorException(`Refund failed: ${error.message}`);
   //   }
   // }
+
+
+
+
+  async queryOrderStatusVnpay(orderId: string, transactionDate: string) {
+    const vnp_TmnCode = this.configService.get<string>('vnpay.tmnCode');
+    const vnp_HashSecret = this.configService.get<string>('vnpay.hashSecret');
+    const vnp_ApiUrl = this.configService.get<string>('vnpay.queryUrl');
+
+    if (!vnp_TmnCode || !vnp_HashSecret || !vnp_ApiUrl) {
+      throw new InternalServerErrorException('VNPAY config is missing');
+    }
+
+    const requestId = `${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+    const createDate = formatDate(new Date()); 
+    const ipAddr = '127.0.0.1';
+    const orderInfo = 'Query order status';
+
+    const params = {
+      vnp_RequestId: requestId,
+      vnp_Version: '2.1.0',
+      vnp_Command: 'querydr',
+      vnp_TmnCode,
+      vnp_TxnRef: orderId,
+      vnp_OrderInfo: orderInfo,
+      vnp_TransactionDate: transactionDate,
+      vnp_CreateDate: createDate,
+      vnp_IpAddr: ipAddr,
+    };
+
+    // 👉 Tạo chuỗi data đúng định dạng: nối các giá trị bằng "|"
+    const rawData = [
+      params.vnp_RequestId,
+      params.vnp_Version,
+      params.vnp_Command,
+      params.vnp_TmnCode,
+      params.vnp_TxnRef,
+      params.vnp_TransactionDate,
+      params.vnp_CreateDate,
+      params.vnp_IpAddr,
+      params.vnp_OrderInfo,
+    ].join('|');
+
+    const secureHash = crypto.createHmac('sha512', vnp_HashSecret).update(rawData).digest('hex');
+
+    try {
+      const res = await axios.post(vnp_ApiUrl, {
+        ...params,
+        vnp_SecureHash: secureHash,
+      }, {
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = res.data;
+
+      return {
+        method: 'VNPAY',
+        status: data.vnp_ResponseCode === '00' && data.vnp_TransactionStatus === '00' ? 'PAID' : 'UNPAID',
+        paid: data.vnp_TransactionStatus === '00',
+      };
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to query VNPAY order');
+    }
+  }
+
 
 
 

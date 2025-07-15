@@ -24,7 +24,7 @@ import { User } from 'src/database/entities/user/user';
 import { Repository } from 'typeorm';
 import { Transaction } from 'src/database/entities/order/transaction';
 import { AbstractPaymentService } from '../base/abstract-payment.service';
-import { OrderRefund } from 'src/database/entities/order/order_refund';
+import { PaymentGateway } from 'src/common/enums/payment_gatewat.enum';
 
 @Injectable()
 export class ZalopayService extends AbstractPaymentService {
@@ -43,8 +43,6 @@ export class ZalopayService extends AbstractPaymentService {
     userRepository: Repository<User>,
     @InjectRepository(OrderExtra)
     orderExtraRepository: Repository<OrderExtra>,
-    @InjectRepository(OrderRefund)
-    orderRefundRepository: Repository<OrderRefund>,
     mailerService: MailerService,
     gateway: MyGateWay,
     qrCodeService: QrCodeService,
@@ -59,7 +57,6 @@ export class ZalopayService extends AbstractPaymentService {
       historyScoreRepository,
       userRepository,
       orderExtraRepository,
-      orderRefundRepository,
       mailerService,
       gateway,
       qrCodeService,
@@ -213,5 +210,45 @@ export class ZalopayService extends AbstractPaymentService {
   //     );
   //   }
   // }
+
+
+
+
+  async queryOrderStatusZaloPay(app_trans_id: string) {
+    const app_id = this.configService.get<string>('zalopay.appId');
+    const key1 = this.configService.get<string>('zalopay.key1');
+    const endpoint = this.configService.get<string>('zalopay.queryUrl');
+    if (!app_id || !key1 || !endpoint) {
+      throw new InternalServerErrorException('ZaloPay configuration is missing');
+    }
+
+    const dataToSign = `${app_id}|${app_trans_id}|${key1}`;
+    const mac = crypto.createHmac('sha256', key1).update(dataToSign).digest('hex');
+
+    const body = {
+      app_id: +app_id,
+      app_trans_id,
+      mac,
+    };
+
+    try {
+      const res = await axios.post(endpoint, body, {
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = res.data;
+
+      return {
+        method:PaymentGateway.ZALOPAY,
+        status: data.return_code === 1 && data.sub_return_code === 1 ? 'PAID' : 'UNPAID',
+        paid: data.sub_return_code === 1,
+        amount: data.amount,
+      };
+    } catch (error) {
+      throw new Error(
+        `Failed to query ZaloPay order: ${error.response?.data?.message || error.message}`,
+      );
+    }
+  }
 
 }
