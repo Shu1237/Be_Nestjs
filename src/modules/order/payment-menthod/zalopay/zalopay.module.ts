@@ -13,10 +13,9 @@ import { MyGateWayModule } from "src/common/gateways/seat.gateway.module";
 import { QrCodeModule } from "src/common/qrcode/qr.module";
 import { JwtModule } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
-import { OrderRefund } from "src/database/entities/order/order_refund";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([OrderExtra, Transaction, Order, Ticket, ScheduleSeat, HistoryScore, User, OrderRefund]),
+  imports: [TypeOrmModule.forFeature([OrderExtra, Transaction, Order, Ticket, ScheduleSeat, HistoryScore, User]),
         MailerModule,
         MyGateWayModule,
         QrCodeModule,

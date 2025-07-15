@@ -81,15 +81,29 @@ export class OrderController {
     );
   }
 
-  @Post('refund/:id')
-  async refundOrder(@Param('id', ParseIntPipe) id: number) {
-    return this.orderService.refundOrder(id);
+  // @Post('refund/:id')
+  // async refundOrder(@Param('id', ParseIntPipe) id: number) {
+  //   return this.orderService.refundOrder(id);
+  // }
+  // @Post('refundbySchedule/:scheduleId')
+  // async refundOrderBySchedule(@Param('scheduleId', ParseIntPipe) scheduleId: number, @Req() req) {
+  //   checkAdminEmployeeRole(req.user, 'Only admin or employee can refund orders');
+  //   return this.orderService.refundOrderBySchedule(scheduleId);
+  // }
+
+  @Get('checkStatus/:orderId')
+  @ApiOperation({ summary: 'Check order status by Order ID' })
+  @ApiResponse({ status: 200, description: 'Order status checked successfully' })
+  async checkOrderStatus(@Param('orderId', ParseIntPipe) orderId: number) {
+    return this.orderService.checkQueryOrderByGateway(orderId);
   }
-  @Post('refundbySchedule/:scheduleId')
-  async refundOrderBySchedule(@Param('scheduleId', ParseIntPipe) scheduleId: number, @Req() req) {
-    checkAdminEmployeeRole(req.user, 'Only admin or employee can refund orders');
-    return this.orderService.refundOrderBySchedule(scheduleId);
+
+  @Get('admin/check-all-gateway-status')
+  checkAllGateways(@Req() req) {
+    checkAdminEmployeeRole(req.user, 'Only admin or employee can check all gateways status');
+    return this.orderService.checkAllOrdersStatusByGateway();
   }
+
   // POST /order/admin/update-order/:orderId - Admin/Employee update pending order
   @UseGuards(JwtAuthGuard)
   @Post('admin/update-order/:orderId')
@@ -112,15 +126,11 @@ export class OrderController {
       orderId,
       updateData,
       clientIp,
-      user.account_id
+      user
     );
   }
 
-  // // GET /order/admin - View all orders for admin
-  //  @Get('overview-order')
-  //  getOverviewOrder() {
-  //   return this.orderService.getOrderOverview();
-  // }
+
 
   @UseGuards(JwtAuthGuard)
   @Patch('admin/cancel-order/:orderId')

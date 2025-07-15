@@ -16,7 +16,6 @@ import { scheduleFieldMapping } from 'src/common/pagination/fillters/scheduleFie
 import { applySorting } from 'src/common/pagination/apply_sort';
 import { applyPagination } from 'src/common/pagination/applyPagination';
 import { buildPaginationResponse } from 'src/common/pagination/pagination-response';
-import { OrderService } from '../order/order.service';
 @Injectable()
 export class ScheduleService {
   constructor(
@@ -31,8 +30,6 @@ export class ScheduleService {
 
     @InjectRepository(Version)
     private readonly versionRepository: Repository<Version>,
-
-    private readonly orderService: OrderService,
   ) { }
   private getScheduleSummary(schedule: Schedule): ISchedule {
     return {
@@ -296,7 +293,7 @@ export class ScheduleService {
 
   async softDeleteSchedule(
     id: number,
-  ): Promise<{ msg: string; meta: { totalRefunded: number; totalRefundFailed: number,totalOrders: number } }> {
+  ): Promise<{ msg: string; }> {
     const schedule = await this.scheduleRepository.findOne({ where: { id } });
 
     if (!schedule) {
@@ -308,24 +305,18 @@ export class ScheduleService {
     await this.scheduleRepository.save(schedule);
 
     // 2. Hoàn tiền tất cả đơn liên quan tới schedule này
-    let refundResult: any = null;
-    try {
-      refundResult = await this.orderService.refundOrderBySchedule(id);
-    } catch (error) {
-      console.error(`Refund error for schedule ${id}:`, error);
-      throw new BadRequestException(
-        `Schedule deleted, but refund failed: ${error.message}`,
-      );
-    }
+    // let refundResult: any = null;
+    // try {
+    //   refundResult = await this.orderService.refundOrderBySchedule(id);
+    // } catch (error) {
+    //   console.error(`Refund error for schedule ${id}:`, error);
+    //   throw new BadRequestException(
+    //     `Schedule deleted, but refund failed: ${error.message}`,
+    //   );
+    // }
 
     return {
-      msg: 'Schedule soft-deleted and related orders refunded',
-      meta: {
-        totalRefunded: refundResult.totalRefunded || 0,
-        totalRefundFailed: refundResult.totalRefundFailed || 0,
-        totalOrders: refundResult.totalOrders || 0,
-      }
-
+      msg: 'Schedule soft-deleted and related orders refunded'
     };
   }
 
