@@ -81,6 +81,7 @@ export class OrderController {
     );
   }
 
+
   // @Post('refund/:id')
   // async refundOrder(@Param('id', ParseIntPipe) id: number) {
   //   return this.orderService.refundOrder(id);
@@ -146,7 +147,7 @@ export class OrderController {
     return this.orderService.adminCancelOrder(orderId);
   }
 
-  // @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard)
   @Get('admin')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'View all orders for admin' })

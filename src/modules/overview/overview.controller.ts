@@ -22,14 +22,14 @@ export class OverviewController {
   @Get('top-movies')
   getTopMovies(@Req() req) {
     const user = req.user as JWTUserType;
-    checkAdminEmployeeRole(user, 'Only admin and employee can access revenue growth data');
+    // checkAdminEmployeeRole(user, 'Only admin and employee can access revenue growth data');
     return this.overviewService.getTopMoviesByRevenue()
   }
 
   @Get('now-showing')
   getNowShowing(@Req() req ) {
     const user = req.user as JWTUserType;
-    checkAdminEmployeeRole(user, 'Only admin and employee can access revenue growth data');
+    // checkAdminEmployeeRole(user, 'Only admin and employee can access revenue growth data');
     return this.overviewService.getNowShowing()
 
   }
