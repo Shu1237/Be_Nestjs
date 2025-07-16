@@ -97,12 +97,6 @@ export class OrderService {
 
 
   ) { }
-  async getAllOrderTest() {
-    const orders = await this.orderRepository.find({
-      relations: ['orderDetails.schedule'],
-    });
-    return orders
-  }
   private async getUserById(userId: string) {
     const user = await this.userRepository.findOne({
       where: { id: userId }
@@ -114,7 +108,6 @@ export class OrderService {
     }
     return user;
   }
-
 
   private async getPromotionById(promotionId: number) {
     const promotion = await this.promotionRepository.findOne({
@@ -136,6 +129,7 @@ export class OrderService {
     }
     return schedule;
   }
+
   private async getOrderById(orderId: number) {
     const order = await this.orderRepository.findOne({
       where: { id: orderId },
@@ -146,6 +140,7 @@ export class OrderService {
     }
     return order;
   }
+
   private async getTransactionById(transactionId: number) {
     const transaction = await this.transactionRepository.findOne({
       where: { id: transactionId },
@@ -168,7 +163,8 @@ export class OrderService {
 
     return ticketTypes;
   }
-  async getOrderExtraByIds(productIds: number[]) {
+
+  private async getOrderExtraByIds(productIds: number[]) {
     const orderExtras = await this.productRepository.find({
       where: { id: In(productIds) },
 
@@ -178,6 +174,7 @@ export class OrderService {
     }
     return orderExtras;
   }
+
   private async getScheduleSeatsByIds(seatIds: string[], scheduleId: number) {
     const scheduleSeats = await this.scheduleSeatRepository.find({
       where: {
@@ -1062,7 +1059,6 @@ export class OrderService {
     }
   }
 
-
   // async adminUpdateAndProcessOrder(
   //   orderId: number,
   //   updateData: OrderBillType,
@@ -1916,7 +1912,7 @@ export class OrderService {
       const code = transaction.transaction_code;
       const date = transaction.transaction_date;
 
-      // 👉 Xử lý riêng với CASH (không gọi API)
+      //  Cash 
       if (method === PaymentGateway.CASH) {
         if (status === StatusOrder.SUCCESS) {
           result.CASH.totalSuccess += 1;
@@ -1957,7 +1953,7 @@ export class OrderService {
       }
     });
 
-    await Promise.allSettled(tasks); // ⛳ chạy tất cả Promise song song (dùng kiểu //)
+    await Promise.allSettled(tasks); 
 
     return result;
   }
