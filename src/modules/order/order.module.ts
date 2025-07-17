@@ -35,6 +35,7 @@ import { ConfigService } from '@nestjs/config';
 
 
 
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -54,7 +55,7 @@ import { ConfigService } from '@nestjs/config';
       Drink,
       Combo,
       OrderExtra,
-      HistoryScore
+      HistoryScore,
 
     ]
   ),

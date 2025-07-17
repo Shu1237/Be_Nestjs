@@ -20,6 +20,8 @@ import { Ticket } from "src/database/entities/order/ticket";
 import { Transaction } from "src/database/entities/order/transaction";
 import { User } from "src/database/entities/user/user";
 import Stripe from "stripe";
+import { PaymentGateway } from "src/common/enums/payment_gatewat.enum";
+
 
 @Injectable()
 export class VisaService extends AbstractPaymentService {
@@ -109,6 +111,8 @@ export class VisaService extends AbstractPaymentService {
             if (session.payment_status !== 'paid') {
                 throw new InternalServerErrorException('Payment not completed on Stripe');
             }
+            // Pass the session as rawResponse to create refund record properly
+            return this.handleReturnSuccess(transaction, session);
         }
         return this.handleReturnSuccess(transaction);
     }
@@ -120,6 +124,78 @@ export class VisaService extends AbstractPaymentService {
         }
         return this.handleReturnFailed(transaction);
     }
+
+
+
+
+    // async createRefund({ orderId }: { orderId: number }) {
+    //     const refund = await this.orderRefundRepository.findOne({
+    //         where: { order: { id: orderId }, payment_gateway: PaymentGateway.VISA },
+    //         relations: ['order'],
+    //     });
+
+    //     if (!refund) {
+    //         throw new NotFoundException('Refund record not found');
+    //     }
+
+    //     // If payment_intent_id is not available, try to get it from session
+    //     let paymentIntentId = refund.payment_intent_id;
+
+    //     if (!paymentIntentId && refund.order_ref_id) {
+    //         try {
+    //             const session = await this.stripe.checkout.sessions.retrieve(refund.order_ref_id);
+    //             paymentIntentId = session.payment_intent as string;
+
+    //             // Update refund record with payment_intent_id
+    //             if (paymentIntentId) {
+    //                 refund.payment_intent_id = paymentIntentId;
+    //                 await this.orderRefundRepository.save(refund);
+    //             }
+    //         } catch (error) {
+    //             console.error('Error retrieving session:', error);
+    //             throw new InternalServerErrorException('Failed to retrieve session for refund');
+    //         }
+    //     }
+
+    //     if (!paymentIntentId) {
+    //         throw new InternalServerErrorException('Missing payment_intent_id to refund Stripe');
+    //     }
+
+    //     try {
+    //         const refundStripe = await this.stripe.refunds.create({
+    //             payment_intent: paymentIntentId,
+    //             amount: changeVNtoUSDToCent(refund.refund_amount.toString()), // Convert VND to USD cents
+    //         });
+
+    //         if (refundStripe.status !== 'succeeded') {
+    //             throw new InternalServerErrorException(`Refund failed: ${refundStripe.status}`);
+    //         }
+
+    //         refund.refund_status = RefundStatus.SUCCESS;
+    //         refund.timestamp = Math.floor(new Date().getTime() / 1000);
+
+    //         await this.orderRefundRepository.save(refund);
+
+    //     } catch (error) {
+    //         throw new InternalServerErrorException('Stripe refund failed: ' + error.message);
+    //     }
+    // }
+    async queryOrderStatusVisa(orderId: string) {
+        const session = await this.stripe.checkout.sessions.retrieve(orderId, {
+            expand: ['payment_intent'],
+        });
+
+        return {
+            method: PaymentGateway.VISA,
+            status: session.payment_status?.toUpperCase() || 'UNKNOWN',
+            paid: session.payment_status === 'paid',
+        };
+    }
+
+
+
+
+
 }
 
 

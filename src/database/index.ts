@@ -49,5 +49,5 @@ export const allEntities = [
   ScheduleSeat,
   PromotionType,
   HistoryScore,
-  Product
+  Product,
 ];

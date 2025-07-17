@@ -75,7 +75,6 @@ export class MovieController {
   }
 
 
-
   // GET - Lấy genres của movie
   @UseGuards(JwtAuthGuard)
   @Get(':movieId/gernes')
@@ -86,13 +85,6 @@ export class MovieController {
     return this.movieService.getGernesOfMovie(movieId);
   }
 
-  // GET - Lấy versions của movie
-  @UseGuards(JwtAuthGuard)
-  @Get(':movieId/versions')
-  @ApiOperation({ summary: 'Get all versions of a movie' })
-  getVersionsOfMovie(@Param('movieId', ParseIntPipe) movieId: number) {
-    return this.movieService.getVersionsOfMovie(movieId);
-  }
 
   // POST - Tạo movie mới
   @UseGuards(JwtAuthGuard)
@@ -134,14 +126,7 @@ export class MovieController {
     checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can restore a movie.');
     return await this.movieService.restoreMovie(id);
   }
-  
 
-  @UseGuards(JwtAuthGuard)
-  @Get(':movieId/actors')
-  @ApiOperation({ summary: 'Get all actors of a movie' })
-  getActorsOfMovie(@Param('movieId', ParseIntPipe) movieId: number) {
-    return this.movieService.getActorsOfMovie(movieId);
-  }
 
   // DELETE - Xóa movie vĩnh viễn
   @UseGuards(JwtAuthGuard)

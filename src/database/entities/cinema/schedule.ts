@@ -5,7 +5,6 @@ import {
   ManyToOne,
   JoinColumn,
   OneToMany,
-  DeleteDateColumn,
 } from 'typeorm';
 import { CinemaRoom } from './cinema-room';
 import { Movie } from './movie';

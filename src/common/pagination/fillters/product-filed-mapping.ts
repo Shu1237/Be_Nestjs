@@ -17,8 +17,6 @@ export const productFieldMapping: Record<string, FilterField> = {
     operator: '=',
   },
   search: {
-    operator: 'LIKE',
-    field: '',
     customWhere: (qb: SelectQueryBuilder<any>, value: string) => {
       qb.andWhere(
         `(product.name LIKE :search OR product.description LIKE :search)`,

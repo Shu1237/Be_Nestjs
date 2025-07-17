@@ -14,6 +14,7 @@ import { QrCodeModule } from "src/common/qrcode/qr.module";
 import { JwtModule } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
 
+
 @Module({
     imports: [TypeOrmModule.forFeature([OrderExtra, Transaction, Order, Ticket, ScheduleSeat, HistoryScore, User]),
         MailerModule,

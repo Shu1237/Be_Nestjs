@@ -54,7 +54,7 @@ export class ActorController {
   @ApiQuery({ name: 'nationality', required: false, type: String, example: 'American' })
   @ApiQuery({ name: 'date_of_birth', required: false, type: String, example: '1990-01-01' })
   async getAllActors(@Query() query: ActorPaginationDto, @Req() req) {
-    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can access this endpoint.');
+    // checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can access this endpoint.');
     const {
       page = 1,
       take = 10,

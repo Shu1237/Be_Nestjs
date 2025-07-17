@@ -20,10 +20,12 @@ import { OrderExtra } from 'src/database/entities/order/order-extra';
 import { Ticket } from 'src/database/entities/order/ticket';
 import { Transaction } from 'src/database/entities/order/transaction';
 import { User } from 'src/database/entities/user/user';
+import { PaymentGateway } from 'src/common/enums/payment_gatewat.enum';
+
 
 @Injectable()
 export class PayPalService extends AbstractPaymentService {
-  
+
     constructor(
         @InjectRepository(Transaction)
         transactionRepository: Repository<Transaction>,
@@ -138,12 +140,13 @@ export class PayPalService extends AbstractPaymentService {
         if (transaction.status !== StatusOrder.PENDING) {
             throw new NotFoundException('Transaction is not in pending state');
         }
-
         if (transaction.paymentMethod.id === Method.PAYPAL) {
             const captureResult = await this.captureOrderPaypal(transaction.transaction_code);
             if (captureResult.status !== 'COMPLETED') {
                 throw new InternalServerErrorException('Payment not completed on PayPal');
             }
+            // Pass the captureResult as rawResponse to create refund record properly
+            return this.handleReturnSuccess(transaction, captureResult);
         }
         return this.handleReturnSuccess(transaction);
     }
@@ -155,4 +158,73 @@ export class PayPalService extends AbstractPaymentService {
         }
         return this.handleReturnFailed(transaction);
     }
+
+    // async createRefund({ orderId }: { orderId: number }) {
+    //     const accessToken = await this.generateAccessToken();
+    //     const refund = await this.orderRefundRepository.findOne({
+    //         where: { order: { id: orderId }, payment_gateway: PaymentGateway.PAYPAL },
+    //         relations: ['order'],
+    //     });
+
+
+    //     if (!refund) {
+    //         throw new NotFoundException('Refund record not found');
+    //     }
+
+    //     try {
+    //         // Use the capture ID stored in request_id field from the refund record
+    //         const captureId = refund.request_id || refund.transaction_code;
+
+    //         const res = await axios.post(
+    //             `${this.configService.get<string>('paypal.baseUrl')}/v2/payments/captures/${captureId}/refund`,
+    //             {
+    //                 amount: {
+    //                     value: changeVnToUSD(refund.order.total_prices.toString()),
+    //                     currency_code: refund.currency_code || 'USD',
+    //                 },
+    //             },
+    //             {
+    //                 headers: {
+    //                     'Content-Type': 'application/json',
+    //                     Authorization: `Bearer ${accessToken}`,
+    //                 },
+    //             }
+    //         );
+    //         //  update status of refund 
+    //             refund.refund_status = RefundStatus.SUCCESS;
+    //             await this.orderRefundRepository.save(refund);
+    //         return res.data;
+    //     } catch (error) {
+    //         throw new InternalServerErrorException(
+    //             'Refund request failed: ' + (error?.response?.data?.message || error.message)
+    //         );
+    //     }
+    // }
+
+    async queryOrderStatusPaypal(orderId: string) {
+        const accessToken = await this.generateAccessToken();
+        if (!accessToken) {
+            throw new InternalServerErrorException('Failed to generate PayPal access token');
+        }
+
+        const response = await axios.get(
+            `${this.configService.get<string>('paypal.baseUrl')}/v2/checkout/orders/${orderId}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            }
+        );
+
+        const data = response.data;
+
+        return {
+            method: PaymentGateway.PAYPAL,
+            status: data.status, // e.g., COMPLETED, PAYER_ACTION_REQUIRED
+            paid: data.status === 'COMPLETED',
+            payerEmail: data.payer?.email_address,
+        };
+    }
+
+
 }
