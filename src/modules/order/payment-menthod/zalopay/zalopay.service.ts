@@ -82,7 +82,10 @@ export class ZalopayService extends AbstractPaymentService {
     const transID = Date.now();
     const app_trans_id = `${moment().format('YYMMDD')}_${transID}`;
     const app_time = dayjs().valueOf();
-    const embed_data = { redirecturl: callback_url };
+    const embed_data = {
+      redirecturl: callback_url,
+      preferred_payment_method: []
+    };
 
     const rawData = {
       app_id: Number(app_id),
