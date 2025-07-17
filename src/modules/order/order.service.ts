@@ -312,7 +312,7 @@ export class OrderService {
         ? Math.round(totalBeforePromotion * (promotionDiscount / 100))
         : Math.round(promotionDiscount);
 
-      totalPrice = totalBeforePromotion - promotionAmount;
+      totalPrice = roundUpToNearest(totalBeforePromotion - promotionAmount, 1000);
 
       // console.log({ totalBeforePromotion, promotionAmount, totalPrice });
 
