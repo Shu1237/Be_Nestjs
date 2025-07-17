@@ -74,6 +74,7 @@ export class MovieController {
     return this.movieService.getMovieById(id);
   }
 
+
   // GET - Lấy genres của movie
   @UseGuards(JwtAuthGuard)
   @Get(':movieId/gernes')
@@ -125,7 +126,7 @@ export class MovieController {
     checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can restore a movie.');
     return await this.movieService.restoreMovie(id);
   }
-  
+
 
   // DELETE - Xóa movie vĩnh viễn
   @UseGuards(JwtAuthGuard)
