@@ -103,7 +103,7 @@ export class ZalopayService extends AbstractPaymentService {
       ]),
       embed_data: JSON.stringify(embed_data),
       description: 'Thanh toan ve xem phim',
-      bank_code: 'zalopayapp',
+            bank_code: '',
     };
 
     const dataToMac = [
