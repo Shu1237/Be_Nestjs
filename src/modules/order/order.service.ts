@@ -1290,204 +1290,222 @@ export class OrderService {
   // }
 
   async adminUpdateAndProcessOrder(
-  orderId: number,
-  updateData: OrderBillType,
-  clientIp: string,
-  user: JWTUserType,
-) {
-  try {
-    const existingOrder = await this.orderRepository.findOne({
-      where: { id: orderId },
-      relations: [
-        'user',
-        'promotion',
-        'transaction',
-        'transaction.paymentMethod',
-        'orderDetails',
-        'orderDetails.ticket',
-        'orderDetails.ticket.seat',
-        'orderDetails.ticket.ticketType',
-        'orderDetails.schedule',
-        'orderExtras',
-      ],
-    });
+    orderId: number,
+    updateData: OrderBillType,
+    clientIp: string,
+    user: JWTUserType,
+  ) {
+    try {
+      const existingOrder = await this.orderRepository.findOne({
+        where: { id: orderId },
+        relations: [
+          'user',
+          'promotion',
+          'transaction',
+          'transaction.paymentMethod',
+          'orderDetails',
+          'orderDetails.ticket',
+          'orderDetails.ticket.seat',
+          'orderDetails.ticket.ticketType',
+          'orderDetails.schedule',
+          'orderExtras',
+        ],
+      });
 
-    if (!existingOrder) throw new NotFoundException(`Order ${orderId} not found`);
-    if (existingOrder.status !== StatusOrder.PENDING) {
-      throw new BadRequestException('Only pending orders can be updated');
-    }
-
-    if (updateData.schedule_id !== existingOrder.orderDetails[0].schedule.id) {
-      throw new BadRequestException('Cannot change schedule of existing order');
-    }
-
-    const products = updateData.products || [];
-    let orderExtras: Product[] = [];
-    if (products.length > 0) {
-      const productIds = products.map(p => p.product_id);
-      orderExtras = await this.getOrderExtraByIds(productIds);
-    }
-
-    const isPromotionChanged = updateData.promotion_id !== existingOrder.promotion?.id;
-    const newPromotion = isPromotionChanged
-      ? await this.getPromotionById(updateData.promotion_id)
-      : existingOrder.promotion;
-
-    if (isPromotionChanged && newPromotion?.id !== 1) {
-      const now = new Date();
-      if (!newPromotion?.start_time || !newPromotion?.end_time || now < newPromotion?.start_time || now > newPromotion?.end_time) {
-        
-        throw new BadRequestException('Promotion is not valid at this time');
+      if (!existingOrder) throw new NotFoundException(`Order ${orderId} not found`);
+      if (existingOrder.status !== StatusOrder.PENDING) {
+        throw new BadRequestException('Only pending orders can be updated');
       }
 
-      const checkUser = await this.getUserById(user.account_id);
-      if (newPromotion.exchange > checkUser.score) {
-        throw new ConflictException('Not enough points to use this promotion');
+      if (updateData.schedule_id !== existingOrder.orderDetails[0].schedule.id) {
+        throw new BadRequestException('Cannot change schedule of existing order');
       }
 
-      if ((user.role_id === Role.EMPLOYEE || user.role_id === Role.ADMIN) && !updateData.customer_id) {
-        throw new ConflictException('Staff must provide customer ID when using promotion');
+      const products = updateData.products || [];
+      let orderExtras: Product[] = [];
+      if (products.length > 0) {
+        const productIds = products.map(p => p.product_id);
+        orderExtras = await this.getOrderExtraByIds(productIds);
       }
-    }
 
-    const ticketTotal = existingOrder.orderDetails.reduce((sum, d) => sum + Number(d.total_each_ticket), 0);
-    const productTotal = calculateProductTotal(orderExtras, updateData);
-    const totalBeforeDiscount = ticketTotal + productTotal;
+      const isPromotionChanged = updateData.promotion_id !== existingOrder.promotion?.id;
+      const newPromotion = isPromotionChanged
+        ? await this.getPromotionById(updateData.promotion_id)
+        : existingOrder.promotion;
 
-    const isPercentage = newPromotion?.promotionType?.type === 'percentage';
-    const discountValue = parseFloat(newPromotion?.discount ?? '0');
-    const promotionAmount = isPercentage
-      ? Math.round(totalBeforeDiscount * discountValue / 100)
-      : Math.round(discountValue);
+      if (isPromotionChanged && newPromotion?.id !== 1) {
+        const now = new Date();
+        if (!newPromotion?.start_time || !newPromotion?.end_time || now < newPromotion?.start_time || now > newPromotion?.end_time) {
 
-    const totalAfterDiscount = totalBeforeDiscount - promotionAmount;
-    const inputTotal = parseFloat(updateData.total_prices.toString());
-    if (Math.abs(totalAfterDiscount - inputTotal) > 0.01) {
-      throw new BadRequestException('Total price mismatch. Please refresh and try again.');
-    }
+          throw new BadRequestException('Promotion is not valid at this time');
+        }
 
-    const ticketRatio = ticketTotal / totalBeforeDiscount || 0;
-    const ticketDiscountAmount = Math.round(promotionAmount * ticketRatio);
-    const productDiscountAmount = promotionAmount - ticketDiscountAmount;
+        const checkUser = await this.getUserById(user.account_id);
+        if (newPromotion.exchange > checkUser.score) {
+          throw new ConflictException('Not enough points to use this promotion');
+        }
 
-    //  Update lại total_each_ticket nếu mã thay đổi
-    if (isPromotionChanged) {
-      for (const detail of existingOrder.orderDetails) {
-        const oldPrice = Number(detail.total_each_ticket);
-        const ratio = oldPrice / ticketTotal || 0;
-        const discount = Math.round(ticketDiscountAmount * ratio);
-        detail.total_each_ticket = roundUpToNearest(oldPrice - discount, 1000).toString();
-      }
-      await this.orderDetailRepository.save(existingOrder.orderDetails);
-    }
-
-    //  Update lại orderExtras
-    await this.orderExtraRepository.remove(existingOrder.orderExtras);
-    const totalProductBeforePromo = orderExtras.reduce((sum, p) => {
-      const qty = products.find(x => x.product_id === p.id)?.quantity || 0;
-      return sum + Number(p.price) * qty;
-    }, 0);
-
-    const extrasToSave: OrderExtra[] = [];
-
-    for (const product of orderExtras) {
-      const quantity = products.find(x => x.product_id === product.id)?.quantity || 0;
-      if (quantity <= 0) continue;
-
-      let basePrice = Number(product.price);
-      if (product.type.toLowerCase() === ProductTypeEnum.COMBO) {
-        const combo = product as Combo;
-        if (combo.discount) {
-          basePrice *= (1 - combo.discount / 100);
+        if ((user.role_id === Role.EMPLOYEE || user.role_id === Role.ADMIN) && !updateData.customer_id) {
+          throw new ConflictException('Staff must provide customer ID when using promotion');
         }
       }
 
-      let unitPrice = basePrice;
+      const ticketTotal = existingOrder.orderDetails.reduce((sum, d) => sum + Number(d.total_each_ticket), 0);
+      const productTotal = calculateProductTotal(orderExtras, updateData);
+      const totalBeforeDiscount = ticketTotal + productTotal;
 
-      if (promotionAmount > 0 && isPromotionChanged && totalProductBeforePromo > 0) {
-        const shareRatio = (basePrice * quantity) / totalProductBeforePromo;
-        const discount = isPercentage
-          ? basePrice * (productDiscountAmount / totalProductBeforePromo)
-          : (productDiscountAmount * shareRatio) / quantity;
+      const isPercentage = newPromotion?.promotionType?.type === 'percentage';
+      const discountValue = parseFloat(newPromotion?.discount ?? '0');
+      const promotionAmount = isPercentage
+        ? Math.round(totalBeforeDiscount * discountValue / 100)
+        : Math.round(discountValue);
 
-        unitPrice = Math.round(basePrice - discount);
+      const totalAfterDiscount = totalBeforeDiscount - promotionAmount;
+      const inputTotal = parseFloat(updateData.total_prices.toString());
+      if (Math.abs(totalAfterDiscount - inputTotal) > 0.01) {
+        throw new BadRequestException('Total price mismatch. Please refresh and try again.');
       }
 
-      const orderExtra = this.orderExtraRepository.create({
-        quantity,
-        unit_price: roundUpToNearest(unitPrice, 1000).toString(),
-        product,
-        order: existingOrder,
+      const ticketRatio = ticketTotal / totalBeforeDiscount || 0;
+      const ticketDiscountAmount = Math.round(promotionAmount * ticketRatio);
+      const productDiscountAmount = promotionAmount - ticketDiscountAmount;
+
+      //  Update lại total_each_ticket nếu mã thay đổi
+      if (isPromotionChanged) {
+        for (const detail of existingOrder.orderDetails) {
+          const oldPrice = Number(detail.total_each_ticket);
+          const ratio = oldPrice / ticketTotal || 0;
+          const discount = Math.round(ticketDiscountAmount * ratio);
+          detail.total_each_ticket = roundUpToNearest(oldPrice - discount, 1000).toString();
+        }
+        await this.orderDetailRepository.save(existingOrder.orderDetails);
+      }
+
+      //  Update lại orderExtras
+      await this.orderExtraRepository.remove(existingOrder.orderExtras);
+      const totalProductBeforePromo = orderExtras.reduce((sum, p) => {
+        const qty = products.find(x => x.product_id === p.id)?.quantity || 0;
+        return sum + Number(p.price) * qty;
+      }, 0);
+
+      const extrasToSave: OrderExtra[] = [];
+
+      for (const product of orderExtras) {
+        const quantity = products.find(x => x.product_id === product.id)?.quantity || 0;
+        if (quantity <= 0) continue;
+
+        let basePrice = Number(product.price);
+        if (product.type.toLowerCase() === ProductTypeEnum.COMBO) {
+          const combo = product as Combo;
+          if (combo.discount) {
+            basePrice *= (1 - combo.discount / 100);
+          }
+        }
+
+        let unitPrice = basePrice;
+
+        if (promotionAmount > 0 && isPromotionChanged && totalProductBeforePromo > 0) {
+          const shareRatio = (basePrice * quantity) / totalProductBeforePromo;
+          const discount = isPercentage
+            ? basePrice * (productDiscountAmount / totalProductBeforePromo)
+            : (productDiscountAmount * shareRatio) / quantity;
+
+          unitPrice = Math.round(basePrice - discount);
+        }
+
+        const orderExtra = this.orderExtraRepository.create({
+          quantity,
+          unit_price: roundUpToNearest(unitPrice, 1000).toString(),
+          product,
+          order: existingOrder,
+          status: Number(updateData.payment_method_id) === Method.CASH
+            ? StatusOrder.SUCCESS
+            : StatusOrder.PENDING,
+        });
+
+        extrasToSave.push(orderExtra);
+      }
+
+      if (extrasToSave.length > 0) {
+        await this.orderExtraRepository.save(extrasToSave);
+      }
+
+      //  Update lại order // nếu là cash thì success
+      await this.orderRepository.update(existingOrder.id, {
+        total_prices: totalAfterDiscount.toString(),
+        promotion: newPromotion,
+        order_date: new Date(),
         status: Number(updateData.payment_method_id) === Method.CASH
           ? StatusOrder.SUCCESS
           : StatusOrder.PENDING,
+
       });
 
-      extrasToSave.push(orderExtra);
-    }
-
-    if (extrasToSave.length > 0) {
-      await this.orderExtraRepository.save(extrasToSave);
-    }
-
-    //  Update lại order
-    await this.orderRepository.update(existingOrder.id, {
-      total_prices: totalAfterDiscount.toString(),
-      promotion: newPromotion,
-      order_date: new Date(),
-    });
-
-    //  Update lại transaction
-    const paymentCode = await this.getPaymentCode(updateData, clientIp);
-    if (!paymentCode?.payUrl || !paymentCode?.orderId) {
-      throw new BadRequestException('Failed to create payment URL');
-    }
-
-    const paymentMethod = await this.paymentMethodRepository.findOne({
-      where: { id: Number(updateData.payment_method_id) }
-    });
-
-    if (paymentMethod) {
-      existingOrder.transaction.paymentMethod = paymentMethod;
-    }
-
-    existingOrder.transaction.transaction_code = paymentCode.orderId;
-    existingOrder.transaction.transaction_date = new Date();
-    await this.transactionRepository.save(existingOrder.transaction);
-
-    //  Cộng điểm nếu là thanh toán CASH + promotion mới
-    if (
-      updateData.customer_id &&
-      Number(updateData.payment_method_id) === Method.CASH &&
-      isPromotionChanged
-    ) {
-      const customer = await this.userRepository.findOne({
-        where: { id: updateData.customer_id },
-        relations: ['role'],
-      });
-
-      if (!customer || customer.role.role_id !== Role.USER) {
-        throw new ForbiddenException('Invalid customer for point accumulation');
+      //  Update lại transaction
+      const paymentCode = await this.getPaymentCode(updateData, clientIp);
+      if (!paymentCode?.payUrl || !paymentCode?.orderId) {
+        throw new BadRequestException('Failed to create payment URL');
       }
 
-      const earnedScore = Math.floor(totalAfterDiscount / 1000) - (newPromotion?.exchange ?? 0);
-      customer.score += earnedScore;
-
-      await this.userRepository.save(customer);
-      await this.historyScoreRepository.save({
-        score_change: earnedScore,
-        user: customer,
-        order: existingOrder,
+      const paymentMethod = await this.paymentMethodRepository.findOne({
+        where: { id: Number(updateData.payment_method_id) }
       });
-    }
 
-    return {
-      payUrl: paymentCode.payUrl,
-    };
-  } catch (error) {
-    throw error;
+      if (paymentMethod) {
+        existingOrder.transaction.paymentMethod = paymentMethod;
+      }
+
+      existingOrder.transaction.transaction_code = paymentCode.orderId;
+      existingOrder.transaction.transaction_date = new Date();
+      existingOrder.transaction.status = Number(updateData.payment_method_id) === Method.CASH
+        ? StatusOrder.SUCCESS
+        : StatusOrder.PENDING;
+      await this.transactionRepository.save(existingOrder.transaction);
+      // update schedule seat in db 
+      // If payment method is CASH, immediately change seat status to BOOKED
+      if (Number(updateData.payment_method_id) === Method.CASH) {
+        const seatIds = updateData.seats.map(seat => seat.id);
+        await this.changeStatusScheduleSeatToBooked(seatIds, updateData.schedule_id);
+      }
+      //  Cộng điểm nếu là thanh toán CASH + promotion mới
+      if (
+        updateData.customer_id &&
+        Number(updateData.payment_method_id) === Method.CASH &&
+        isPromotionChanged
+      ) {
+        const customer = await this.userRepository.findOne({
+          where: { id: updateData.customer_id },
+          relations: ['role'],
+        });
+
+        if (!customer || customer.role.role_id !== Role.USER) {
+          throw new ForbiddenException('Invalid customer for point accumulation');
+        }
+
+        const earnedScore = Math.floor(totalAfterDiscount / 1000) - (newPromotion?.exchange ?? 0);
+        customer.score += earnedScore;
+
+        await this.userRepository.save(customer);
+        await this.historyScoreRepository.save({
+          score_change: earnedScore,
+          user: customer,
+          order: existingOrder,
+        });
+      }
+      // socket emit for order update for cash
+      if (Number(updateData.payment_method_id) === Method.CASH) {
+        this.gateway.emitBookSeat({
+          schedule_id: updateData.schedule_id,
+          seatIds: updateData.seats.map(seat => seat.id),
+        });
+      }
+      return {
+        payUrl: paymentCode.payUrl,
+      };
+    } catch (error) {
+      throw error;
+    }
   }
-}
 
 
 
@@ -1953,7 +1971,7 @@ export class OrderService {
       }
     });
 
-    await Promise.allSettled(tasks); 
+    await Promise.allSettled(tasks);
 
     return result;
   }
