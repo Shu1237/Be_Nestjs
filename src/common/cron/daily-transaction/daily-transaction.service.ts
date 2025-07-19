@@ -13,14 +13,14 @@ export class ReportService {
     name: 'daily-order-stats',
   })
   async handleDailyOrderStats() {
-    this.logger.log('Starting daily order statistics check');
-    const result = await this.orderService.checkAllOrdersStatusByGateway();
-    this.logger.log('Daily order statistics check completed');
-    if (result) {
-      this.logger.log('Order statistics by payment method:', result);
-    } else {
-      this.logger.log('No orders found for today');
-    }
+    // this.logger.log('Starting daily order statistics check');
+    // const result = await this.orderService.checkAllOrdersStatusByGateway();
+    // this.logger.log('Daily order statistics check completed');
+    // if (result) {
+    //   this.logger.log('Order statistics by payment method:', result);
+    // } else {
+    //   this.logger.log('No orders found for today');
+    // }
   }
 }
 
