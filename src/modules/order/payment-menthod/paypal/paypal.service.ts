@@ -220,9 +220,10 @@ export class PayPalService extends AbstractPaymentService {
 
         return {
             method: PaymentGateway.PAYPAL,
-            status: data.status, // e.g., COMPLETED, PAYER_ACTION_REQUIRED
+            status: data.status,
             paid: data.status === 'COMPLETED',
-            payerEmail: data.payer?.email_address,
+            total: data.purchase_units[0].amount.value,
+            currency: data.purchase_units[0].amount.currency_code || 'USD'
         };
     }
 

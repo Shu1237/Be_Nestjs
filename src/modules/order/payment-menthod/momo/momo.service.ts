@@ -262,6 +262,8 @@ export class MomoService extends AbstractPaymentService {
         method: PaymentGateway.MOMO,
         status: response.data.resultCode === 0 ? 'PAID' : 'UNPAID',
         paid: response.data.resultCode === 0,
+        total: response.data.amount,
+        curency: 'VND',
       };
     } catch (error: any) {
       throw new InternalServerErrorException('Failed to query MoMo order', error?.response?.data);

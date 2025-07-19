@@ -245,7 +245,8 @@ export class ZalopayService extends AbstractPaymentService {
         method:PaymentGateway.ZALOPAY,
         status: data.return_code === 1 && data.sub_return_code === 1 ? 'PAID' : 'UNPAID',
         paid: data.sub_return_code === 1,
-        amount: data.amount,
+        total: data.amount,
+        currency: 'VND',
       };
     } catch (error) {
       throw new Error(

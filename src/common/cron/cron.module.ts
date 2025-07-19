@@ -16,6 +16,8 @@ import { PromotionCronService } from './promotion/PromotionCron.Service';
 import { OrderExtra } from 'src/database/entities/order/order-extra';
 import { Transaction } from 'src/database/entities/order/transaction';
 import { SeatModule } from 'src/modules/seat/seat.module';
+import { OrderModule } from 'src/modules/order/order.module';
+import { ReportService } from './daily-transaction/daily-transaction.service';
 
 
 @Module({
@@ -24,6 +26,7 @@ import { SeatModule } from 'src/modules/seat/seat.module';
     MyGateWayModule,
     SeatModule,
     TypeOrmModule.forFeature([RefreshToken, ScheduleSeat, Schedule, Movie, Order, Promotion, OrderExtra, Transaction]),
+    OrderModule
   ],
   providers: [
     RefreshTokenService,
@@ -31,6 +34,7 @@ import { SeatModule } from 'src/modules/seat/seat.module';
     ScheduleExpireCheckService,
     OrderCronService,
     PromotionCronService,
+    ReportService,
   ],
 
 })
