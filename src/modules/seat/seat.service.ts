@@ -3,11 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Seat } from 'src/database/entities/cinema/seat';
 import { HoldSeatType, JWTUserType } from 'src/common/utils/type';
 import { In, Repository } from 'typeorm';
-import { CreateSeatDto } from './dto/create-seat.dto';
-import { UpdateSeatDto } from './dto/update-seat.dto';
 import { SeatType } from 'src/database/entities/cinema/seat-type';
 import { CinemaRoom } from 'src/database/entities/cinema/cinema-room';
-import { Schedule } from 'src/database/entities/cinema/schedule';
 import { ScheduleSeat } from 'src/database/entities/cinema/schedule_seat';
 import { StatusSeat } from 'src/common/enums/status_seat.enum';
 import Redis from 'ioredis/built/Redis';
@@ -20,6 +17,8 @@ import { seatFieldMapping } from 'src/common/pagination/fillters/seat-filed-mapp
 import { applySorting } from 'src/common/pagination/apply_sort';
 import { applyPagination } from 'src/common/pagination/applyPagination';
 import { buildPaginationResponse } from 'src/common/pagination/pagination-response';
+import { BulkSeatOperationDto } from './dto/BulkSeatOperationDto';
+import { BulkSeatIdsDto } from './dto/BulkSeatIdsDto';
 
 @Injectable()
 export class SeatService {
@@ -33,7 +32,7 @@ export class SeatService {
     private scheduleSeatRepository: Repository<ScheduleSeat>,
 
     @Inject('REDIS_CLIENT') private readonly redisClient: Redis,
-  ) { }
+  ) {}
 
   private getSeatSummary(seat: Seat) {
     return {
@@ -48,7 +47,7 @@ export class SeatService {
       cinemaRoom: {
         id: seat.cinemaRoom?.id,
         name: seat.cinemaRoom?.cinema_room_name,
-      }
+      },
     };
   }
   async getAllSeatsUser(): Promise<Seat[]> {
@@ -57,11 +56,12 @@ export class SeatService {
       relations: ['seatType', 'cinemaRoom'],
     });
   }
-   
+
   async getAllSeats(fillters: SeatPaginationDto) {
-    const qb = this.seatRepository.createQueryBuilder('seat')
+    const qb = this.seatRepository
+      .createQueryBuilder('seat')
       .leftJoinAndSelect('seat.seatType', 'seatType')
-      .leftJoinAndSelect('seat.cinemaRoom', 'cinemaRoom')
+      .leftJoinAndSelect('seat.cinemaRoom', 'cinemaRoom');
 
     applyCommonFilters(qb, fillters, seatFieldMapping);
     const allowedFields = [
@@ -69,16 +69,22 @@ export class SeatService {
       'seat.seat_column',
       'seatType.seat_type_name',
       'cinemaRoom.cinema_room_name',
-      'cinemaRoom.id'
+      'cinemaRoom.id',
     ];
-    applySorting(qb, fillters.sortBy, fillters.sortOrder, allowedFields, 'seat.seat_row');
+    applySorting(
+      qb,
+      fillters.sortBy,
+      fillters.sortOrder,
+      allowedFields,
+      'seat.seat_row',
+    );
 
     applyPagination(qb, {
       page: fillters.page,
       take: fillters.take,
-    })
+    });
     const [seats, total] = await qb.getManyAndCount();
-    const seatSummaries = seats.map(seat => this.getSeatSummary(seat));
+    const seatSummaries = seats.map((seat) => this.getSeatSummary(seat));
     const counts = await this.seatRepository
       .createQueryBuilder('seat')
       .select([
@@ -86,8 +92,11 @@ export class SeatService {
         `SUM(CASE WHEN seat.is_deleted = true THEN 1 ELSE 0 END) AS deletedCount`,
       ])
       .getRawOne();
-    const activeCount = parseInt(counts.activeCount, 10) || 0;
-    const deletedCount = parseInt(counts.deletedCount, 10) || 0;
+
+    const activeCount =
+      parseInt(counts?.activeCount?.toString() || '0', 10) || 0;
+    const deletedCount =
+      parseInt(counts?.deletedCount?.toString() || '0', 10) || 0;
 
     return buildPaginationResponse(seatSummaries, {
       total,
@@ -95,7 +104,6 @@ export class SeatService {
       take: fillters.take,
       activeCount,
       deletedCount,
-
     });
   }
 
@@ -116,218 +124,6 @@ export class SeatService {
       relations: ['seatType'],
     });
   }
-
-  async createSeat(createSeatDto: CreateSeatDto) {
-    const { seat_type_id, cinema_room_id } = createSeatDto;
-
-    const seatType = await this.seatTypeRepository.findOne({
-      where: { id: parseInt(seat_type_id) },
-    });
-    if (!seatType) {
-      throw new NotFoundException('Seat type not found');
-    }
-
-    const cinemaRoom = await this.cinemaRoomRepository.findOne({
-      where: { id: parseInt(cinema_room_id) },
-    });
-    if (!cinemaRoom) {
-      throw new NotFoundException('Cinema room not found');
-    }
-
-    // const seat = this.seatRepository.create({
-    //   ...seatDetails,
-    //   status: true,
-    //   is_hold: false,
-    //   seatType: seatType,
-    //   cinemaRoom: cinemaRoom,
-    // });
-    // await this.seatRepository.save(seat);
-    return { msg: 'Seat created successfully' };
-  }
-  async createSeatsBulk(dto: BulkCreateSeatDto) {
-    try {
-      const { sections, seat_column, cinema_room_id } = dto;
-      const roomId = parseInt(cinema_room_id);
-
-      // Validation
-      const [cinemaRoom, seatTypes] = await Promise.all([
-        this.cinemaRoomRepository.findOne({ where: { id: roomId } }),
-        this.seatTypeRepository.find({
-          where: { id: In(sections.map((s) => s.seat_type_id)) },
-        }),
-      ]);
-
-      if (!cinemaRoom) {
-        throw new NotFoundException('Cinema room not found');
-      }
-
-      const seatTypeIds = new Set(sections.map((s) => s.seat_type_id));
-      if (seatTypes.length !== seatTypeIds.size) {
-        throw new NotFoundException('Some seat types not found');
-      }
-
-      const seatTypeMap = new Map(seatTypes.map((st) => [st.id, st]));
-      const allSeatIds = new Set<string>();
-      const layout: { type: number; seat: string[][] }[] = [];
-      const seatMap = new Map<
-        string,
-        { row: string; col: string; seatType: SeatType; originalSeatId: string }
-      >();
-      let currentRow = 0;
-
-      // Process sections
-      for (const section of sections) {
-        const seatType = seatTypeMap.get(section.seat_type_id)!;
-
-        // Handle seat_rows
-        if (section.seat_rows) {
-          const sectionLayout: string[][] = [];
-          const endRow = currentRow + section.seat_rows;
-
-          for (let row = currentRow; row < endRow; row++) {
-            const rowChar = String.fromCharCode(65 + row);
-            const rowSeats: string[] = [];
-
-            for (let col = 0; col < seat_column; col++) {
-              const originalSeatId = `${rowChar}${col + 1}`;
-              const uniqueSeatId = `R${roomId}_${originalSeatId}`;
-
-              if (allSeatIds.has(uniqueSeatId)) {
-                throw new BadRequestException(
-                  `Duplicate seat ID: ${originalSeatId}`,
-                );
-              }
-
-              allSeatIds.add(uniqueSeatId);
-              rowSeats.push(originalSeatId);
-              seatMap.set(uniqueSeatId, {
-                row: rowChar,
-                col: (col + 1).toString(),
-                seatType,
-                originalSeatId,
-              });
-            }
-            sectionLayout.push(rowSeats);
-          }
-          layout.push({ type: section.seat_type_id, seat: sectionLayout });
-          currentRow = endRow;
-        }
-
-        // Handle seat_ids
-        if (section.seat_ids?.length) {
-          const rowMap = new Map<string, string[]>();
-
-          for (const originalSeatId of section.seat_ids) {
-            const uniqueSeatId = `R${roomId}_${originalSeatId}`;
-
-            if (allSeatIds.has(uniqueSeatId)) {
-              throw new BadRequestException(
-                `Duplicate seat ID: ${originalSeatId}`,
-              );
-            }
-
-            allSeatIds.add(uniqueSeatId);
-            const rowChar = originalSeatId[0];
-            const col = originalSeatId.substring(1);
-
-            seatMap.set(uniqueSeatId, {
-              row: rowChar,
-              col,
-              seatType,
-              originalSeatId,
-            });
-
-            if (!rowMap.has(rowChar)) rowMap.set(rowChar, []);
-            rowMap.get(rowChar)!.push(originalSeatId);
-          }
-
-          layout.push({
-            type: section.seat_type_id,
-            seat: Array.from(rowMap.values()),
-          });
-        }
-      }
-
-      const allSeatIdsArray = Array.from(allSeatIds);
-
-      // Check existing seats
-      const existingSeats = await this.seatRepository.find({
-        where: { id: In(allSeatIdsArray) },
-        select: ['id'],
-      });
-
-      if (existingSeats.length > 0) {
-        const existingOriginalIds = existingSeats.map(
-          (seat) => seatMap.get(seat.id)?.originalSeatId || seat.id,
-        );
-        throw new BadRequestException(
-          `Some seats already exist: ${existingOriginalIds.join(', ')}`,
-        );
-      }
-
-      // Create seats
-      const seatsToCreate = allSeatIdsArray.map((uniqueSeatId) => {
-        const seatData = seatMap.get(uniqueSeatId)!;
-        return {
-          id: uniqueSeatId,
-          seat_row: seatData.row,
-          seat_column: seatData.col,
-          is_deleted: false,
-          seatType: seatData.seatType,
-          cinemaRoom,
-        };
-      });
-
-      if (seatsToCreate.length > 0) {
-        await this.seatRepository.insert(seatsToCreate);
-      }
-
-      return {
-        success: true,
-        message: 'Seats created successfully',
-        data: {
-          cinema_room_id: roomId,
-          created_count: seatsToCreate.length,
-          layout,
-        },
-      };
-    } catch (error: unknown) {
-      // Re-throw known exceptions
-      if (
-        error instanceof NotFoundException ||
-        error instanceof BadRequestException
-      ) {
-        throw error;
-      }
-
-      // Handle unknown errors
-      let errorMessage = 'Unknown error';
-      if (error && typeof error === 'object' && 'message' in error) {
-        errorMessage = String((error as { message?: unknown }).message);
-      }
-
-      throw new BadRequestException(`Failed to create seats: ${errorMessage}`);
-    }
-  }
-  async updateSeat(id: string, updateSeatDto: UpdateSeatDto) {
-    const seat = await this.getSeatById(id);
-    Object.assign(seat, updateSeatDto);
-    await this.seatRepository.save(seat);
-    return { msg: 'Seat updated successfully' };
-  }
-
-  async deleteSeat(id: string) {
-    const seat = await this.getSeatById(id);
-    // if (seat.is_hold) {
-    //   throw new BadRequestException('Cannot delete a seat that is being held');
-    // }
-    if (seat.is_deleted) {
-      throw new BadRequestException('Seat is already deleted');
-    }
-    await this.seatRepository.update(id, { is_deleted: true });
-    return { msg: 'Seat deleted successfully' };
-  }
-
   async restoreSeat(id: string) {
     const seat = await this.seatRepository.findOne({
       where: { id, is_deleted: false },
@@ -339,44 +135,21 @@ export class SeatService {
         where: { id },
         relations: ['seatType', 'cinemaRoom'],
       });
-      
+
       if (!deletedSeat) {
         throw new NotFoundException('Seat not found');
       }
-      
+
       if (!deletedSeat.is_deleted) {
         throw new BadRequestException('Seat is not soft-deleted');
       }
-      
+
       deletedSeat.is_deleted = false;
       await this.seatRepository.save(deletedSeat);
       return { msg: 'Seat restored successfully' };
     }
 
     throw new BadRequestException('Seat is not soft-deleted');
-  }
-
-  async updateSeatStatus(id: string) {
-    const seat = await this.seatRepository.findOne({
-      where: { id, is_deleted: false },
-      relations: ['seatType', 'cinemaRoom'],
-    });
-
-    if (!seat) {
-      throw new NotFoundException('Seat not found');
-    }
-
-    // if (seat.is_hold) {
-    //   throw new BadRequestException('Cannot update status of a seat that is being held');
-    // }
-
-    // Toggle the status
-    // await this.seatRepository.update(id, { status: !seat.status });
-
-    // Clear any cached data for this seat
-    await this.redisClient.del(`seat-${id}`);
-
-    return { msg: 'Change status successfully' };
   }
   private async getScheduleSeats(
     scheduleId: number,
@@ -436,5 +209,202 @@ export class SeatService {
     }
 
     await this.redisClient.del(redisKey);
+  }
+  // Shared validation helper
+  private async validateSeatsExist(
+    seatIds: string[],
+    shouldExist: boolean = true,
+  ) {
+    const existingSeats = await this.seatRepository.find({
+      where: { id: In(seatIds), is_deleted: false },
+      select: ['id'],
+    });
+
+    const foundIds = existingSeats.map((s) => s.id);
+    const missingIds = seatIds.filter((id) => !foundIds.includes(id));
+
+    if (shouldExist && missingIds.length > 0) {
+      throw new NotFoundException(`Seats not found: ${missingIds.join(', ')}`);
+    }
+    if (!shouldExist && foundIds.length > 0) {
+      throw new BadRequestException(
+        `Seats already exist: ${foundIds.join(', ')}`,
+      );
+    }
+
+    return { foundIds, missingIds };
+  }
+
+  // Shared entity validation
+  private async validateRelatedEntities(
+    seatTypeIds: number[],
+    roomIds: number[],
+  ) {
+    const [seatTypes, rooms] = await Promise.all([
+      seatTypeIds.length
+        ? this.seatTypeRepository.find({ where: { id: In(seatTypeIds) } })
+        : Promise.resolve([]),
+      roomIds.length
+        ? this.cinemaRoomRepository.find({ where: { id: In(roomIds) } })
+        : Promise.resolve([]),
+    ]);
+
+    const seatTypeMap = new Map<number, SeatType>();
+    const roomMap = new Map<number, CinemaRoom>();
+
+    seatTypes.forEach((st) => seatTypeMap.set(st.id, st));
+    rooms.forEach((r) => roomMap.set(r.id, r));
+
+    return { seatTypeMap, roomMap };
+  }
+  async createSeatsBulk(dto: BulkCreateSeatDto) {
+    const { sections, seat_column, cinema_room_id } = dto;
+    const roomId = parseInt(cinema_room_id);
+
+    // Validate entities
+    const seatTypeIds = [...new Set(sections.map((s) => s.seat_type_id))];
+    const { seatTypeMap, roomMap } = await this.validateRelatedEntities(
+      seatTypeIds,
+      [roomId],
+    );
+
+    if (!roomMap.has(roomId))
+      throw new NotFoundException('Cinema room not found');
+    if (seatTypeMap.size !== seatTypeIds.length)
+      throw new NotFoundException('Some seat types not found');
+
+    // Generate seat data
+    const seatsToCreate: Partial<Seat>[] = [];
+    let currentRow = 0;
+
+    for (const section of sections) {
+      const seatType = seatTypeMap.get(section.seat_type_id)!;
+      const seatIds: string[] = [];
+
+      // Generate from rows or use provided IDs
+      if (section.seat_rows) {
+        for (
+          let row = currentRow;
+          row < currentRow + section.seat_rows;
+          row++
+        ) {
+          const rowChar = String.fromCharCode(65 + row);
+          for (let col = 1; col <= seat_column; col++) {
+            seatIds.push(`${rowChar}${col}`);
+          }
+        }
+        currentRow += section.seat_rows;
+      } else {
+        seatIds.push(...(section.seat_ids || []));
+      }
+
+      // Create seat entities
+      seatIds.forEach((originalId) => {
+        const uniqueId = `R${roomId}_${originalId}`;
+        seatsToCreate.push({
+          id: uniqueId,
+          seat_row: originalId[0],
+          seat_column: originalId.substring(1),
+          is_deleted: false,
+          seatType,
+          cinemaRoom: roomMap.get(roomId)!,
+        });
+      });
+    }
+
+    // Validate no duplicates
+    const uniqueIds: string[] = seatsToCreate.map((s) => s.id as string);
+    await this.validateSeatsExist(uniqueIds, false);
+
+    // Insert
+    await this.seatRepository.insert(seatsToCreate);
+    return { success: true, created_count: seatsToCreate.length };
+  }
+  async bulkUpdateSeats(dto: BulkSeatOperationDto) {
+    const { seat_ids, updates } = dto;
+    if (!seat_ids?.length)
+      throw new BadRequestException('No seat IDs provided');
+
+    // Validate seats exist
+    const { foundIds } = await this.validateSeatsExist(seat_ids);
+
+    // Build update data
+    const updateData: Partial<Seat> = {};
+    const entityIds: number[] = [];
+
+    if (updates.seat_row) updateData.seat_row = updates.seat_row;
+    if (updates.seat_column) updateData.seat_column = updates.seat_column;
+    if (updates.seat_type_id) entityIds.push(parseInt(updates.seat_type_id));
+    if (updates.cinema_room_id)
+      entityIds.push(parseInt(updates.cinema_room_id));
+
+    // Validate related entities if needed
+    if (entityIds.length) {
+      const { seatTypeMap, roomMap } = await this.validateRelatedEntities(
+        updates.seat_type_id ? [parseInt(updates.seat_type_id)] : [],
+        updates.cinema_room_id ? [parseInt(updates.cinema_room_id)] : [],
+      );
+
+      if (
+        updates.seat_type_id &&
+        !seatTypeMap.has(parseInt(updates.seat_type_id))
+      ) {
+        throw new NotFoundException('Seat type not found');
+      }
+      if (
+        updates.cinema_room_id &&
+        !roomMap.has(parseInt(updates.cinema_room_id))
+      ) {
+        throw new NotFoundException('Cinema room not found');
+      }
+
+      if (updates.seat_type_id)
+        updateData.seatType = seatTypeMap.get(parseInt(updates.seat_type_id))!;
+      if (updates.cinema_room_id)
+        updateData.cinemaRoom = roomMap.get(parseInt(updates.cinema_room_id))!;
+    }
+
+    // Execute update
+    const result = await this.seatRepository.update(
+      { id: In(foundIds) },
+      updateData,
+    );
+    return { success: true, updated_count: result.affected || 0 };
+  }
+  async bulkDeleteSeats(dto: BulkSeatIdsDto) {
+    const { seat_ids, room_id } = dto;
+    if (!seat_ids?.length)
+      throw new BadRequestException('No seat IDs provided');
+    // Build where condition
+    const whereCondition: {
+      id: any;
+      cinemaRoom?: { id: number };
+    } = {
+      id: In(seat_ids),
+    };
+
+    if (room_id) {
+      whereCondition.cinemaRoom = { id: parseInt(room_id) };
+    }
+    // Get valid seats (bao gồm cả seats đã bị soft delete)
+    const existingSeats = await this.seatRepository.find({
+      where: whereCondition,
+      select: ['id'],
+    });
+
+    if (!existingSeats.length) {
+      throw new NotFoundException('No seats found to delete');
+    }
+    const validIds = existingSeats.map((s) => s.id);
+    // Execute hard delete
+    const result = await this.seatRepository.delete({
+      id: In(validIds),
+    });
+    return {
+      success: true,
+      deleted_count: result.affected || 0,
+      deleted_seat_ids: validIds,
+      message: 'Seats deleted successfully',
+    };
   }
 }
