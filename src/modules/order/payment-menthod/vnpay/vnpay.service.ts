@@ -341,6 +341,8 @@ export class VnpayService extends AbstractPaymentService {
         method: 'VNPAY',
         status: data.vnp_ResponseCode === '00' && data.vnp_TransactionStatus === '00' ? 'PAID' : 'UNPAID',
         paid: data.vnp_TransactionStatus === '00',
+        total: data.vnp_Amount ? parseFloat(data.vnp_Amount) / 100 : 0,
+        currency: data.vnp_CurrCode || 'VND',
       };
     } catch (error) {
       throw new InternalServerErrorException('Failed to query VNPAY order');

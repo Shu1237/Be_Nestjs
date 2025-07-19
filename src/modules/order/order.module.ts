@@ -30,6 +30,7 @@ import { TicketModule } from '../ticket/ticket.module';
 import { HistoryScore } from 'src/database/entities/order/history_score';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { DailyTransactionSummary } from 'src/database/entities/order/daily_transaction_summary';
 
 
 
@@ -56,6 +57,7 @@ import { ConfigService } from '@nestjs/config';
       Combo,
       OrderExtra,
       HistoryScore,
+      DailyTransactionSummary
 
     ]
   ),

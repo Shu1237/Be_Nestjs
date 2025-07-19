@@ -98,10 +98,10 @@ export class OrderController {
   async checkOrderStatus(@Param('orderId', ParseIntPipe) orderId: number) {
     return this.orderService.checkQueryOrderByGateway(orderId);
   }
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard)
   @Get('admin/check-all-gateway-status')
   checkAllGateways(@Req() req) {
-    checkAdminEmployeeRole(req.user, 'Only admin or employee can check all gateways status');
+    // checkAdminEmployeeRole(req.user, 'Only admin or employee can check all gateways status');
     return this.orderService.checkAllOrdersStatusByGateway();
   }
 

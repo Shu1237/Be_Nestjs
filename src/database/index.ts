@@ -23,6 +23,7 @@ import { Role } from './entities/user/roles';
 import { User } from './entities/user/user';
 import { Product } from './entities/item/product';
 import { OrderExtra } from './entities/order/order-extra';
+import { DailyTransactionSummary } from './entities/order/daily_transaction_summary';
 
 export const allEntities = [
   User,
@@ -50,4 +51,5 @@ export const allEntities = [
   PromotionType,
   HistoryScore,
   Product,
+  DailyTransactionSummary
 ];

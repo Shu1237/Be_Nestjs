@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, IsNull, Not } from 'typeorm';
+import { Repository, In, IsNull, Not, Between } from 'typeorm';
 import { Order } from 'src/database/entities/order/order';
 import { OrderDetail } from 'src/database/entities/order/order-detail';
 import { PaymentMethod } from 'src/database/entities/order/payment-method';
@@ -44,6 +44,7 @@ import { applySorting } from 'src/common/pagination/apply_sort';
 import { buildPaginationResponse } from 'src/common/pagination/pagination-response';
 import { applyPagination } from 'src/common/pagination/applyPagination';
 import { PaymentGateway } from 'src/common/enums/payment_gatewat.enum';
+import { DailyTransactionSummary } from 'src/database/entities/order/daily_transaction_summary';
 @Injectable()
 export class OrderService {
 
@@ -75,6 +76,8 @@ export class OrderService {
     private productRepository: Repository<Product>,
     @InjectRepository(HistoryScore)
     private historyScoreRepository: Repository<HistoryScore>,
+    @InjectRepository(DailyTransactionSummary)
+    private dailyTransactionSummaryRepository: Repository<DailyTransactionSummary>,
 
 
 
@@ -1906,34 +1909,181 @@ export class OrderService {
   }
 
 
+  // async checkAllOrdersStatusByGateway() {
+  //   const now = new Date();
+  //   // const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+  //   // const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+  //   const startOfDay = new Date(2025, 6, 13, 0, 0, 0);  // tháng 6 = tháng 7
+  //   const endOfDay = new Date(2025, 6, 13, 23, 59, 59);
+
+  //   const orders = await this.orderRepository.find({
+  //     where: { order_date: Between(startOfDay, endOfDay) },
+  //     relations: ['transaction', 'transaction.paymentMethod'],
+  //   });
+
+  //   const summaryMap = new Map<number, {
+  //     totalOrders: number;
+  //     totalSuccess: number;
+  //     totalFailed: number;
+  //     totalAmount: number;
+  //     paymentMethod: PaymentMethod;
+  //   }>();
+
+  //   const tasks = orders.map(async (order) => {
+  //     const { transaction, status } = order;
+  //     const paymentMethod = transaction?.paymentMethod;
+
+  //     if (!paymentMethod) return;
+
+  //     const key = paymentMethod.id;
+  //     if (!summaryMap.has(key)) {
+  //       summaryMap.set(key, {
+  //         totalOrders: 0,
+  //         totalSuccess: 0,
+  //         totalFailed: 0,
+  //         totalAmount: 0,
+  //         paymentMethod,
+  //       });
+  //     }
+
+  //     const summary = summaryMap.get(key)!;
+  //     summary.totalOrders += 1;
+  //     summary.totalAmount += Number(transaction.prices || 0);
+
+  //     const methodName = paymentMethod.name as keyof typeof PaymentGateway;
+  //     const method = PaymentGateway[methodName];
+  //     const code = transaction.transaction_code;
+  //     const date = transaction.transaction_date;
+
+  //     if (method === PaymentGateway.CASH) {
+  //       if (status === StatusOrder.SUCCESS) {
+  //         summary.totalSuccess += 1;
+  //       } else {
+  //         summary.totalFailed += 1;
+  //       }
+  //       return;
+  //     }
+
+  //     try {
+  //       let res: { paid: boolean };
+
+  //       switch (method) {
+  //         case PaymentGateway.MOMO:
+  //           res = await this.momoService.queryOrderStatusMomo(code);
+  //           break;
+  //         case PaymentGateway.PAYPAL:
+  //           res = await this.paypalService.queryOrderStatusPaypal(code);
+  //           break;
+  //         case PaymentGateway.VISA:
+  //           res = await this.visaService.queryOrderStatusVisa(code);
+  //           break;
+  //         case PaymentGateway.VNPAY:
+  //           res = await this.vnpayService.queryOrderStatusVnpay(code, formatDate(date));
+  //           break;
+  //         case PaymentGateway.ZALOPAY:
+  //           res = await this.zalopayService.queryOrderStatusZaloPay(code);
+  //           break;
+  //         default:
+  //           res = { paid: false };
+  //       }
+
+  //       if (res?.paid) {
+  //         summary.totalSuccess += 1;
+  //       } else {
+  //         summary.totalFailed += 1;
+  //       }
+  //     } catch (err) {
+  //       summary.totalFailed += 1;
+  //     }
+  //   });
+
+  //   await Promise.allSettled(tasks);
+
+  //   const reportDate = now.toISOString().slice(0, 10); // YYYY-MM-DD
+  //   for (const [, summary] of summaryMap) {
+  //     const record = this.dailyTransactionSummaryRepository.create({
+  //       reportDate,
+  //       totalOrders: summary.totalOrders,
+  //       totalSuccess: summary.totalSuccess,
+  //       totalFailed: summary.totalFailed,
+  //       totalAmount: summary.totalAmount,
+  //       paymentMethod: summary.paymentMethod,
+  //     });
+
+  //     await this.dailyTransactionSummaryRepository.save(record);
+  //   }
+
+  //   return { success: true };
+  // }
+
+
   async checkAllOrdersStatusByGateway() {
+    console.log('=== START checkAllOrdersStatusByGateway ===');
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+
     const orders = await this.orderRepository.find({
+      where: { order_date: Between(startOfDay, endOfDay) },
       relations: ['transaction', 'transaction.paymentMethod'],
     });
 
-    const result: Record<PaymentGateway, { totalSuccess: number; totalFailed: number }> = {
-      MOMO: { totalSuccess: 0, totalFailed: 0 },
-      PAYPAL: { totalSuccess: 0, totalFailed: 0 },
-      VISA: { totalSuccess: 0, totalFailed: 0 },
-      VNPAY: { totalSuccess: 0, totalFailed: 0 },
-      ZALOPAY: { totalSuccess: 0, totalFailed: 0 },
-      CASH: { totalSuccess: 0, totalFailed: 0 },
+    console.log(`Found ${orders.length} orders`);
+
+    const result: Record<PaymentGateway, { totalSuccess: number; totalFailed: number; totalRevenue: number }> = {
+      MOMO: { totalSuccess: 0, totalFailed: 0, totalRevenue: 0 },
+      PAYPAL: { totalSuccess: 0, totalFailed: 0, totalRevenue: 0 },
+      VISA: { totalSuccess: 0, totalFailed: 0, totalRevenue: 0 },
+      VNPAY: { totalSuccess: 0, totalFailed: 0, totalRevenue: 0 },
+      ZALOPAY: { totalSuccess: 0, totalFailed: 0, totalRevenue: 0 },
+      CASH: { totalSuccess: 0, totalFailed: 0, totalRevenue: 0 },
     };
 
     const tasks = orders.map(async (order) => {
-      const { transaction, status } = order;
+      const { transaction, status, total_prices } = order;
       const methodId = transaction?.paymentMethod?.id;
 
-      if (!methodId) return;
+      if (!methodId) {
+        console.log(`Order ${order.id} has no payment method`);
+        return;
+      }
 
-      const method = PaymentGateway[Method[methodId] as keyof typeof PaymentGateway];
+      // Create mapping from Method ID to PaymentGateway
+      let method: PaymentGateway;
+      switch (methodId) {
+        case Method.CASH:
+          method = PaymentGateway.CASH;
+          break;
+        case Method.MOMO:
+          method = PaymentGateway.MOMO;
+          break;
+        case Method.PAYPAL:
+          method = PaymentGateway.PAYPAL;
+          break;
+        case Method.VISA:
+          method = PaymentGateway.VISA;
+          break;
+        case Method.VNPAY:
+          method = PaymentGateway.VNPAY;
+          break;
+        case Method.ZALOPAY:
+          method = PaymentGateway.ZALOPAY;
+          break;
+        default:
+          console.log(`Unknown payment method ID: ${methodId}`);
+          return;
+      }
+
       const code = transaction.transaction_code;
-      const date = transaction.transaction_date;
+      const date = order.order_date;
+
+      console.log(`Processing order ${order.id} with method ${method}`);
 
       //  Cash 
       if (method === PaymentGateway.CASH) {
         if (status === StatusOrder.SUCCESS) {
           result.CASH.totalSuccess += 1;
+          result.CASH.totalRevenue += Number(total_prices) || 0;
         } else {
           result.CASH.totalFailed += 1;
         }
@@ -1941,7 +2091,13 @@ export class OrderService {
       }
 
       try {
-        let res: { paid: boolean };
+        let res: {
+          method?: any;
+          status?: any;
+          paid: boolean;
+          total?: any;
+          currency?: any;
+        };
 
         switch (method) {
           case PaymentGateway.MOMO:
@@ -1959,26 +2115,45 @@ export class OrderService {
           case PaymentGateway.ZALOPAY:
             res = await this.zalopayService.queryOrderStatusZaloPay(code);
             break;
+          default:
+            console.log(`Unsupported payment method: ${method}`);
+            return;
         }
 
         if (res?.paid) {
           result[method].totalSuccess += 1;
+          result[method].totalRevenue += Number(res.total) || 0;
         } else {
           result[method].totalFailed += 1;
         }
       } catch (err) {
+        console.log(`Error processing order ${order.id}:`, err);
         result[method].totalFailed += 1;
       }
     });
 
     await Promise.allSettled(tasks);
+    const reportDate = now.toISOString().slice(0, 10); // YYYY-MM-DD
+    for (const [method, summary] of Object.entries(result)) {
+      const methodEntity = await this.paymentMethodRepository.findOneBy({
+        name: method as PaymentGateway,
+      });
 
+      const recordData: any = {
+        reportDate,
+        totalOrders: summary.totalSuccess + summary.totalFailed,
+        totalSuccess: summary.totalSuccess,
+        totalFailed: summary.totalFailed,
+        totalAmount: summary.totalRevenue,
+      };
+      if (methodEntity) {
+        recordData.paymentMethod = methodEntity;
+      }
+
+      const record = this.dailyTransactionSummaryRepository.create(recordData);
+
+      await this.dailyTransactionSummaryRepository.save(record);
+    }
     return result;
   }
-
-
-
-
-
 }
-
