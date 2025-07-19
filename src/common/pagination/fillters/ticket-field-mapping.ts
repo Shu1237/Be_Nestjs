@@ -3,8 +3,6 @@ import { SelectQueryBuilder } from 'typeorm';
 
 export const ticketFieldMapping: Record<string, FilterField> = {
   search: {
-    operator: 'LIKE',
-    field: '',
     customWhere: (qb: SelectQueryBuilder<any>, value: string) => {
       qb.andWhere(
         `(
@@ -27,8 +25,6 @@ export const ticketFieldMapping: Record<string, FilterField> = {
     operator: '=',
   },
   startDate: {
-    field: 'order.order_date',
-    operator: 'BETWEEN',
     customWhere: (qb: SelectQueryBuilder<any>, value: string) => {
       qb.andWhere('order.order_date >= :start', {
         start: `${value} 00:00:00`,
@@ -36,8 +32,6 @@ export const ticketFieldMapping: Record<string, FilterField> = {
     },
   },
   endDate: {
-    field: 'order.order_date',
-    operator: 'BETWEEN',
     customWhere: (qb: SelectQueryBuilder<any>, value: string) => {
       qb.andWhere('order.order_date <= :end', {
         end: `${value} 23:59:59`,

@@ -46,6 +46,7 @@ export default () => ({
     ipnUrl: process.env.MOMO_IPN_URL,
     redirectUrl: process.env.MOMO_REDIRECT_URL,
     partnerCode: process.env.MOMO_PARTNER_CODE,
+    queryUrl: process.env.MOMO_QUERY_URL,
   },
 
   paypal: {
@@ -69,6 +70,7 @@ export default () => ({
     hashSecret: process.env.VNP_HASH_SECRET,
     url: process.env.VNP_URL,
     returnUrl: process.env.VNP_RETURN_URL,
+    queryUrl: process.env.VNP_QUERY_URL,
   },
 
   zalopay: {
@@ -76,6 +78,7 @@ export default () => ({
     key1: process.env.ZALO_KEY,
     endpoint: process.env.ZALOPAY_ENDPOINT,
     returnUrl: process.env.ZALO_RETURN_URL,
+    queryUrl: process.env.ZALO_QUERY_URL,
   },
 
   redis: {

@@ -188,7 +188,7 @@ export class SeatService {
     try {
       await this.redisClient.set(
         redisKey,
-        JSON.stringify({ seatIds, schedule_id }),
+        JSON.stringify({ seatIds, schedule_id, userId: user.account_id }),
         'EX',
         600,
       );

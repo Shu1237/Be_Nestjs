@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, Res, UseGuards, Req, Param, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Res, UseGuards, Req, Param, ParseIntPipe, Patch } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { MomoService } from './payment-menthod/momo/momo.service';
 import { PayPalService } from './payment-menthod/paypal/paypal.service';
@@ -12,15 +12,12 @@ import { JWTUserType } from 'src/common/utils/type';
 import { ScanQrCodeDto } from './dto/qrcode.dto';
 import { InternalServerErrorException } from 'src/common/exceptions/internal-server-error.exception';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
-import { ForbiddenException } from 'src/common/exceptions/forbidden.exception';
 import { StatusOrder } from 'src/common/enums/status-order.enum';
-import { Role } from 'src/common/enums/roles.enum';
 import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 import { OrderPaginationDto } from 'src/common/pagination/dto/order/orderPagination.dto';
 import { VisaService } from './payment-menthod/visa/visa.service';
 import { ConfigService } from '@nestjs/config';
 import { checkUserRole } from 'src/common/role/user';
-import { OrderBillUserAgainDto } from './dto/order-bill-user-again.dto';
 
 @ApiBearerAuth()
 @Controller('order')
@@ -60,35 +57,53 @@ export class OrderController {
     return this.orderService.scanQrCode(data.qrCode);
   }
 
-  // POST /order/user/process-payment - User re-payment for pending order
+  // POST /order/user/process-payment/:orderId - User re-payment for pending order
   @UseGuards(JwtAuthGuard)
   @Post('user/process-payment/:orderId')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'User re-payment for pending order', })
   async userProcessOrderPayment(
     @Param('orderId', ParseIntPipe) orderId: number,
-    @Body() orderData: OrderBillUserAgainDto,
+    @Body() orderData: CreateOrderBillDto,
     @Req() req,
   ) {
     const user = req.user as JWTUserType;
-
-    // Kiểm tra role user
-    if (user.role_id !== Role.USER) {
-      throw new ForbiddenException('Only users can process their own orders');
-    }
-
     const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     if (!clientIp) {
       throw new InternalServerErrorException('Client IP address not found');
     }
 
     return this.orderService.userProcessOrderPayment(
-      { ...orderData, orderId: orderId }, 
-      clientIp,
-      user.account_id
+      orderId,
+      orderData,
+      user.account_id,
+      clientIp
     );
   }
 
+
+  // @Post('refund/:id')
+  // async refundOrder(@Param('id', ParseIntPipe) id: number) {
+  //   return this.orderService.refundOrder(id);
+  // }
+  // @Post('refundbySchedule/:scheduleId')
+  // async refundOrderBySchedule(@Param('scheduleId', ParseIntPipe) scheduleId: number, @Req() req) {
+  //   checkAdminEmployeeRole(req.user, 'Only admin or employee can refund orders');
+  //   return this.orderService.refundOrderBySchedule(scheduleId);
+  // }
+
+  @Get('checkStatus/:orderId')
+  @ApiOperation({ summary: 'Check order status by Order ID' })
+  @ApiResponse({ status: 200, description: 'Order status checked successfully' })
+  async checkOrderStatus(@Param('orderId', ParseIntPipe) orderId: number) {
+    return this.orderService.checkQueryOrderByGateway(orderId);
+  }
+  // @UseGuards(JwtAuthGuard)
+  @Get('admin/check-all-gateway-status')
+  checkAllGateways(@Req() req) {
+    // checkAdminEmployeeRole(req.user, 'Only admin or employee can check all gateways status');
+    return this.orderService.checkAllOrdersStatusByGateway();
+  }
 
   // POST /order/admin/update-order/:orderId - Admin/Employee update pending order
   @UseGuards(JwtAuthGuard)
@@ -112,11 +127,26 @@ export class OrderController {
       orderId,
       updateData,
       clientIp,
-      user.account_id
+      user
     );
   }
 
-  // GET /order/admin - View all orders for admin
+
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('admin/cancel-order/:orderId')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Admin/Employee cancel order', })
+  async adminCancelOrder(
+    @Param('orderId', ParseIntPipe) orderId: number,
+    @Req() req,
+  ) {
+    const user = req.user as JWTUserType;
+    checkAdminEmployeeRole(user, 'Only admin or employee can cancel orders');
+
+    return this.orderService.adminCancelOrder(orderId);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get('admin')
   @ApiBearerAuth()
@@ -208,7 +238,7 @@ export class OrderController {
   }
 
   // Payment callback endpoints (excluded from Swagger)
-  
+
   // GET /order/momo/return - MoMo payment callback
   @ApiExcludeEndpoint()
   @Get('momo/return')
@@ -268,6 +298,7 @@ export class OrderController {
       }
       return res.redirect(result);
     } catch (error) {
+      console.error('Visa payment error:', error);
       const failureUrl = this.configService.get<string>('redirectUrls.failureUrl') || 'http://localhost:3000/payment/failed';
       return res.redirect(failureUrl);
     }
@@ -284,6 +315,7 @@ export class OrderController {
       const result = await this.visaService.handleReturnCancelVisa(sessionId);
       return res.redirect(result);
     } catch (error) {
+      console.error('Visa payment error:', error);
       const failureUrl = this.configService.get<string>('redirectUrls.failureUrl') || 'http://localhost:3000/payment/failed';
       return res.redirect(failureUrl);
     }

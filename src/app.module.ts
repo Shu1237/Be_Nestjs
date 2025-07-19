@@ -30,6 +30,7 @@ import { ScheduleSeatModule } from './modules/scheduleseat/scheduleseat.module';
 import { ProductModule } from './modules/product/product.module';
 import { HistoryScoreModule } from './modules/historyScore/historyScore.module';
 import { PaymentMethodModule } from './modules/payment-method/payment-method.module';
+import { OverviewModule } from './modules/overview/overview.module';
 
 @Module({
   imports: [
@@ -93,13 +94,14 @@ import { PaymentMethodModule } from './modules/payment-method/payment-method.mod
     HistoryScoreModule,
     MovieModule,
     OrderModule,
+    OverviewModule,
     ProductModule,
     PromotionModule,
     PaymentMethodModule,
     ScheduleByDb,
     ScheduleSeatModule,
     SeatModule,
-    TesterModule,
+    // TesterModule,
     TicketModule,
     UserModule,
     VersionModule,

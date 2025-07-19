@@ -12,8 +12,6 @@ export const orderFieldMapping: Record<string, FilterField> = {
     operator: 'LIKE',
   },
   search: {
-    operator: 'LIKE',
-    field: '',
     customWhere: (qb: SelectQueryBuilder<any>, value: string) => {
       qb.andWhere(
         '(user.username LIKE :search OR movie.name LIKE :search)',
@@ -27,8 +25,6 @@ export const orderFieldMapping: Record<string, FilterField> = {
     paramName: 'method',
   },
   startDate: {
-    field: 'order.order_date',
-    operator: 'BETWEEN',
     customWhere: (qb: SelectQueryBuilder<any>, value: string) => {
       qb.andWhere('order.order_date >= :start', {
         start: `${value} 00:00:00`,
@@ -36,8 +32,6 @@ export const orderFieldMapping: Record<string, FilterField> = {
     },
   },
   endDate: {
-    field: 'order.order_date',
-    operator: 'BETWEEN',
     customWhere: (qb: SelectQueryBuilder<any>, value: string) => {
       qb.andWhere('order.order_date <= :end', {
         end: `${value} 23:59:59`,

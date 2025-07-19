@@ -4,6 +4,7 @@ import { MyGateWay } from "./seat.gateway";
 
 
 
+
 @Module({
     imports: [ SeatModule],
     providers: [MyGateWay],

@@ -7,8 +7,6 @@ export const versionFieldMapping: Record<string, FilterField> = {
     operator: '=',
   },
   search: {
-    operator: 'LIKE',
-    field: '',
     customWhere: (qb: SelectQueryBuilder<any>, value: string) => {
       qb.andWhere(`version.name LIKE :search`, { search: `%${value}%` });
     },

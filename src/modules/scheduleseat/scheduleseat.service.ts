@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm/dist/common/typeorm.decorators';
 import { NotFoundException } from 'src/common/exceptions/not-found.exception';
-import { ScheduleSeat, SeatStatus } from 'src/database/entities/cinema/schedule_seat';
+import { ScheduleSeat } from 'src/database/entities/cinema/schedule_seat';
 import { Repository } from 'typeorm/repository/Repository';
 import { In } from 'typeorm';
+import { StatusSeat } from 'src/common/enums/status_seat.enum';
  // Adjust the import path as needed
 
 @Injectable()
@@ -33,7 +34,7 @@ export class ScheduleSeatService {
   async deleteUnbookedSeatsBySchedule(scheduleId: number): Promise<number> {
     const result = await this.scheduleSeatRepository.delete({
       schedule: { id: scheduleId },
-      status: In([SeatStatus.NOT_YET, SeatStatus.HELD]),
+      status: In([StatusSeat.NOT_YET, StatusSeat.HELD]),
     });
     return result.affected || 0;
   }

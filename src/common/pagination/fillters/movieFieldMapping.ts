@@ -15,8 +15,6 @@ export const movieFieldMapping: Record<string, FilterField> = {
         operator: 'LIKE',
     },
     fromDate: {
-        field: 'movie.from_date',
-        operator: 'BETWEEN',
         customWhere: (qb: SelectQueryBuilder<any>, value: string) => {
             qb.andWhere('movie.from_date >= :start', {
                 start: `${value} 00:00:00`,
@@ -24,8 +22,6 @@ export const movieFieldMapping: Record<string, FilterField> = {
         },
     },
     toDate: {
-        field: 'movie.from_date',
-        operator: 'BETWEEN',
         customWhere: (qb: SelectQueryBuilder<any>, value: string) => {
             qb.andWhere('movie.from_date <= :end', {
                 end: `${value} 23:59:59`,
@@ -49,8 +45,6 @@ export const movieFieldMapping: Record<string, FilterField> = {
         operator: '=',
     },
     search: {
-        operator: 'LIKE',
-        field: '',
         customWhere: (qb: SelectQueryBuilder<any>, value: string) => {
             qb.andWhere(
                 `(movie.name LIKE :search OR movie.director LIKE :search OR movie.nation LIKE :search)`,

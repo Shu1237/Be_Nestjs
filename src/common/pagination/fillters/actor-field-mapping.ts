@@ -5,8 +5,6 @@ import { SelectQueryBuilder } from 'typeorm';
 
 export const actorFieldMapping: Record<string, FilterField> = {
   search: {
-    operator: 'LIKE',
-    field: '',
     customWhere: (qb: SelectQueryBuilder<any>, value: string) => {
       qb.andWhere(
         `(

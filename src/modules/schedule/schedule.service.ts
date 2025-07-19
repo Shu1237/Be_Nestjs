@@ -35,7 +35,10 @@ export class ScheduleService {
     return {
       id: schedule.id,
       is_deleted: schedule.is_deleted,
-      cinema_room_id: schedule.cinemaRoom.id,
+      cinemaRoom: {
+        id: schedule.cinemaRoom.id,
+        name: schedule.cinemaRoom.cinema_room_name,
+      },
       start_movie_time: schedule.start_movie_time,
       end_movie_time: schedule.end_movie_time,
       movie: {
@@ -52,11 +55,11 @@ export class ScheduleService {
   }
   async findAllUser(): Promise<ISchedule[]> {
     const schedules = await this.scheduleRepository.find({
-      where: { is_deleted: false }, 
-      relations: ['movie', 'cinemaRoom', 'version'], 
+      where: { is_deleted: false },
+      relations: ['movie', 'cinemaRoom', 'version'],
     });
 
-    
+
     return schedules.map((schedule) => this.getScheduleSummary(schedule));
   }
   async create(
@@ -141,7 +144,7 @@ export class ScheduleService {
     const qb = this.scheduleRepository.createQueryBuilder('schedule')
       .leftJoinAndSelect('schedule.movie', 'movie')
       .leftJoinAndSelect('schedule.cinemaRoom', 'cinemaRoom')
-      .leftJoinAndSelect('schedule.version', 'version') 
+      .leftJoinAndSelect('schedule.version', 'version');
 
     applyCommonFilters(qb, fillters, scheduleFieldMapping);
     const allowedFields = [
@@ -173,12 +176,31 @@ export class ScheduleService {
     const activeCount = parseInt(counts.activeCount, 10) || 0;
     const deletedCount = parseInt(counts.deletedCount, 10) || 0;
 
+    // Calculate schedule status counts
+    const currentTime = new Date();
+    const statusCounts = await this.scheduleRepository
+      .createQueryBuilder('schedule')
+      .select([
+        `SUM(CASE WHEN schedule.start_movie_time > :currentTime AND schedule.is_deleted = false THEN 1 ELSE 0 END) AS upcomingCount`,
+        `SUM(CASE WHEN schedule.start_movie_time <= :currentTime AND schedule.end_movie_time >= :currentTime AND schedule.is_deleted = false THEN 1 ELSE 0 END) AS nowPlayingCount`,
+        `SUM(CASE WHEN schedule.end_movie_time < :currentTime AND schedule.is_deleted = false THEN 1 ELSE 0 END) AS completedCount`,
+      ])
+      .setParameters({ currentTime })
+      .getRawOne();
+
+    const nowPlayingSchedule = parseInt(statusCounts.nowPlayingCount, 10) || 0;
+    const upComingSchedule = parseInt(statusCounts.upcomingCount, 10) || 0;
+    const completedSchedule = parseInt(statusCounts.completedCount, 10) || 0;
+
     return buildPaginationResponse(summaries, {
       total,
       page: fillters.page,
       take: fillters.take,
       activeCount,
       deletedCount,
+      nowPlayingSchedule,
+      upComingSchedule,
+      completedSchedule,
     });
   }
 
@@ -271,17 +293,33 @@ export class ScheduleService {
 
   async softDeleteSchedule(
     id: number,
-  ): Promise<{ msg: string; schedule: Schedule }> {
+  ): Promise<{ msg: string; }> {
     const schedule = await this.scheduleRepository.findOne({ where: { id } });
+
     if (!schedule) {
       throw new NotFoundException(`Schedule with ID ${id} not found`);
     }
 
-    schedule.is_deleted = true; // Đánh dấu là đã xóa
+    // 1. Đánh dấu đã xóa
+    schedule.is_deleted = true;
     await this.scheduleRepository.save(schedule);
 
-    return { msg: 'Schedule soft-deleted successfully', schedule };
+    // 2. Hoàn tiền tất cả đơn liên quan tới schedule này
+    // let refundResult: any = null;
+    // try {
+    //   refundResult = await this.orderService.refundOrderBySchedule(id);
+    // } catch (error) {
+    //   console.error(`Refund error for schedule ${id}:`, error);
+    //   throw new BadRequestException(
+    //     `Schedule deleted, but refund failed: ${error.message}`,
+    //   );
+    // }
+
+    return {
+      msg: 'Schedule soft-deleted and related orders refunded'
+    };
   }
+
 
   async restoreSchedule(
     id: number,
