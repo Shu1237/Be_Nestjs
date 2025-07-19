@@ -9,23 +9,29 @@ import {
   Req,
   Patch,
   Query,
+  Delete,
+  ValidationPipe,
 } from '@nestjs/common';
-import {  ApiBearerAuth, ApiOperation, ApiBody, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiBody,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { SeatService } from './seat.service';
-import { CreateSeatDto } from './dto/create-seat.dto';
-import { UpdateSeatDto } from './dto/update-seat.dto';
 import { BulkCreateSeatDto } from './dto/BulkCreateSeatDto';
 import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 import { SeatPaginationDto } from 'src/common/pagination/dto/seat/seatPagination.dto';
-
+import { BulkSeatOperationDto } from './dto/BulkSeatOperationDto';
+import { BulkSeatIdsDto } from './dto/BulkSeatIdsDto';
 
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 @Controller('seat')
 export class SeatController {
-  constructor(private readonly seatService: SeatService) { }
-  
+  constructor(private readonly seatService: SeatService) {}
+
   // GET - Lấy danh sách seats cho user
   @Get('user')
   @ApiOperation({ summary: 'Get all seats for users' })
@@ -38,20 +44,49 @@ export class SeatController {
   @ApiOperation({ summary: 'Get all seats for admin' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
-  @ApiQuery({ name: 'cinema_room_id', required: false, type: String, example: 'room-uuid' })
-  @ApiQuery({ name: 'seat_type_id', required: false, type: String, example: 'type-uuid' })
+  @ApiQuery({
+    name: 'cinema_room_id',
+    required: false,
+    type: String,
+    example: 'room-uuid',
+  })
+  @ApiQuery({
+    name: 'seat_type_id',
+    required: false,
+    type: String,
+    example: 'type-uuid',
+  })
   @ApiQuery({ name: 'seat_row', required: false, type: String, example: 'A' })
-  @ApiQuery({ name: 'seat_column', required: false, type: String, example: '5' })
-  @ApiQuery({ name: 'is_deleted', required: false, type: Boolean, example: false })
-  @ApiQuery({ name: 'sortBy', required: false, type: String, example: 'seat.seat_row' })
-  @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], example: 'ASC' })
+  @ApiQuery({
+    name: 'seat_column',
+    required: false,
+    type: String,
+    example: '5',
+  })
+  @ApiQuery({
+    name: 'is_deleted',
+    required: false,
+    type: Boolean,
+    example: false,
+  })
+  @ApiQuery({
+    name: 'sortBy',
+    required: false,
+    type: String,
+    example: 'seat.seat_row',
+  })
+  @ApiQuery({
+    name: 'sortOrder',
+    required: false,
+    enum: ['ASC', 'DESC'],
+    example: 'ASC',
+  })
   getAllSeats(@Query() query: SeatPaginationDto, @Req() req) {
-    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can access this endpoint.');
-    const {
-      page = 1,
-      take = 10,
-      ...restFilters
-    } = query;
+    checkAdminEmployeeRole(
+      req.user,
+      'Unauthorized: Only admin or employee can access this endpoint.',
+    );
+    const { page = 1, take = 10, ...restFilters } = query;
 
     return this.seatService.getAllSeats({
       page,
@@ -66,23 +101,6 @@ export class SeatController {
   getSeatsByRoom(@Param('roomId') roomId: string) {
     return this.seatService.getSeatsByRoom(roomId);
   }
-
-  // GET - Lấy seat theo ID
-  @Get(':id')
-  @ApiOperation({ summary: 'Get seat by ID' })
-  getSeatById(@Param('id') id: string) {
-    return this.seatService.getSeatById(id);
-  }
-
-  // POST - Tạo seat mới
-  @Post()
-  @ApiOperation({ summary: 'Create new seat (admin only)' })
-  @ApiBody({ type: CreateSeatDto })
-  createSeat(@Body() createSeatDto: CreateSeatDto, @Req() req) {
-    checkAdminEmployeeRole(req.user, 'Only admin can create seats');
-    return this.seatService.createSeat(createSeatDto);
-  }
-
   // POST - Tạo seats theo bulk
   @Post('bulk')
   @ApiOperation({ summary: 'Create Seat By Row & Col' })
@@ -90,27 +108,28 @@ export class SeatController {
     return this.seatService.createSeatsBulk(dto);
   }
 
-  // PUT - Cập nhật seat theo ID
-  @Put(':id')
-  @ApiOperation({ summary: 'Update seat by ID (admin only)' })
-  @ApiBody({ type: UpdateSeatDto })
-  updateSeat(
-    @Param('id') id: string,
-    @Body() updateSeatDto: UpdateSeatDto,
-    @Req() req,
+  // PUT - Bulk update multiple seats (PUT THIS BEFORE DYNAMIC ROUTES)
+  @Put('bulk-update')
+  @ApiOperation({ summary: 'Bulk update multiple seats (admin only)' })
+  @ApiBody({ type: BulkSeatOperationDto })
+  async bulkUpdateSeats(
+    @Body(new ValidationPipe({ whitelist: true })) dto: BulkSeatOperationDto,
+    @Req() { user }: any,
   ) {
-    checkAdminEmployeeRole(req.user, 'Only admin can update seats');
-    return this.seatService.updateSeat(id, updateSeatDto);
+    checkAdminEmployeeRole(user, 'Only admin can bulk update seats');
+    return this.seatService.bulkUpdateSeats(dto);
   }
 
-  // PATCH - Soft delete seat
-  @Patch(':id')
-  @ApiOperation({ summary: 'Soft delete seat by ID (admin only)' })
-  deleteSeat(@Param('id') id: string, @Req() req) {
-    checkAdminEmployeeRole(req.user, 'Only admin can delete seats');
-    return this.seatService.deleteSeat(id);
+  @Delete('bulk-delete')
+  @ApiOperation({ summary: 'Bulk soft delete multiple seats (admin only)' })
+  @ApiBody({ type: BulkSeatIdsDto })
+  async bulkDeleteSeats(
+    @Body(new ValidationPipe({ whitelist: true })) dto: BulkSeatIdsDto,
+    @Req() { user }: any,
+  ) {
+    checkAdminEmployeeRole(user, 'Only admin can bulk delete seats');
+    return this.seatService.bulkDeleteSeats(dto);
   }
-
   // Commented out endpoints
   // @Patch('hold')
   // @ApiOperation({ summary: 'Hold seats' })
@@ -132,14 +151,4 @@ export class SeatController {
     checkAdminEmployeeRole(req.user, 'Only admin can restore seats');
     return this.seatService.restoreSeat(id);
   }
-
-  // @Put(':id/status')
-  // @ApiOperation({ summary: 'Toggle seat status by ID (admin only)' })
-  // updateSeatStatus(@Param('id') id: string, @Body() updateSeatStatusDto: UpdateSeatStatusDto, @Req() req) {
-  //   const user = req.user as JWTUserType;
-  //   if (user.role_id !== Role.ADMIN) {
-  //     throw new Error('Only admin can update seat status');
-  //   }
-  //   return this.seatService.updateSeatStatus(id);
-  // }
 }

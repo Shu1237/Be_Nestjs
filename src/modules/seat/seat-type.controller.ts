@@ -38,10 +38,7 @@ export class SeatTypeController {
   @Post()
   @ApiOperation({ summary: 'Create new seat type (admin only)' })
   @ApiBody({ type: CreateSeatTypeDto })
-  createSeatType(
-    @Body() createSeatTypeDto: CreateSeatTypeDto,
-    @Req() req,
-  ) {
+  createSeatType(@Body() createSeatTypeDto: CreateSeatTypeDto, @Req() req) {
     checkAdminEmployeeRole(req.user, 'Only admin can create seat types');
     return this.seatTypeService.createSeatType(createSeatTypeDto);
   }

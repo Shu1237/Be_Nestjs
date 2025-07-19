@@ -13,7 +13,7 @@ import { promotionFieldMapping } from 'src/common/pagination/fillters/promtion-f
 import { applySorting } from 'src/common/pagination/apply_sort';
 import { applyPagination } from 'src/common/pagination/applyPagination';
 import { buildPaginationResponse } from 'src/common/pagination/pagination-response';
-
+import { PromotionType } from 'src/database/entities/promotion/promtion_type';
 @Injectable()
 export class PromotionService {
   constructor(
@@ -66,7 +66,6 @@ export class PromotionService {
       deletedCount,
     });
   }
-
   async createPromotion(dto: CreatePromotionDto) {
     const exist = await this.promotionRepository.findOne({
       where: { code: dto.code },
@@ -77,24 +76,19 @@ export class PromotionService {
 
     this.validateDates(dto.start_time, dto.end_time, dto.is_active);
 
-    // Tạo promotion với promotion_type_id
+    const promotionType: Partial<PromotionType> = { id: dto.promotion_type_id };
+
     const promo = this.promotionRepository.create({
-      title: dto.title,
-      detail: dto.detail,
-      code: dto.code,
-      discount: dto.discount,
+      ...dto,
       start_time: dto.start_time ? new Date(dto.start_time) : undefined,
       end_time: dto.end_time ? new Date(dto.end_time) : undefined,
-      exchange: dto.exchange,
       is_active: dto.is_active ?? true,
-      // Gán promotion_type_id bằng cách tạo reference
-      promotionType: { id: dto.promotion_type_id } as any,
+      promotionType: promotionType as PromotionType,
     });
 
     await this.promotionRepository.save(promo);
     return { msg: 'Promotion created successfully' };
   }
-
   async getPromotionById(id: number) {
     const promotion = await this.promotionRepository.findOne({
       where: { id, is_active: true },
@@ -120,6 +114,9 @@ export class PromotionService {
     this.validateDates(dto.start_time, dto.end_time, dto.is_active);
 
     Object.assign(promo, dto);
+    if (dto.promotion_type_id !== undefined) {
+      promo.promotionType = { id: dto.promotion_type_id } as PromotionType;
+    }
     await this.promotionRepository.save(promo);
     return { msg: 'Promotion updated successfully' };
   }

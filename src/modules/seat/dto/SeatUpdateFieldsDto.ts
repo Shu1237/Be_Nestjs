@@ -1,9 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsBoolean, IsOptional } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 
-export class UpdateSeatDto {
+export class SeatUpdateFieldsDto {
   @ApiProperty({
-    description: 'Hàng của ghế',
+    description: 'New seat row',
     example: 'A',
     required: false,
   })
@@ -12,8 +12,8 @@ export class UpdateSeatDto {
   seat_row?: string;
 
   @ApiProperty({
-    description: 'Cột của ghế',
-    example: '1',
+    description: 'New seat column',
+    example: '5',
     required: false,
   })
   @IsOptional()
@@ -21,17 +21,8 @@ export class UpdateSeatDto {
   seat_column?: string;
 
   @ApiProperty({
-    description: 'Trạng thái ghế',
-    example: true,
-    required: false,
-  })
-  @IsOptional()
-  @IsBoolean()
-  status?: boolean;
-
-  @ApiProperty({
-    description: 'ID loại ghế',
-    example: 1,
+    description: 'New seat type ID',
+    example: '1',
     required: false,
   })
   @IsOptional()
@@ -39,8 +30,8 @@ export class UpdateSeatDto {
   seat_type_id?: string;
 
   @ApiProperty({
-    description: 'ID phòng chiếu',
-    example: 1,
+    description: 'New cinema room ID',
+    example: '1',
     required: false,
   })
   @IsOptional()
