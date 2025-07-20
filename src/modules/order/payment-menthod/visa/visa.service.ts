@@ -189,7 +189,7 @@ export class VisaService extends AbstractPaymentService {
             method: PaymentGateway.VISA,
             status: session.payment_status?.toUpperCase() || 'UNKNOWN',
             paid: session.payment_status === 'paid',
-            total: session.amount_total,
+            total: (session.amount_total ? session.amount_total / 100 : 0).toFixed(2),
             currency: session.currency || 'USD',
         };
     }

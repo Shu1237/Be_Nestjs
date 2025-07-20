@@ -2016,9 +2016,7 @@ export class OrderService {
   //   return { success: true };
   // }
 
-
   async checkAllOrdersStatusByGateway() {
-    console.log('=== START checkAllOrdersStatusByGateway ===');
     const now = new Date();
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
     const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
@@ -2027,8 +2025,6 @@ export class OrderService {
       where: { order_date: Between(startOfDay, endOfDay) },
       relations: ['transaction', 'transaction.paymentMethod'],
     });
-
-    console.log(`Found ${orders.length} orders`);
 
     const result: Record<PaymentGateway, { totalSuccess: number; totalFailed: number; totalRevenue: number }> = {
       MOMO: { totalSuccess: 0, totalFailed: 0, totalRevenue: 0 },
@@ -2039,121 +2035,98 @@ export class OrderService {
       CASH: { totalSuccess: 0, totalFailed: 0, totalRevenue: 0 },
     };
 
-    const tasks = orders.map(async (order) => {
-      const { transaction, status, total_prices } = order;
-      const methodId = transaction?.paymentMethod?.id;
+    const methodMap: Record<number, PaymentGateway> = {
+      [Method.CASH]: PaymentGateway.CASH,
+      [Method.MOMO]: PaymentGateway.MOMO,
+      [Method.PAYPAL]: PaymentGateway.PAYPAL,
+      [Method.VISA]: PaymentGateway.VISA,
+      [Method.VNPAY]: PaymentGateway.VNPAY,
+      [Method.ZALOPAY]: PaymentGateway.ZALOPAY,
+    };
 
-      if (!methodId) {
-        console.log(`Order ${order.id} has no payment method`);
-        return;
-      }
-
-      // Create mapping from Method ID to PaymentGateway
-      let method: PaymentGateway;
-      switch (methodId) {
-        case Method.CASH:
-          method = PaymentGateway.CASH;
-          break;
-        case Method.MOMO:
-          method = PaymentGateway.MOMO;
-          break;
-        case Method.PAYPAL:
-          method = PaymentGateway.PAYPAL;
-          break;
-        case Method.VISA:
-          method = PaymentGateway.VISA;
-          break;
-        case Method.VNPAY:
-          method = PaymentGateway.VNPAY;
-          break;
-        case Method.ZALOPAY:
-          method = PaymentGateway.ZALOPAY;
-          break;
+    const queryMethodStatus = async (method: PaymentGateway, code: string, date: Date) => {
+      switch (method) {
+        case PaymentGateway.MOMO:
+          return await this.momoService.queryOrderStatusMomo(code);
+        case PaymentGateway.PAYPAL:
+          return await this.paypalService.queryOrderStatusPaypal(code);
+        case PaymentGateway.VISA:
+          return await this.visaService.queryOrderStatusVisa(code);
+        case PaymentGateway.VNPAY:
+          return await this.vnpayService.queryOrderStatusVnpay(code, formatDate(date));
+        case PaymentGateway.ZALOPAY:
+          return await this.zalopayService.queryOrderStatusZaloPay(code);
         default:
-          console.log(`Unknown payment method ID: ${methodId}`);
-          return;
+          throw new Error(`Unsupported payment method: ${method}`);
       }
+    };
 
-      const code = transaction.transaction_code;
-      const date = order.order_date;
+    const tasks = orders.map(async (order) => {
+      const { transaction, status, total_prices, order_date } = order;
+      const methodId = transaction?.paymentMethod?.id;
+      const code = transaction?.transaction_code;
 
-      console.log(`Processing order ${order.id} with method ${method}`);
+      if (!methodId || !code) return;
 
-      //  Cash 
+      const method = methodMap[methodId];
+      if (!method) return;
+
       if (method === PaymentGateway.CASH) {
         if (status === StatusOrder.SUCCESS) {
-          result.CASH.totalSuccess += 1;
-          result.CASH.totalRevenue += Number(total_prices) || 0;
+          result[method].totalSuccess++;
+          result[method].totalRevenue += Number(total_prices) || 0;
         } else {
-          result.CASH.totalFailed += 1;
+          result[method].totalFailed++;
         }
         return;
       }
 
       try {
-        let res: {
-          method?: any;
-          status?: any;
-          paid: boolean;
-          total?: any;
-          currency?: any;
-        };
-
-        switch (method) {
-          case PaymentGateway.MOMO:
-            res = await this.momoService.queryOrderStatusMomo(code);
-            break;
-          case PaymentGateway.PAYPAL:
-            res = await this.paypalService.queryOrderStatusPaypal(code);
-            break;
-          case PaymentGateway.VISA:
-            res = await this.visaService.queryOrderStatusVisa(code);
-            break;
-          case PaymentGateway.VNPAY:
-            res = await this.vnpayService.queryOrderStatusVnpay(code, formatDate(date));
-            break;
-          case PaymentGateway.ZALOPAY:
-            res = await this.zalopayService.queryOrderStatusZaloPay(code);
-            break;
-          default:
-            console.log(`Unsupported payment method: ${method}`);
-            return;
-        }
-
+        const res = await queryMethodStatus(method, code, order_date);
         if (res?.paid) {
-          result[method].totalSuccess += 1;
+          result[method].totalSuccess++;
           result[method].totalRevenue += Number(res.total) || 0;
         } else {
-          result[method].totalFailed += 1;
+          result[method].totalFailed++;
         }
       } catch (err) {
-        console.log(`Error processing order ${order.id}:`, err);
-        result[method].totalFailed += 1;
+        console.error(`Error processing order ${order.id}:`, err);
+        result[method].totalFailed++;
       }
     });
 
     await Promise.allSettled(tasks);
-    const reportDate = now.toISOString().slice(0, 10); // YYYY-MM-DD
-    for (const [method, summary] of Object.entries(result)) {
-      const methodEntity = await this.paymentMethodRepository.findOneBy({
-        name: method as PaymentGateway,
-      });
 
-      const recordData: any = {
+    // optimize call db
+    const paymentMethods = await this.paymentMethodRepository.find();
+    const paymentMethodMap = new Map<string, PaymentMethod>();
+    paymentMethods.forEach((pm) => paymentMethodMap.set(pm.name, pm));
+
+    const reportDate = now.toISOString().slice(0, 10);
+
+    for (const [method, summary] of Object.entries(result)) {
+      const methodEntity = paymentMethodMap.get(method);
+      if (!methodEntity) {
+        console.warn(`Payment method ${method} not found, skipping summary record`);
+        continue;
+      }
+
+      const recordData: Omit<DailyTransactionSummary, 'id'> = {
         reportDate,
         totalOrders: summary.totalSuccess + summary.totalFailed,
         totalSuccess: summary.totalSuccess,
         totalFailed: summary.totalFailed,
         totalAmount: summary.totalRevenue,
+        paymentMethod: methodEntity,
       };
-      if (methodEntity) {
-        recordData.paymentMethod = methodEntity;
-      }
 
       const record = this.dailyTransactionSummaryRepository.create(recordData);
-
       await this.dailyTransactionSummaryRepository.save(record);
     }
+
     return result;
   }
+
+
+
 }

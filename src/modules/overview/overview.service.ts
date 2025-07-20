@@ -1,15 +1,13 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Movie } from "src/database/entities/cinema/movie";
-import { Product } from "src/database/entities/item/product";
 import { Order } from "src/database/entities/order/order";
 import { Ticket } from "src/database/entities/order/ticket";
 import { User } from "src/database/entities/user/user";
 import { TicketType } from "src/database/entities/order/ticket-type";
-import { OrderDetail } from "src/database/entities/order/order-detail";
 import { OrderExtra } from "src/database/entities/order/order-extra";
 import { Schedule } from "src/database/entities/cinema/schedule";
-import { In, Repository } from "typeorm";
+import { Repository } from "typeorm";
 import {
     OverviewResponseDto,
     TicketTypeSaleDto,
@@ -20,6 +18,13 @@ import {
     TopCustomerDto
 } from "./dtos/overview-response.dto";
 import { StatusOrder } from "src/common/enums/status-order.enum";
+import { DailyTransactionSummary } from "src/database/entities/order/daily_transaction_summary";
+import { applyCommonFilters } from "src/common/pagination/applyCommonFilters";
+import { DailyReportDto } from "src/common/pagination/dto/dailyReport/dailyReport.dto";
+import { dailyReportFieldMapping } from "src/common/pagination/fillters/daily-report-mapping";
+import { applyPagination } from "src/common/pagination/applyPagination";
+import { applySorting } from "src/common/pagination/apply_sort";
+import { buildPaginationResponse } from "src/common/pagination/pagination-response";
 
 
 
@@ -33,20 +38,52 @@ export class OverviewService {
         private readonly movieRepository: Repository<Movie>,
         @InjectRepository(Ticket)
         private readonly ticketRepository: Repository<Ticket>,
-        @InjectRepository(Product)
-        private readonly productRepository: Repository<Product>,
         @InjectRepository(User)
         private readonly userRepository: Repository<User>,
         @InjectRepository(TicketType)
         private readonly ticketTypeRepository: Repository<TicketType>,
-        @InjectRepository(OrderDetail)
-        private readonly orderDetailRepository: Repository<OrderDetail>,
         @InjectRepository(OrderExtra)
         private readonly orderExtraRepository: Repository<OrderExtra>,
         @InjectRepository(Schedule)
         private readonly scheduleRepository: Repository<Schedule>,
+        @InjectRepository(DailyTransactionSummary)
+        private readonly dailyTransactionSummaryRepository: Repository<DailyTransactionSummary>
     ) { }
+    private mapReportData(data: DailyTransactionSummary) {
+        return {
+            paymentMethod: data.paymentMethod.name,
+            totalOrders: data.totalOrders,
+            totalRevenue: data.totalAmount,
+            totalFail: data.totalFailed
+        };
+    }
+    async getDailyOrderReports(filters: DailyReportDto) {
+        const qb = this.dailyTransactionSummaryRepository.createQueryBuilder('dailyReport')
+            .leftJoinAndSelect('dailyReport.paymentMethod', 'paymentMethod');
+        applyCommonFilters(qb, filters, dailyReportFieldMapping);
+        const allowedFileds = [
+            'paymentMethod.id',
+            'dailyReport.reportDate',
+            'dailyReport.totalAmount',
+            'dailyReport.totalOrders',
+            'dailyReport.totalFailed'
+        ]
+        applySorting(qb, filters.sortBy, filters.sortOrder, allowedFileds, 'dailyReport.reportDate');
+        applyPagination(qb, {
+            take: filters.take,
+            page: filters.page,
+        });
+        const [data, total] = await qb.getManyAndCount();
+        const summary = data.map(this.mapReportData);
 
+        // calculate total revenue total success, failed , and orders ( m tự làm )
+          
+        return buildPaginationResponse(summary, {
+            total,
+            page: filters.page,
+            take: filters.take,
+        });
+    }
     async getOverview(): Promise<OverviewResponseDto> {
         const [
             totalRevenue,
