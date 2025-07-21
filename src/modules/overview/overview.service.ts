@@ -54,7 +54,8 @@ export class OverviewService {
             paymentMethod: data.paymentMethod.name,
             totalOrders: data.totalOrders,
             totalRevenue: data.totalAmount,
-            totalFail: data.totalFailed
+            totalFail: data.totalFailed,
+            reportDate: data.reportDate
         };
     }
     async getDailyOrderReports(filters: DailyReportDto) {
@@ -77,7 +78,7 @@ export class OverviewService {
         const summary = data.map(this.mapReportData);
 
         // calculate total revenue total success, failed , and orders ( m tự làm )
-          
+
         return buildPaginationResponse(summary, {
             total,
             page: filters.page,
