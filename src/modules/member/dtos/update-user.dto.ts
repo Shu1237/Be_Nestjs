@@ -11,4 +11,8 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   avatar?: string;
+
+  @ApiPropertyOptional({ description: 'Role ID of the user (admin only)' })
+  @IsOptional()
+  role_id?: number;
 }
