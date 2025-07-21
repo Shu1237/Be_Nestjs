@@ -13,17 +13,20 @@ import { userFieldMapping } from 'src/common/pagination/fillters/user-filed-mapp
 import { applySorting } from 'src/common/pagination/apply_sort';
 import { applyPagination } from 'src/common/pagination/applyPagination';
 import { buildPaginationResponse } from 'src/common/pagination/pagination-response';
-
+import { Role as RoleEntity } from '../../../database/entities/user/roles';
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
-  ) { }
+    @InjectRepository(RoleEntity)
+    private roleRepository: Repository<RoleEntity>,
+  ) {}
 
   async findAll(filters: UserPaginationDto) {
-    const qb = this.userRepository.createQueryBuilder('user')
+    const qb = this.userRepository
+      .createQueryBuilder('user')
       .leftJoinAndSelect('user.role', 'role')
       .where('user.is_deleted = :isDeleted', { isDeleted: false });
 
@@ -36,7 +39,13 @@ export class UserService {
       'role.name',
     ];
 
-    applySorting(qb, filters.sortBy, filters.sortOrder, allowedFields, 'user.username');
+    applySorting(
+      qb,
+      filters.sortBy,
+      filters.sortOrder,
+      allowedFields,
+      'user.username',
+    );
 
     applyPagination(qb, {
       page: filters.page,
@@ -65,7 +74,18 @@ export class UserService {
 
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
     const user = await this.findOne(id);
-    Object.assign(user, updateUserDto);
+    if (updateUserDto.role_id !== undefined) {
+      const role = await this.roleRepository.findOneBy({
+        role_id: updateUserDto.role_id,
+      });
+      if (!role) {
+        throw new BadRequestException(
+          `Role with ID ${updateUserDto.role_id} not found`,
+        );
+      }
+      user.role = role;
+    }
+    Object.assign(user, { ...updateUserDto, role_id: undefined }); // Không ghi đè role trực tiếp
     return await this.userRepository.save(user);
   }
 
@@ -90,9 +110,7 @@ export class UserService {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
     if (!user.is_deleted) {
-      throw new BadRequestException(
-        `User with ID ${id} is not soft-deleted`,
-      );
+      throw new BadRequestException(`User with ID ${id} is not soft-deleted`);
     }
     user.is_deleted = false;
     await this.userRepository.save(user);
