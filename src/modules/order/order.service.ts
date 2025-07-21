@@ -538,7 +538,7 @@ export class OrderService {
 
       return { payUrl: paymentCode.payUrl };
     } catch (error) {
-      throw new BadRequestException('Failed to process order payment');
+      throw error
     }
   }
 
@@ -2020,6 +2020,8 @@ export class OrderService {
     const now = new Date();
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
     const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+    // const startOfDay = new Date(2025, 6, 21, 0, 0, 0);    // ngày 21/7/2025 lúc 00:00:00
+    // const endOfDay = new Date(2025, 6, 21, 23, 59, 59);   // ngày 21/7/2025 lúc 23:59:59
 
     const orders = await this.orderRepository.find({
       where: { order_date: Between(startOfDay, endOfDay) },
@@ -2100,9 +2102,10 @@ export class OrderService {
     // optimize call db
     const paymentMethods = await this.paymentMethodRepository.find();
     const paymentMethodMap = new Map<string, PaymentMethod>();
-    paymentMethods.forEach((pm) => paymentMethodMap.set(pm.name, pm));
-
+    paymentMethods.forEach((pm) => paymentMethodMap.set(pm.name.toUpperCase(), pm));
+    
     const reportDate = now.toISOString().slice(0, 10);
+
 
     for (const [method, summary] of Object.entries(result)) {
       const methodEntity = paymentMethodMap.get(method);
