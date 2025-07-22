@@ -8,7 +8,7 @@ import { ApiOperation, ApiQuery } from "@nestjs/swagger";
 import { DailyReportDto } from "src/common/pagination/dto/dailyReport/dailyReport.dto";
 
 
-// @UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard)
 @Controller("overview")
 @ApiBearerAuth()
 export class OverviewController {
