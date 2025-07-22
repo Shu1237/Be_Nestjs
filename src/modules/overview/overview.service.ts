@@ -55,6 +55,7 @@ export class OverviewService {
             totalOrders: data.totalOrders,
             totalRevenue: data.totalAmount,
             totalFail: data.totalFailed,
+            totalSuccess: data.totalSuccess,
             reportDate: data.reportDate
         };
     }
@@ -67,7 +68,8 @@ export class OverviewService {
             'dailyReport.reportDate',
             'dailyReport.totalAmount',
             'dailyReport.totalOrders',
-            'dailyReport.totalFailed'
+            'dailyReport.totalFailed',
+            'dailyReport.totalSuccess', 
         ]
         applySorting(qb, filters.sortBy, filters.sortOrder, allowedFileds, 'dailyReport.reportDate');
         applyPagination(qb, {

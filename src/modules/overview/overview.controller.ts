@@ -31,7 +31,7 @@ export class OverviewController {
     // checkAdminEmployeeRole(user, 'Only admin and employee can access daily order reports');
     const {
       page = 1,
-      take = 10,
+      take = 100,
       ...restFilters
     } = query;
     return this.overviewService.getDailyOrderReports({
