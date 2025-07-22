@@ -13,20 +13,20 @@ export class ReportService {
     name: 'daily-order-stats',
   })
   async handleDailyOrderStats() {
-    // this.logger.log(' [CRON] Starting daily order statistics check...');
+    this.logger.log(' [CRON] Starting daily order statistics check...');
 
-    // try {
-    //   const result = await this.orderService.checkAllOrdersStatusByGateway();
+    try {
+      const result = await this.orderService.checkAllOrdersStatusByGateway();
 
-    //   if (result && Object.keys(result).length > 0) {
-    //     this.logger.log(' [CRON] Daily order statistics check completed. Summary:');
-    //     this.logger.log(this.formatStatistics(result));
-    //   } else {
-    //     this.logger.warn(' [CRON] No orders found for today.');
-    //   }
-    // } catch (error) {
-    //   this.logger.error(' [CRON] Error during daily order statistics check', error.stack);
-    // }
+      if (result && Object.keys(result).length > 0) {
+        this.logger.log(' [CRON] Daily order statistics check completed. Summary:');
+        this.logger.log(this.formatStatistics(result));
+      } else {
+        this.logger.warn(' [CRON] No orders found for today.');
+      }
+    } catch (error) {
+      this.logger.error(' [CRON] Error during daily order statistics check', error.stack);
+    }
   }
 
   private formatStatistics(result: Record<string, { totalSuccess: number; totalFailed: number; totalRevenue: number }>): string {
