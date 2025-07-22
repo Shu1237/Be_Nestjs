@@ -34,8 +34,6 @@ export class User {
   @Column({ type: 'boolean', default: true })
   status: boolean;
 
-  @Column({ type: 'boolean', default: false })
-  is_deleted: boolean;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   qr_code: string;

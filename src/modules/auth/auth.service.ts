@@ -211,7 +211,6 @@ export class AuthService {
         avatar: picture,
         score: 0,
         status: true,
-        is_deleted: false,
         role: role,
         qr_code: qrCode,
       });

@@ -22,13 +22,12 @@ export class UserService {
     private userRepository: Repository<User>,
     @InjectRepository(RoleEntity)
     private roleRepository: Repository<RoleEntity>,
-  ) {}
+  ) { }
 
   async findAll(filters: UserPaginationDto) {
     const qb = this.userRepository
       .createQueryBuilder('user')
-      .leftJoinAndSelect('user.role', 'role')
-      .where('user.is_deleted = :isDeleted', { isDeleted: false });
+      .leftJoinAndSelect('user.role', 'role');
 
     applyCommonFilters(qb, filters, userFieldMapping);
 
@@ -52,22 +51,35 @@ export class UserService {
       take: filters.take,
     });
 
-    const [users, total] = await qb.getManyAndCount();
 
+
+    const [users, total] = await qb.getManyAndCount();
+    const counts = await this.userRepository
+      .createQueryBuilder('user')
+      .select([
+        `SUM(CASE WHEN user.status = true THEN 1 ELSE 0 END) AS activeCount`,
+        `SUM(CASE WHEN user.status = false THEN 1 ELSE 0 END) AS inactiveCount`,
+      ])
+      .getRawOne();
+    const accountActivity = Number(counts.activeCount) || 0;
+    const accountInactivity = Number(counts.inactiveCount) || 0;
     return buildPaginationResponse(users, {
       total,
       page: filters.page,
       take: filters.take,
+      accountActivity,
+      accountInactivity,
     });
+
   }
 
   async findOne(id: string): Promise<User> {
     const user = await this.userRepository.findOne({
-      where: { id, is_deleted: false },
+      where: { id, status: true },
       relations: ['role'],
     });
     if (!user) {
-      throw new NotFoundException(`User with ID ${id} not found`);
+      throw new NotFoundException(`User with ID ${id} not found or is inactive`);
     }
     return user;
   }
@@ -85,7 +97,7 @@ export class UserService {
       }
       user.role = role;
     }
-    Object.assign(user, { ...updateUserDto, role_id: undefined }); // Không ghi đè role trực tiếp
+    Object.assign(user, { ...updateUserDto, role_id: undefined });
     return await this.userRepository.save(user);
   }
 
@@ -97,7 +109,7 @@ export class UserService {
 
   async softDelete(id: string): Promise<void> {
     const user = await this.findOne(id);
-    user.is_deleted = true;
+    user.status = false;
     await this.userRepository.save(user);
   }
 
@@ -109,10 +121,10 @@ export class UserService {
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
-    if (!user.is_deleted) {
+    if (!user.status) {
       throw new BadRequestException(`User with ID ${id} is not soft-deleted`);
     }
-    user.is_deleted = false;
+    user.status = true;
     await this.userRepository.save(user);
     return { msg: 'User restored successfully' };
   }

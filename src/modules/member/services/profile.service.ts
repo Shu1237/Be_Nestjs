@@ -17,7 +17,7 @@ export class ProfileService {
 
   async getProfile(userId: string, userRole: Role): Promise<Partial<User>> {
     const user = await this.userRepository.findOne({
-      where: { id: userId, is_deleted: false },
+      where: { id: userId, status: true },
       relations: userRole === Role.USER ? [] : ['role'],
       select: {
         id: true,
@@ -50,7 +50,7 @@ export class ProfileService {
     updateUserDto: UpdateUserDto,
   ): Promise<Partial<User>> {
     const user = await this.userRepository.findOne({
-      where: { id: userId, is_deleted: false },
+      where: { id: userId, status: true },
       relations: ['role'],
     });
 
@@ -66,7 +66,7 @@ export class ProfileService {
 
   async getQrCode(userId: string): Promise<JWTUserType> {
     const user = await this.userRepository.findOne({
-      where: { id: userId, is_deleted: false },
+      where: { id: userId, status: true },
       relations: ['role'],
     })
     // type 
