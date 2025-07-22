@@ -216,330 +216,327 @@ export class OrderService {
   }
 
   async createOrder(userData: JWTUserType, orderBill: OrderBillType, clientIp: string) {
-    try {
-      const user = await this.getUserById(userData.account_id);
-      // check products
-      const products = orderBill.products || [];
-      let orderExtras: Product[] = [];
-      if (products.length > 0) {
-        const productIds = products.map(item => item.product_id);
-        orderExtras = await this.getOrderExtraByIds(productIds);
-      }
-
-      const [promotion, schedule] = await Promise.all([
-        this.getPromotionById(orderBill.promotion_id),
-        this.getScheduleById(orderBill.schedule_id),
-      ]);
-
-
-
-      // check promtion time
-      if (promotion.id !== 1) {
-        const currentTime = new Date();
-        if (
-          !promotion.start_time ||
-          !promotion.end_time ||
-          promotion.start_time > currentTime ||
-          promotion.end_time < currentTime
-        ) {
-          throw new BadRequestException('Promotion is not valid at this time.');
-        }
-        // check score 
-        if (promotion.exchange > user.score) {
-          throw new ConflictException('You do not have enough score to use this promotion.');
-        }
-        //check trường hợp nhân viên đặt hàng nhưng lại dùng giảm giá mà k gán customer
-        if (user.role.role_id === Role.EMPLOYEE || user.role.role_id === Role.ADMIN && !orderBill.customer_id) {
-          throw new ConflictException('Staff must provide customer ID when using promotion.');
-        }
-      }
-
-
-      // Fetch seat IDs
-      const seatIds = orderBill.seats.map((seat: SeatInfo) => seat.id);
-      const scheduleId = orderBill.schedule_id;
-
-      // check redis
-      const check = await this.validateBeforeOrder(scheduleId, user.id, seatIds);
-      if (!check) {
-        throw new ConflictException('Seats are being held by another user. Please try again later.');
-      }
-
-      const scheduleSeats = await this.getScheduleSeatsByIds(seatIds, orderBill.schedule_id);
-
-      // Kiểm tra unavailable seats
-      const unavailableSeats = scheduleSeats.filter(
-        seat => seat.status === StatusSeat.BOOKED || seat.status === StatusSeat.HELD,
-      );
-      if (unavailableSeats.length > 0) {
-        throw new BadRequestException(
-          `Seats ${unavailableSeats.map(s => s.seat.id).join(', ')} are already booked or held.`,
-        );
-      }
-
-      // tinh toan tổng tiền
-      let totalSeats = 0;
-      let totalProduct = 0;
-      let totalPrice = 0;
-
-      const promotionDiscount = parseFloat(promotion?.discount ?? '0');
-      const isPercentage = promotion?.promotionType?.type === 'percentage';
-
-
-
-
-      // 1. Tính giá từng vé sau audience-discount
-      const audienceTypes = orderBill.seats.map(seat => seat.audience_type);
-      const ticketForAudienceTypes = await this.getTicketTypesByAudienceTypes(audienceTypes);
-
-      const seatPriceMap = new Map<string, number>(); // Map seatId -> final seat price
-
-      for (const seatData of orderBill.seats) {
-        const seat = scheduleSeats.find(s => s.seat.id === seatData.id);
-        if (!seat) throw new NotFoundException(`Seat ${seatData.id} not found`);
-
-        const ticketType = ticketForAudienceTypes.find(t => t.audience_type === seatData.audience_type);
-        const discount = parseFloat(ticketType?.discount ?? '0');
-
-        const basePrice = seat.seat.seatType.seat_type_price;
-        const finalPrice = applyAudienceDiscount(basePrice, discount);
-
-        seatPriceMap.set(seatData.id, finalPrice);
-        totalSeats += finalPrice;
-      }
-      if (orderExtras.length > 0) {
-        totalProduct = calculateProductTotal(orderExtras, orderBill);
-      }
-      const totalBeforePromotion = totalSeats + totalProduct;// before promotion
-      const promotionAmount = isPercentage
-        ? Math.round(totalBeforePromotion * (promotionDiscount / 100))
-        : Math.round(promotionDiscount);
-
-      totalPrice = roundUpToNearest(totalBeforePromotion - promotionAmount, 1000);
-
-      // console.log({ totalBeforePromotion, promotionAmount, totalPrice });
-
-      // 5. So sánh với client gửi
-      const inputTotal = parseFloat(orderBill.total_prices);
-      if (Math.abs(totalPrice - inputTotal) > 0.01) {
-        throw new BadRequestException('Total price mismatch. Please refresh and try again.');
-      }
-
-      const seatRatio = totalSeats / totalBeforePromotion;
-      const seatDiscount = Math.round(promotionAmount * seatRatio);
-      const productDiscount = promotionAmount - seatDiscount;
-      // Tạo transaction
-      const paymentMethod = await this.paymentMethodRepository.findOne({
-        where: { id: Number(orderBill.payment_method_id) },
-      });
-      if (!paymentMethod) {
-        throw new NotFoundException(`Payment method ${orderBill.payment_method_id} not found`);
-      }
-
-
-      let paymentCode: any;
-      // get payment code
-      paymentCode = await this.getPaymentCode(orderBill, clientIp);
-      if (!paymentCode || !paymentCode.payUrl || !paymentCode.orderId) {
-        throw new BadRequestException('Payment method failed to create order');
-      }
-      // check customer_email
-
-      // Create order
-
-      const newOrder = await this.orderRepository.save({
-        total_prices: orderBill.total_prices,
-        status: Number(orderBill.payment_method_id) === Method.CASH ? StatusOrder.SUCCESS : StatusOrder.PENDING,
-        user,
-        promotion,
-        customer_id: orderBill.customer_id ?? undefined
-      });
-
-      const transaction = await this.transactionRepository.save({
-        transaction_code: paymentCode.orderId,
-        transaction_date: new Date(), // Save as UTC in database
-        prices: orderBill.total_prices,
-        status: Number(orderBill.payment_method_id) === Method.CASH ? StatusOrder.SUCCESS : StatusOrder.PENDING,
-        paymentMethod,
-      });
-
-      // Update order with transaction
-      const newOrderWithTransaction = await this.getOrderById(newOrder.id);
-      newOrderWithTransaction.transaction = transaction;
-      await this.orderRepository.save(newOrderWithTransaction);
-
-      // Update transaction with order
-      const updatedTransaction = await this.getTransactionById(transaction.id);
-      updatedTransaction.order = newOrderWithTransaction;
-      await this.transactionRepository.save(updatedTransaction);
-
-
-
-      // Create tickets and order details
-      const ticketsToSave: Ticket[] = [];
-      const updatedSeats: ScheduleSeat[] = [];
-      const orderDetails: {
-        total_each_ticket: string;
-        order: any;
-        ticket: any;
-        schedule: any;
-      }[] = [];
-
-
-
-      // const discountPerSeat = seatDiscount / orderBill.seats.length;
-
-      for (const seatData of orderBill.seats) {
-        const seat = scheduleSeats.find(s => s.seat.id === seatData.id);
-        const ticketType = ticketForAudienceTypes.find(t => t.audience_type === seatData.audience_type);
-        const priceBeforePromo = seatPriceMap.get(seatData.id)!;
-
-
-        const shareRatio = priceBeforePromo / totalSeats;
-        const promotionDiscountForThisSeat = seatDiscount * shareRatio;
-        const finalPrice = Math.round(priceBeforePromo - promotionDiscountForThisSeat);
-
-        if (!seat) {
-          throw new NotFoundException(`Seat ${seatData.id} not found in scheduleSeats`);
-        }
-
-        // Set seat status to HELD when creating order (regardless of payment method)
-        seat.status = StatusSeat.HELD;
-        updatedSeats.push(seat);
-
-        const newTicket = this.ticketRepository.create({
-          seat: seat.seat,
-          schedule,
-          ticketType,
-          status: Number(orderBill.payment_method_id) === Method.CASH,
-        });
-
-        ticketsToSave.push(newTicket);
-
-        orderDetails.push({
-          total_each_ticket: roundUpToNearest(finalPrice, 1000).toString(),
-          order: newOrder,
-          ticket: newTicket,
-          schedule,
-        });
-      }
-
-
-      const savedTickets = await this.ticketRepository.save(ticketsToSave);
-      orderDetails.forEach((detail, index) => {
-        detail.ticket = savedTickets[index];
-      });
-
-      await this.scheduleSeatRepository.save(updatedSeats);
-      await this.orderDetailRepository.save(orderDetails);
-
-      // Create order extras
-      if (orderExtras.length > 0) {
-        const productTotals = orderExtras.map(p => {
-          const quantity = orderBill.products?.find(item => item.product_id === p.id)?.quantity || 0;
-          return {
-            product: p,
-            quantity,
-            total: Number(p.price) * quantity,
-          };
-        });
-
-        const totalProductBeforePromo = productTotals.reduce((sum, item) => sum + item.total, 0);
-        const orderExtrasToSave: Omit<OrderExtra, 'id'>[] = [];
-
-        for (const item of productTotals) {
-          const shareRatio = item.total / totalProductBeforePromo || 0;
-          const isCombo = item.product.type.toLocaleLowerCase() === ProductTypeEnum.COMBO
-
-
-          const basePrice = Number(item.product.price);
-          let unit_price_after_discount = basePrice;
-
-          if (isPercentage) {
-            const unitDiscount = basePrice * (productDiscount / totalProductBeforePromo);
-            unit_price_after_discount = Math.round(basePrice - unitDiscount);
-          } else {
-            const productDiscountShare = productDiscount * shareRatio;
-            const unitDiscount = productDiscountShare / item.quantity;
-            unit_price_after_discount = Math.round(basePrice - unitDiscount);
-          }
-
-
-          if (isCombo) {
-            const comboProduct = item.product as Combo;
-            if (comboProduct.discount != null && !isNaN(comboProduct.discount)) {
-              unit_price_after_discount *= (1 - comboProduct.discount / 100);
-            }
-          }
-
-          orderExtrasToSave.push({
-            quantity: item.quantity,
-            unit_price: roundUpToNearest(unit_price_after_discount, 1000).toString(),
-            order: newOrder,
-            product: item.product,
-            status:
-              Number(orderBill.payment_method_id) === Method.CASH
-                ? StatusOrder.SUCCESS
-                : StatusOrder.PENDING,
-          });
-        }
-
-        await this.orderExtraRepository.save(orderExtrasToSave);
-
-      }
-
-      // If payment method is CASH, immediately change seat status to BOOKED
-      if (Number(orderBill.payment_method_id) === Method.CASH) {
-        const seatIds = orderBill.seats.map(seat => seat.id);
-        await this.changeStatusScheduleSeatToBooked(seatIds, orderBill.schedule_id);
-      }
-
-
-      // add score for user , employee order
-      if (
-        orderBill.customer_id &&
-        orderBill.customer_id.trim() !== '' &&
-        Number(orderBill.payment_method_id) === Method.CASH
-      ) {
-        const customer = await this.userRepository.findOne({
-          where: { id: orderBill.customer_id },
-          relations: ['role'],
-        });
-
-        if (!customer || customer.role.role_id !== Role.USER) {
-          throw new ForbiddenException('Invalid customer for point accumulation');
-        }
-
-        const promotionExchange = promotion?.exchange ?? 0;
-        const orderScore = Math.floor(totalPrice / 1000);
-        const addScore = orderScore - promotionExchange;
-
-        customer.score += addScore;
-        await this.userRepository.save(customer);
-
-        await this.historyScoreRepository.save({
-          score_change: addScore,
-          user: customer,
-          order: newOrder,
-        });
-
-      }
-      if (Number(orderBill.payment_method_id) === Method.CASH) {
-        this.gateway.emitBookSeat({
-          schedule_id: orderBill.schedule_id,
-          seatIds: orderBill.seats.map(seat => seat.id),
-        });
-      } else {
-        this.gateway.emitHoldSeat({
-          schedule_id: orderBill.schedule_id,
-          seatIds: orderBill.seats.map(seat => seat.id),
-        });
-      }
-
-      return { payUrl: paymentCode.payUrl };
-    } catch (error) {
-      throw error
+    const user = await this.getUserById(userData.account_id);
+    // check products
+    const products = orderBill.products || [];
+    let orderExtras: Product[] = [];
+    if (products.length > 0) {
+      const productIds = products.map(item => item.product_id);
+      orderExtras = await this.getOrderExtraByIds(productIds);
     }
+
+    const [promotion, schedule] = await Promise.all([
+      this.getPromotionById(orderBill.promotion_id),
+      this.getScheduleById(orderBill.schedule_id),
+    ]);
+
+
+
+    // check promtion time
+    if (promotion.id !== 1) {
+      const currentTime = new Date();
+      if (
+        !promotion.start_time ||
+        !promotion.end_time ||
+        promotion.start_time > currentTime ||
+        promotion.end_time < currentTime
+      ) {
+        throw new BadRequestException('Promotion is not valid at this time.');
+      }
+      // check score 
+      if (promotion.exchange > user.score) {
+        throw new ConflictException('You do not have enough score to use this promotion.');
+      }
+      //check trường hợp nhân viên đặt hàng nhưng lại dùng giảm giá mà k gán customer
+      if (user.role.role_id === Role.EMPLOYEE || user.role.role_id === Role.ADMIN && !orderBill.customer_id) {
+        throw new ConflictException('Staff must provide customer ID when using promotion.');
+      }
+    }
+
+
+    // Fetch seat IDs
+    const seatIds = orderBill.seats.map((seat: SeatInfo) => seat.id);
+    const scheduleId = orderBill.schedule_id;
+
+    // check redis
+    const check = await this.validateBeforeOrder(scheduleId, user.id, seatIds);
+    if (!check) {
+      throw new ConflictException('Seats are being held by another user. Please try again later.');
+    }
+
+    const scheduleSeats = await this.getScheduleSeatsByIds(seatIds, orderBill.schedule_id);
+
+    // Kiểm tra unavailable seats
+    const unavailableSeats = scheduleSeats.filter(
+      seat => seat.status === StatusSeat.BOOKED || seat.status === StatusSeat.HELD,
+    );
+    if (unavailableSeats.length > 0) {
+      throw new BadRequestException(
+        `Seats ${unavailableSeats.map(s => s.seat.id).join(', ')} are already booked or held.`,
+      );
+    }
+
+    // tinh toan tổng tiền
+    let totalSeats = 0;
+    let totalProduct = 0;
+    let totalPrice = 0;
+
+    const promotionDiscount = parseFloat(promotion?.discount ?? '0');
+    const isPercentage = promotion?.promotionType?.type === 'percentage';
+
+
+
+
+    // 1. Tính giá từng vé sau audience-discount
+    const audienceTypes = orderBill.seats.map(seat => seat.audience_type);
+    const ticketForAudienceTypes = await this.getTicketTypesByAudienceTypes(audienceTypes);
+
+    const seatPriceMap = new Map<string, number>(); // Map seatId -> final seat price
+
+    for (const seatData of orderBill.seats) {
+      const seat = scheduleSeats.find(s => s.seat.id === seatData.id);
+      if (!seat) throw new NotFoundException(`Seat ${seatData.id} not found`);
+
+      const ticketType = ticketForAudienceTypes.find(t => t.audience_type === seatData.audience_type);
+      const discount = parseFloat(ticketType?.discount ?? '0');
+
+      const basePrice = seat.seat.seatType.seat_type_price;
+      const finalPrice = applyAudienceDiscount(basePrice, discount);
+
+      seatPriceMap.set(seatData.id, finalPrice);
+      totalSeats += finalPrice;
+    }
+    if (orderExtras.length > 0) {
+      totalProduct = calculateProductTotal(orderExtras, orderBill);
+    }
+    const totalBeforePromotion = totalSeats + totalProduct;// before promotion
+    const promotionAmount = isPercentage
+      ? Math.round(totalBeforePromotion * (promotionDiscount / 100))
+      : Math.round(promotionDiscount);
+
+    totalPrice = roundUpToNearest(totalBeforePromotion - promotionAmount, 1000);
+
+    // console.log({ totalBeforePromotion, promotionAmount, totalPrice });
+
+    // 5. So sánh với client gửi
+    const inputTotal = parseFloat(orderBill.total_prices);
+    if (Math.abs(totalPrice - inputTotal) > 0.01) {
+      throw new BadRequestException('Total price mismatch. Please refresh and try again.');
+    }
+
+    const seatRatio = totalSeats / totalBeforePromotion;
+    const seatDiscount = Math.round(promotionAmount * seatRatio);
+    const productDiscount = promotionAmount - seatDiscount;
+    // Tạo transaction
+    const paymentMethod = await this.paymentMethodRepository.findOne({
+      where: { id: Number(orderBill.payment_method_id) },
+    });
+    if (!paymentMethod) {
+      throw new NotFoundException(`Payment method ${orderBill.payment_method_id} not found`);
+    }
+
+
+    let paymentCode: any;
+    // get payment code
+    paymentCode = await this.getPaymentCode(orderBill, clientIp);
+    if (!paymentCode || !paymentCode.payUrl || !paymentCode.orderId) {
+      throw new BadRequestException('Payment method failed to create order');
+    }
+    // check customer_email
+
+    // Create order
+
+    const newOrder = await this.orderRepository.save({
+      total_prices: orderBill.total_prices,
+      status: Number(orderBill.payment_method_id) === Method.CASH ? StatusOrder.SUCCESS : StatusOrder.PENDING,
+      user,
+      promotion,
+      customer_id: orderBill.customer_id ?? undefined
+    });
+
+    const transaction = await this.transactionRepository.save({
+      transaction_code: paymentCode.orderId,
+      transaction_date: new Date(), // Save as UTC in database
+      prices: orderBill.total_prices,
+      status: Number(orderBill.payment_method_id) === Method.CASH ? StatusOrder.SUCCESS : StatusOrder.PENDING,
+      paymentMethod,
+    });
+
+    // Update order with transaction
+    const newOrderWithTransaction = await this.getOrderById(newOrder.id);
+    newOrderWithTransaction.transaction = transaction;
+    await this.orderRepository.save(newOrderWithTransaction);
+
+    // Update transaction with order
+    const updatedTransaction = await this.getTransactionById(transaction.id);
+    updatedTransaction.order = newOrderWithTransaction;
+    await this.transactionRepository.save(updatedTransaction);
+
+
+
+    // Create tickets and order details
+    const ticketsToSave: Ticket[] = [];
+    const updatedSeats: ScheduleSeat[] = [];
+    const orderDetails: {
+      total_each_ticket: string;
+      order: any;
+      ticket: any;
+      schedule: any;
+    }[] = [];
+
+
+
+    // const discountPerSeat = seatDiscount / orderBill.seats.length;
+
+    for (const seatData of orderBill.seats) {
+      const seat = scheduleSeats.find(s => s.seat.id === seatData.id);
+      const ticketType = ticketForAudienceTypes.find(t => t.audience_type === seatData.audience_type);
+      const priceBeforePromo = seatPriceMap.get(seatData.id)!;
+
+
+      const shareRatio = priceBeforePromo / totalSeats;
+      const promotionDiscountForThisSeat = seatDiscount * shareRatio;
+      const finalPrice = Math.round(priceBeforePromo - promotionDiscountForThisSeat);
+
+      if (!seat) {
+        throw new NotFoundException(`Seat ${seatData.id} not found in scheduleSeats`);
+      }
+
+      // Set seat status to HELD when creating order (regardless of payment method)
+      seat.status = StatusSeat.HELD;
+      updatedSeats.push(seat);
+
+      const newTicket = this.ticketRepository.create({
+        seat: seat.seat,
+        schedule,
+        ticketType,
+        status: Number(orderBill.payment_method_id) === Method.CASH,
+      });
+
+      ticketsToSave.push(newTicket);
+
+      orderDetails.push({
+        total_each_ticket: roundUpToNearest(finalPrice, 1000).toString(),
+        order: newOrder,
+        ticket: newTicket,
+        schedule,
+      });
+    }
+
+
+    const savedTickets = await this.ticketRepository.save(ticketsToSave);
+    orderDetails.forEach((detail, index) => {
+      detail.ticket = savedTickets[index];
+    });
+
+    await this.scheduleSeatRepository.save(updatedSeats);
+    await this.orderDetailRepository.save(orderDetails);
+
+    // Create order extras
+    if (orderExtras.length > 0) {
+      const productTotals = orderExtras.map(p => {
+        const quantity = orderBill.products?.find(item => item.product_id === p.id)?.quantity || 0;
+        return {
+          product: p,
+          quantity,
+          total: Number(p.price) * quantity,
+        };
+      });
+
+      const totalProductBeforePromo = productTotals.reduce((sum, item) => sum + item.total, 0);
+      const orderExtrasToSave: Omit<OrderExtra, 'id'>[] = [];
+
+      for (const item of productTotals) {
+        const shareRatio = item.total / totalProductBeforePromo || 0;
+        const isCombo = item.product.type.toLocaleLowerCase() === ProductTypeEnum.COMBO
+
+
+        const basePrice = Number(item.product.price);
+        let unit_price_after_discount = basePrice;
+
+        if (isPercentage) {
+          const unitDiscount = basePrice * (productDiscount / totalProductBeforePromo);
+          unit_price_after_discount = Math.round(basePrice - unitDiscount);
+        } else {
+          const productDiscountShare = productDiscount * shareRatio;
+          const unitDiscount = productDiscountShare / item.quantity;
+          unit_price_after_discount = Math.round(basePrice - unitDiscount);
+        }
+
+
+        if (isCombo) {
+          const comboProduct = item.product as Combo;
+          if (comboProduct.discount != null && !isNaN(comboProduct.discount)) {
+            unit_price_after_discount *= (1 - comboProduct.discount / 100);
+          }
+        }
+
+        orderExtrasToSave.push({
+          quantity: item.quantity,
+          unit_price: roundUpToNearest(unit_price_after_discount, 1000).toString(),
+          order: newOrder,
+          product: item.product,
+          status:
+            Number(orderBill.payment_method_id) === Method.CASH
+              ? StatusOrder.SUCCESS
+              : StatusOrder.PENDING,
+        });
+      }
+
+      await this.orderExtraRepository.save(orderExtrasToSave);
+
+    }
+
+    // If payment method is CASH, immediately change seat status to BOOKED
+    if (Number(orderBill.payment_method_id) === Method.CASH) {
+      const seatIds = orderBill.seats.map(seat => seat.id);
+      await this.changeStatusScheduleSeatToBooked(seatIds, orderBill.schedule_id);
+    }
+
+
+    // add score for user , employee order
+    if (
+      orderBill.customer_id &&
+      orderBill.customer_id.trim() !== '' &&
+      Number(orderBill.payment_method_id) === Method.CASH
+    ) {
+      const customer = await this.userRepository.findOne({
+        where: { id: orderBill.customer_id },
+        relations: ['role'],
+      });
+
+      if (!customer || customer.role.role_id !== Role.USER) {
+        throw new ForbiddenException('Invalid customer for point accumulation');
+      }
+
+      const promotionExchange = promotion?.exchange ?? 0;
+      const orderScore = Math.floor(totalPrice / 1000);
+      const addScore = orderScore - promotionExchange;
+
+      customer.score += addScore;
+      await this.userRepository.save(customer);
+
+      await this.historyScoreRepository.save({
+        score_change: addScore,
+        user: customer,
+        order: newOrder,
+      });
+
+    }
+    if (Number(orderBill.payment_method_id) === Method.CASH) {
+      this.gateway.emitBookSeat({
+        schedule_id: orderBill.schedule_id,
+        seatIds: orderBill.seats.map(seat => seat.id),
+      });
+    } else {
+      this.gateway.emitHoldSeat({
+        schedule_id: orderBill.schedule_id,
+        seatIds: orderBill.seats.map(seat => seat.id),
+      });
+    }
+
+    return { payUrl: paymentCode.payUrl };
+
   }
 
   private async validateBeforeOrder(
@@ -621,39 +618,7 @@ export class OrderService {
     }
   }
 
-  async getOrderOverview() {
-    const [statusCounts, revenueResult] = await Promise.all([
-      this.orderRepository
-        .createQueryBuilder('order')
-        .select('order.status', 'status')
-        .addSelect('COUNT(*)', 'count')
-        .groupBy('order.status')
-        .getRawMany(),
 
-      this.orderRepository
-        .createQueryBuilder('order')
-        .select('SUM(order.total_prices)', 'revenue')
-        .where('order.status = :status', { status: StatusOrder.SUCCESS })
-        .getRawOne<{ revenue: string }>(),
-    ]);
-
-    const countByStatus = Object.fromEntries(
-      statusCounts.map((row) => [row.status, Number(row.count)]),
-    );
-
-    const totalSuccess = countByStatus[StatusOrder.SUCCESS] || 0;
-    const totalFailed = countByStatus[StatusOrder.FAILED] || 0;
-    const totalPending = countByStatus[StatusOrder.PENDING] || 0;
-
-    const totalOrders = totalSuccess + totalFailed + totalPending;
-    return {
-      totalOrders,
-      totalSuccess,
-      totalFailed,
-      totalPending,
-      revenue: revenueResult?.revenue,
-    };
-  }
 
 
   async getAllOrders(filters: OrderPaginationDto) {
@@ -921,24 +886,19 @@ export class OrderService {
   }
 
   async scanQrCode(qrCode: string) {
-    try {
-      const rawDecoded = this.jwtService.verify(qrCode, { secret: this.configService.get<string>('jwt.qrSecret') });
-      const decoded = rawDecoded as { orderId: number };
-      const order = await this.getOrderByIdEmployeeAndAdmin(decoded.orderId);
-      if (!order) {
-        throw new NotFoundException('Order not found');
-      }
-      //  use all ticket in order by qr code
-      const ticketIds = order.orderDetails.map(detail => detail.ticketId);
-      if (ticketIds.length === 0) {
-        throw new NotFoundException('No tickets found for this order');
-      }
-      await this.ticketService.markTicketsAsUsed(ticketIds);
-
-      return order;
-    } catch (error) {
-      throw new BadRequestException('Invalid QR code');
+    const rawDecoded = this.jwtService.verify(qrCode, { secret: this.configService.get<string>('jwt.qrSecret') });
+    const decoded = rawDecoded as { orderId: number };
+    const order = await this.getOrderByIdEmployeeAndAdmin(decoded.orderId);
+    if (!order) {
+      throw new NotFoundException('Order not found');
     }
+    //  use all ticket in order by qr code
+    const ticketIds = order.orderDetails.map(detail => detail.ticketId);
+    if (ticketIds.length === 0) {
+      throw new NotFoundException('No tickets found for this order');
+    }
+    await this.ticketService.markTicketsAsUsed(ticketIds);
+    return order;
   }
 
 
@@ -949,8 +909,6 @@ export class OrderService {
     clientIp: string
 
   ) {
-
-    try {
       // 1. Kiểm tra user và order
       const user = await this.getUserById(userId);
       const order = await this.orderRepository.findOne({
@@ -1054,12 +1012,6 @@ export class OrderService {
       return {
         payUrl: paymentCode.payUrl,
       };
-
-    } catch (error) {
-      // console.error('Error processing order payment:', error);
-      throw error;
-
-    }
   }
 
   // async adminUpdateAndProcessOrder(
@@ -1298,7 +1250,6 @@ export class OrderService {
     clientIp: string,
     user: JWTUserType,
   ) {
-    try {
       const existingOrder = await this.orderRepository.findOne({
         where: { id: orderId },
         relations: [
@@ -1505,9 +1456,6 @@ export class OrderService {
       return {
         payUrl: paymentCode.payUrl,
       };
-    } catch (error) {
-      throw error;
-    }
   }
 
 
@@ -1536,8 +1484,6 @@ export class OrderService {
     if (order.status !== StatusOrder.PENDING) {
       throw new BadRequestException('Only pending orders can be cancelled');
     }
-
-    try {
       // 1. Free up the seats that were booked for this order
       if (order.orderDetails && order.orderDetails.length > 0) {
         const scheduleId = order.orderDetails[0].schedule.id;
@@ -1598,11 +1544,6 @@ export class OrderService {
       return {
         message: 'Order cancelled successfully',
       };
-
-    } catch (error) {
-      // console.error('Error cancelling order:', error);
-      throw error
-    }
   }
 
 
@@ -2103,7 +2044,7 @@ export class OrderService {
     const paymentMethods = await this.paymentMethodRepository.find();
     const paymentMethodMap = new Map<string, PaymentMethod>();
     paymentMethods.forEach((pm) => paymentMethodMap.set(pm.name.toUpperCase(), pm));
-    
+
     const reportDate = now.toISOString().slice(0, 10);
 
 
