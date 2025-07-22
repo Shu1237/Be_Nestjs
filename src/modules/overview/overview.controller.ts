@@ -27,11 +27,11 @@ export class OverviewController {
   @ApiQuery({ name: 'paymentMethod', required: false, type: Number, example: 1 })
 
   getDailyOrderReports(@Query() query: DailyReportDto, @Req() req) {
-    // const user = req.user as JWTUserType;
-    // checkAdminEmployeeRole(user, 'Only admin and employee can access daily order reports');
+    const user = req.user as JWTUserType;
+    checkAdminEmployeeRole(user, 'Only admin and employee can access daily order reports');
     const {
       page = 1,
-      take = 100,
+      take = 10,
       ...restFilters
     } = query;
     return this.overviewService.getDailyOrderReports({

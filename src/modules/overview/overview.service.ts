@@ -79,7 +79,7 @@ export class OverviewService {
         const [data, total] = await qb.getManyAndCount();
         const summary = data.map(this.mapReportData);
 
-        // calculate total revenue total success, failed , and orders ( m tự làm )
+
 
         return buildPaginationResponse(summary, {
             total,
