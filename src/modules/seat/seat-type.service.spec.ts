@@ -28,22 +28,22 @@ describe('SeatTypeService', () => {
     service = module.get<SeatTypeService>(SeatTypeService);
   });
 
-  describe('getSeatTypeById', () => {
-    it('should return seat type if found', async () => {
+  describe('1.getSeatTypeById', () => {
+    it(' ✅ 1.1 should return seat type if found', async () => {
       (mockRepo.findOne as jest.Mock).mockResolvedValue({ id: 2, seat_type_name: 'VIP' });
       const result = await service.getSeatTypeById('2');
       expect(result).toEqual({ id: 2, seat_type_name: 'VIP' });
       expect(mockRepo.findOne).toHaveBeenCalledWith({ where: { id: 2 } });
     });
 
-    it('should throw NotFoundException if not found', async () => {
+    it(' ❌ 1.2 should throw NotFoundException if not found', async () => {
       (mockRepo.findOne as jest.Mock).mockResolvedValue(undefined);
       await expect(service.getSeatTypeById('5')).rejects.toThrow(NotFoundException);
     });
   });
 
-  describe('createSeatType', () => {
-    it('should create a seat type', async () => {
+  describe('2.createSeatType', () => {
+    it(' ✅ 2.1 should create a seat type', async () => {
       const dto = {
         seat_type_name: 'VIP',
         seat_type_price: 150000,
@@ -59,8 +59,8 @@ describe('SeatTypeService', () => {
     });
   });
 
-  describe('updateSeatType', () => {
-    it('should update a seat type', async () => {
+  describe('2.updateSeatType', () => {
+    it(' ✅ 2.1 should update a seat type', async () => {
       const old = {
         id: 2,
         seat_type_name: 'Normal',
@@ -81,8 +81,8 @@ describe('SeatTypeService', () => {
     });
   });
 
-  describe('deleteSeatType', () => {
-    it('should delete a seat type', async () => {
+  describe('2.deleteSeatType', () => {
+    it(' ✅ 2.1 should delete a seat type', async () => {
       const seatType = { id: 2, seat_type_name: 'VIP' };
       service.getSeatTypeById = jest.fn().mockResolvedValue(seatType);
       (mockRepo.remove as jest.Mock).mockResolvedValue(seatType);
