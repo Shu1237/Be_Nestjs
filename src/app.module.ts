@@ -11,7 +11,6 @@ import { allEntities } from './database';
 
 // Modules
 import { AuthModule } from './modules/auth/auth.module';
-import { TesterModule } from './modules/tester/tester.module';
 import { UserModule } from './modules/member/user.module';
 import { MovieModule } from './modules/movie/movie.module';
 import { OrderModule } from './modules/order/order.module';

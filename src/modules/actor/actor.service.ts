@@ -6,7 +6,6 @@ import { Like, Repository } from 'typeorm';
 import { Actor } from '../../database/entities/cinema/actor';
 import { CreateActorDto } from 'src/modules/actor/dtos/createActor.dto';
 import { UpdateActorDto } from 'src/modules/actor/dtos/updateActor.dto';
-import { Movie } from 'src/database/entities/cinema/movie';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
 import { NotFoundException } from 'src/common/exceptions/not-found.exception';
 import { ActorPaginationDto } from 'src/common/pagination/dto/actor/actor-pagination.dto';
@@ -21,8 +20,6 @@ export class ActorService {
   constructor(
     @InjectRepository(Actor)
     private readonly actorRepository: Repository<Actor>,
-    @InjectRepository(Movie)
-    private readonly movieRepository: Repository<Movie>,
   ) { }
 
 
