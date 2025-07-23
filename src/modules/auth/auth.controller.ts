@@ -1,36 +1,21 @@
 import {
   Body,
   Controller,
-  Delete,
-  Get,
-  Param,
   Post,
   UseGuards,
   Request,
-  ParseIntPipe,
-  Req,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiBody,
   ApiOperation,
-  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { CreateAccountDto } from './dtos/CreateAccount.dto';
-import { LoginDto } from './dtos/Login.dto';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
-import { ForgotPasswordDto } from './dtos/ForgotPassword.dto';
-import { VerifyOtpDto } from './dtos/VerifyOTP.dto';
-import { ChangePasswordOtpDto } from './dtos/ChangePasswordOPT.dto';
-import { ChangePasswordDto } from './dtos/ChangePassword';
 import { LogoutDto } from './dtos/Logout.dto';
 import { RefreshTokenDto } from './dtos/RefreshToken.dto';
-import { LocalGuard } from 'src/common/guards/local.guard';
 import { RefreshGuard } from 'src/common/guards/refresh-token.guard';
-import { GoogleAuthGuard } from 'src/common/guards/google.guard';
-
 import { LoginAzureDto } from './dtos/loginazure.dto';
 
 @ApiTags('Auth')

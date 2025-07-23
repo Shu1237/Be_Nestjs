@@ -304,19 +304,9 @@ export class ScheduleService {
     schedule.is_deleted = true;
     await this.scheduleRepository.save(schedule);
 
-    // 2. Hoàn tiền tất cả đơn liên quan tới schedule này
-    // let refundResult: any = null;
-    // try {
-    //   refundResult = await this.orderService.refundOrderBySchedule(id);
-    // } catch (error) {
-    //   console.error(`Refund error for schedule ${id}:`, error);
-    //   throw new BadRequestException(
-    //     `Schedule deleted, but refund failed: ${error.message}`,
-    //   );
-    // }
 
     return {
-      msg: 'Schedule soft-deleted and related orders refunded'
+      msg: 'Schedule soft-deleted successfully'
     };
   }
 

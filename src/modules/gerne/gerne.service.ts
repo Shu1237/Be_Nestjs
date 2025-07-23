@@ -38,8 +38,8 @@ export class GerneService {
       );
     }
 
-    await this.gerneRepository.create(createGerneDto);
-    await this.gerneRepository.save(createGerneDto);
+    const newGerne = this.gerneRepository.create(createGerneDto);
+    await this.gerneRepository.save(newGerne);
     return { msg: 'Gerne created successfully' };
   }
 
