@@ -1461,11 +1461,11 @@ export class OrderService {
       59,
       59,
     );
-    // const startOfDay = new Date(2025, 6, 21, 0, 0, 0);    // ngày 21/7/2025 lúc 00:00:00
-    // const endOfDay = new Date(2025, 6, 21, 23, 59, 59);   // ngày 21/7/2025 lúc 23:59:59
+    // const startOfDay = new Date(2025, 6, 22, 0, 0, 0);    // ngày 22/7/2025 lúc 00:00:00
+    // const endOfDay = new Date(2025, 6, 22, 23, 59, 59);   // ngày 22/7/2025 lúc 23:59:59
 
     const orders = await this.orderRepository.find({
-      where: { order_date: Between(startOfDay, endOfDay) },
+      where: { order_date: Between(startOfDay, endOfDay)},
       relations: ['transaction', 'transaction.paymentMethod'],
     });
 
@@ -1550,7 +1550,7 @@ export class OrderService {
 
     await Promise.allSettled(tasks);
 
-    // optimize call db
+    // // optimize call db
     const paymentMethods = await this.paymentMethodRepository.find();
     const paymentMethodMap = new Map<string, PaymentMethod>();
     paymentMethods.forEach((pm) =>

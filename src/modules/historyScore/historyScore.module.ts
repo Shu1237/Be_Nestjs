@@ -6,7 +6,7 @@ import { HistoryScore } from "src/database/entities/order/history_score";
 
 
 @Module({
-    imports: [TypeOrmModule.forFeature([HistoryScore])], // Add your entities here if needed
+    imports: [TypeOrmModule.forFeature([HistoryScore])], 
     controllers: [HistoryScoreController],
     providers: [HistoryScoreService],
 

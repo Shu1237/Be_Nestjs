@@ -102,11 +102,11 @@ export class OrderController {
     return this.orderService.checkQueryOrderByGateway(orderId);
   }
   // @UseGuards(JwtAuthGuard)
-  @Get('admin/check-all-gateway-status')
-  checkAllGateways(@Req() req) {
-    // checkAdminEmployeeRole(req.user, 'Only admin or employee can check all gateways status');
-    return this.orderService.checkAllOrdersStatusByGateway();
-  }
+  // @Get('admin/check-all-gateway-status')
+  // checkAllGateways(@Req() req) {
+  //   // checkAdminEmployeeRole(req.user, 'Only admin or employee can check all gateways status');
+  //   return this.orderService.checkAllOrdersStatusByGateway();
+  // }
 
   // POST /order/admin/update-order/:orderId - Admin/Employee update pending order
   @UseGuards(JwtAuthGuard)
