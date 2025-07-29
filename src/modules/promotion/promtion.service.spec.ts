@@ -130,4 +130,4 @@ describe('PromotionService', () => {
       await expect(service.deleteSoftPromotion(1)).rejects.toThrow(BadRequestException);
     });
   });
-});
+});   

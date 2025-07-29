@@ -56,10 +56,9 @@ describe('CinemaRoomService', () => {
 
   describe('1.1.create edge cases', () => {
     it('❌ 1.1.1 should throw if createCinemaRoomDto is null', async () => {
-      await expect(service.create(null as any)).rejects.toThrow();
+      await expect(service.create(null as any)).rejects.toThrow(BadRequestException);
     });
     
-   
     it('❌ 1.1.4 should throw if save throws error', async () => {
       (mockCinemaRoomRepo.findOne as jest.Mock).mockResolvedValue(undefined);
       (mockCinemaRoomRepo.create as jest.Mock).mockReturnValue({ cinema_room_name: 'A' });
@@ -70,11 +69,6 @@ describe('CinemaRoomService', () => {
       (mockCinemaRoomRepo.findOne as jest.Mock).mockResolvedValue({ id: 1, cinema_room_name: 'A' });
       await expect(service.create({ cinema_room_name: ' A ' })).rejects.toThrow(BadRequestException);
     });
-   
-    
- 
-
-    
   });
 
   describe('1.2.findAll', () => {
@@ -90,7 +84,6 @@ describe('CinemaRoomService', () => {
         getRawOne: jest.fn().mockResolvedValue({ activeCount: '1', deletedCount: '0' }),
       });
       const filters = { page: 1, take: 10, sortBy: 'cinema_room_name', sortOrder: 'ASC' } as any;
-      // Giả lập buildPaginationResponse trả về đúng
       const result = await service.findAll(filters);
       expect(result.data.length).toBe(1);
       expect(result.meta.total).toBe(1);
@@ -104,7 +97,7 @@ describe('CinemaRoomService', () => {
       await expect(service.findAll(filters)).resolves.toBeDefined();
     });
     it('❌ 1.2.4 should handle missing filters', async () => {
-      await expect(service.findAll(undefined as any)).rejects.toThrow();
+      await expect(service.findAll(undefined as any)).rejects.toThrow(BadRequestException);
     });
     it('✅ 1.2.5 should apply default pagination if page/take are missing', async () => {
       (mockCinemaRoomRepo.createQueryBuilder as jest.Mock).mockReturnValue({
@@ -153,7 +146,6 @@ describe('CinemaRoomService', () => {
       await service.findAll({ page: 1, take: 10, sortBy: 'invalidField', sortOrder: 'DESC' } as any);
       expect(qb.orderBy).toHaveBeenCalled();
     });
-
   });
 
   describe('2.findOne', () => {
@@ -166,11 +158,11 @@ describe('CinemaRoomService', () => {
       await expect(service.findOne(1)).rejects.toThrow(NotFoundException);
     });
     it('❌ 2.4 should throw if id is null', async () => {
-      await expect(service.findOne(null as any)).rejects.toThrow();
+      await expect(service.findOne(null as any)).rejects.toThrow(BadRequestException);
     });
     
     it('❌ 2.5 should throw if id is not a number', async () => {
-      await expect(service.findOne('abc' as any)).rejects.toThrow();
+      await expect(service.findOne('abc' as any)).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -194,7 +186,7 @@ describe('CinemaRoomService', () => {
     });
     
     it('❌ 3.4 should throw if updateCinemaRoomDto is undefined', async () => {
-      await expect(service.update(1, undefined as any)).rejects.toThrow();
+      await expect(service.update(1, undefined as any)).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -264,10 +256,10 @@ describe('CinemaRoomService', () => {
       await expect(service.restoreCinemaRoom(1)).rejects.toThrow(BadRequestException);
     });
     it('❌ 6.5 should throw if restoreCinemaRoom is called with NaN id', async () => {
-      await expect(service.restoreCinemaRoom(NaN)).rejects.toThrow();
+      await expect(service.restoreCinemaRoom(NaN)).rejects.toThrow(BadRequestException);
     });
     it('❌ 6.6 should throw if id is undefined', async () => {
-      await expect(service.restoreCinemaRoom(undefined as any)).rejects.toThrow();
+      await expect(service.restoreCinemaRoom(undefined as any)).rejects.toThrow(BadRequestException);
     });
     
     it('❌ 6.7 should throw if repository.save is null', async () => {
@@ -278,6 +270,7 @@ describe('CinemaRoomService', () => {
       expect(result).toEqual({ msg: 'Cinema Room restored successfully', cinemaRoom: room });
     });
   });
+  
   it('✅ 7.1 should return all cinema rooms where is_deleted is false', async () => {
     const mockRooms = [
       { id: 1, cinema_room_name: 'A', is_deleted: false },
