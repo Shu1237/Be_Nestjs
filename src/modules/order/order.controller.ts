@@ -251,6 +251,7 @@ export class OrderController {
       return res.redirect(result);
     } catch (error) {
       const failureUrl = `${this.configService.get<string>('redirectFE.url')}?status=failure ` || 'http://localhost:3000/booking/result?status=failure ';
+        console.error('PayPal payment error:', error);
       return res.redirect(failureUrl);
     }
   }
