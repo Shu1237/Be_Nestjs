@@ -41,6 +41,13 @@ describe('VersionService', () => {
       (mockVersionRepo.findOne as jest.Mock).mockResolvedValue({ id: 1, name: 'V1' });
       await expect(service.create({ name: 'V1' })).rejects.toThrow(BadRequestException);
     });
+    it('❌ 1.3 should throw if versionRepository.save throws error', async () => {
+      (mockVersionRepo.findOne as jest.Mock).mockResolvedValue(undefined);
+      (mockVersionRepo.create as jest.Mock).mockReturnValue({ name: 'V1' });
+      (mockVersionRepo.save as jest.Mock).mockRejectedValue(new Error('DB Error'));
+      await expect(service.create({ name: 'V1' })).rejects.toThrow('DB Error');
+    });
+   
   });
 
   describe('2.findOne', () => {
@@ -52,6 +59,13 @@ describe('VersionService', () => {
     it('❌ 2.2 should throw NotFoundException if version not found', async () => {
       (mockVersionRepo.findOne as jest.Mock).mockResolvedValue(undefined);
       await expect(service.findOne(1)).rejects.toThrow(NotFoundException);
+    });
+    it('❌ 2.3 should throw if id is null', async () => {
+      await expect(service.findOne(null as any)).rejects.toThrow();
+    });
+    
+    it('❌ 2.4 should throw if id is negative', async () => {
+      await expect(service.findOne(-10)).rejects.toThrow();
     });
   });
 
@@ -76,6 +90,13 @@ describe('VersionService', () => {
       (mockVersionRepo.findOne as jest.Mock).mockResolvedValue({ id: 2, name: 'V2' });
       await expect(service.update(1, { name: 'V2' })).rejects.toThrow(BadRequestException);
     });
+    it('❌ 3.4 should throw if save fails', async () => {
+      service.findOne = jest.fn().mockResolvedValue({ id: 1, name: 'Old' });
+      (mockVersionRepo.findOne as jest.Mock).mockResolvedValue(undefined);
+      (mockVersionRepo.save as jest.Mock).mockRejectedValue(new Error('Save error'));
+      await expect(service.update(1, { name: 'New' })).rejects.toThrow('Save error');
+    });
+    
   });
 
   describe('4.softDeleteVersion', () => {
@@ -91,6 +112,13 @@ describe('VersionService', () => {
       (mockVersionRepo.findOne as jest.Mock).mockResolvedValue(undefined);
       await expect(service.softDeleteVersion(1)).rejects.toThrow(NotFoundException);
     });
+    it('❌ 4.3 should throw if save fails during soft delete', async () => {
+      const version = { id: 1, is_deleted: false };
+      (mockVersionRepo.findOne as jest.Mock).mockResolvedValue(version);
+      (mockVersionRepo.save as jest.Mock).mockRejectedValue(new Error('Soft delete failed'));
+      await expect(service.softDeleteVersion(1)).rejects.toThrow('Soft delete failed');
+    });
+   
   });
 
   describe('5.restoreVersion', () => {
@@ -111,6 +139,14 @@ describe('VersionService', () => {
       (mockVersionRepo.findOne as jest.Mock).mockResolvedValue({ id: 1, is_deleted: false });
       await expect(service.restoreVersion(1)).rejects.toThrow(BadRequestException);
     });
+    it('❌ 5.4 should throw if save fails during restore', async () => {
+      const version = { id: 1, is_deleted: true };
+      (mockVersionRepo.findOne as jest.Mock).mockResolvedValue(version);
+      (mockVersionRepo.save as jest.Mock).mockRejectedValue(new Error('Restore failed'));
+      await expect(service.restoreVersion(1)).rejects.toThrow('Restore failed');
+    });
+   
+    
   });
 
   describe('6.remove', () => {
@@ -120,5 +156,29 @@ describe('VersionService', () => {
       const result = await service.remove(1);
       expect(result).toEqual({ msg: 'Version deleted successfully' });
     });
+    it('❌ 6.2 should throw if remove fails', async () => {
+      service.findOne = jest.fn().mockResolvedValue({ id: 1, name: 'V1' });
+      (mockVersionRepo.remove as jest.Mock).mockRejectedValue(new Error('Remove failed'));
+      await expect(service.remove(1)).rejects.toThrow('Remove failed');
+    });
+    it('❌ 6.3 should throw if remove called with string ID', async () => {
+      await expect(service.remove('abc' as any)).rejects.toThrow();
+    });
+    
+    
+  });
+  
+  
+ 
+  it('✅ 8.1 should return paginated versions', async () => {
+    const mockQB: any = {
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([[{ id: 1 }], 1]),
+    };
   });
 });

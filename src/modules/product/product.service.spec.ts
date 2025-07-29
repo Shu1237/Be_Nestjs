@@ -54,6 +54,14 @@ describe('ProductService', () => {
       (mockProductRepo.find as jest.Mock).mockResolvedValue([]);
       await expect(service.getProdcutById(99)).rejects.toThrow(NotFoundException);
     });
+    it('❌ 1.3 should throw if productIds is undefined', async () => {
+      await expect(service.getProdcutById(undefined as any)).rejects.toThrow();
+    });
+    
+    it('❌ 1.4 should throw if find throws error', async () => {
+      (mockProductRepo.find as jest.Mock).mockRejectedValue(new Error('DB error'));
+      await expect(service.getProdcutById(1)).rejects.toThrow('DB error');
+    });
   });
 
   describe('2.createProduct', () => {
@@ -76,6 +84,15 @@ describe('ProductService', () => {
       const dto = { type: 'invalid', name: 'Invalid', price: '1' };
       await expect(service.createProduct(dto as any)).rejects.toThrow(Error);
     });
+    it('❌ 2.5 should throw if dto is null', async () => {
+      await expect(service.createProduct(null as any)).rejects.toThrow();
+    });
+    
+    it('❌ 2.6 should throw if save throws error', async () => {
+      (mockProductRepo.save as jest.Mock).mockRejectedValue(new Error('Save failed'));
+      const dto = { type: 'drink', name: 'Coke', price: '10000' };
+      await expect(service.createProduct(dto as any)).rejects.toThrow('Save failed');
+    });
   });
 
   describe('3.updateProduct', () => {
@@ -90,6 +107,13 @@ describe('ProductService', () => {
       (mockProductRepo.findOne as jest.Mock).mockResolvedValue(undefined);
       await expect(service.updateProduct(99, { name: 'X' })).rejects.toThrow(NotFoundException);
     });
+    it('❌ 3.3 should throw if save fails', async () => {
+      (mockProductRepo.findOne as jest.Mock).mockResolvedValue({ id: 1, name: 'Old' });
+      (mockProductRepo.save as jest.Mock).mockRejectedValue(new Error('Save failed'));
+      await expect(service.updateProduct(1, { name: 'New' })).rejects.toThrow('Save failed');
+    });
+    
+    
   });
 
   describe('4.deleteProduct', () => {
@@ -102,6 +126,14 @@ describe('ProductService', () => {
     it('❌ 4.2 should throw NotFoundException if not found', async () => {
       (mockProductRepo.delete as jest.Mock).mockResolvedValue({ affected: 0 });
       await expect(service.deleteProduct(99)).rejects.toThrow(NotFoundException);
+    });
+    it('❌ 4.3 should throw if id is null', async () => {
+      await expect(service.deleteProduct(null as any)).rejects.toThrow();
+    });
+    
+    it('❌ 4.4 should throw if delete throws error', async () => {
+      (mockProductRepo.delete as jest.Mock).mockRejectedValue(new Error('Delete failed'));
+      await expect(service.deleteProduct(1)).rejects.toThrow('Delete failed');
     });
   });
 
@@ -116,6 +148,15 @@ describe('ProductService', () => {
     it('❌ 5.2 should throw NotFoundException if product not found', async () => {
       (mockProductRepo.findOne as jest.Mock).mockResolvedValue(undefined);
       await expect(service.softDeleteProduct(99)).rejects.toThrow(NotFoundException);
+    });
+    it('❌ 5.3 should throw if save throws error', async () => {
+      (mockProductRepo.findOne as jest.Mock).mockResolvedValue({ id: 1, is_deleted: false });
+      (mockProductRepo.save as jest.Mock).mockRejectedValue(new Error('Save failed'));
+      await expect(service.softDeleteProduct(1)).rejects.toThrow('Save failed');
+    });
+    
+    it('❌ 5.4 should throw if id is undefined', async () => {
+      await expect(service.softDeleteProduct(undefined as any)).rejects.toThrow();
     });
   });
 
@@ -136,5 +177,58 @@ describe('ProductService', () => {
       (mockProductRepo.findOne as jest.Mock).mockResolvedValue({ id: 1, is_deleted: false });
       await expect(service.restoreProduct(1)).rejects.toThrow(BadRequestException);
     });
+    it('❌ 6.4 should throw if id is undefined', async () => {
+  await expect(service.restoreProduct(undefined as any)).rejects.toThrow();
+});
+
   });
+  
+  
+  it('❌ 6.7 should throw if id is NaN', async () => {
+    await expect(service.restoreProduct(NaN)).rejects.toThrow();
+  });
+
+  it('✅ 7.1 should return non-deleted products', async () => {
+    const products = [{ id: 1, is_deleted: false }];
+    (mockProductRepo.find as jest.Mock).mockResolvedValue(products);
+    const result = await service.getAllProductsUser();
+    expect(result).toEqual(products);
+  });
+  
+  it('❌ 7.2 should throw if find fails', async () => {
+    (mockProductRepo.find as jest.Mock).mockRejectedValue(new Error('Find failed'));
+    await expect(service.getAllProductsUser()).rejects.toThrow('Find failed');
+  });
+  it('✅ 8.1 should return paginated products with counts', async () => {
+    const mockQB: any = {
+      select: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([[{ id: 1 }], 1]),
+      getRawOne: jest.fn().mockResolvedValue({ activeCount: 1, deletedCount: 0 }),
+    };
+  
+    (mockProductRepo.createQueryBuilder as jest.Mock).mockReturnValue(mockQB);
+  
+    const result = await service.getAllProducts({ page: 1, take: 10 } as any);
+    expect(result.data.length).toBe(1);
+    expect(result.meta.total).toBe(1);
+  });
+  
+  
+  
+  it('❌ 8.3 should handle invalid pagination dto gracefully', async () => {
+    const result = await service.getAllProducts({} as any);
+    expect(result.data).toBeDefined(); // Empty array is fine
+  });
+  it('✅ 9.1 should coerce numeric price from string', async () => {
+    const dto = { type: 'food', name: 'Pizza', price: '20000' };
+    (mockProductRepo.save as jest.Mock).mockResolvedValue({ price: 20000 });
+    await expect(service.createProduct(dto as any)).resolves.toEqual({ msg: 'Product created successfully' });
+  });
+  
 });

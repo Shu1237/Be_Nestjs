@@ -176,7 +176,7 @@ describe('MovieService', () => {
       const result = await service.updateMovie(1, dto as any);
       expect(result).toEqual({ msg: 'Movie updated successfully' });
     });
-
+   
     it('❌ 3.2 should throw NotFoundException if movie not found', async () => {
       mockMovieRepo.findOne.mockResolvedValue(undefined);
       await expect(service.updateMovie(1, {} as any)).rejects.toThrow(NotFoundException);
@@ -201,6 +201,46 @@ describe('MovieService', () => {
       mockGerneRepo.find.mockResolvedValue([{ id: 2, genre_name: 'G' }]);
       mockVersionRepo.find.mockResolvedValue([]);
       await expect(service.updateMovie(1, { id_Actor: [1], id_Gerne: [2], id_Version: [3] } as any)).rejects.toThrow(NotFoundException);
+    });
+  });
+  describe('updateMovie', () => {
+    it('should update movie successfully', async () => {
+      const existingMovie = { id: 1, actors: [], gernes: [], versions: [] };
+      mockMovieRepo.findOne.mockResolvedValue(existingMovie);
+      mockActorRepo.find.mockResolvedValue([{ id: 1, name: 'Actor 1' }]);
+      mockGerneRepo.find.mockResolvedValue([{ id: 2, genre_name: 'Action' }]);
+      mockVersionRepo.find.mockResolvedValue([{ id: 3, name: 'V1' }]);
+      mockMovieRepo.save.mockResolvedValue({});
+
+      const dto = { id_Actor: [1], id_Gerne: [2], id_Version: [3] };
+      const result = await service.updateMovie(1, dto as any);
+      expect(result).toEqual({ msg: 'Movie updated successfully' });
+    });
+
+    it('should throw NotFoundException if movie not found', async () => {
+      mockMovieRepo.findOne.mockResolvedValue(undefined);
+      await expect(service.updateMovie(1, {} as any)).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw NotFoundException if actors not found', async () => {
+      mockMovieRepo.findOne.mockResolvedValue({ id: 1, actors: [], gernes: [], versions: [] });
+      mockActorRepo.find.mockResolvedValue([]);
+      await expect(service.updateMovie(1, { id_Actor: [999] } as any)).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw NotFoundException if gernes not found', async () => {
+      mockMovieRepo.findOne.mockResolvedValue({ id: 1, actors: [], gernes: [], versions: [] });
+      mockActorRepo.find.mockResolvedValue([{ id: 1, name: 'A' }]);
+      mockGerneRepo.find.mockResolvedValue([]);
+      await expect(service.updateMovie(1, { id_Actor: [1], id_Gerne: [999] } as any)).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw NotFoundException if versions not found', async () => {
+      mockMovieRepo.findOne.mockResolvedValue({ id: 1, actors: [], gernes: [], versions: [] });
+      mockActorRepo.find.mockResolvedValue([{ id: 1, name: 'A' }]);
+      mockGerneRepo.find.mockResolvedValue([{ id: 2, genre_name: 'G' }]);
+      mockVersionRepo.find.mockResolvedValue([]);
+      await expect(service.updateMovie(1, { id_Actor: [1], id_Gerne: [2], id_Version: [999] } as any)).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -240,6 +280,31 @@ describe('MovieService', () => {
       mockMovieRepo.findOne.mockResolvedValue({ id: 1, is_deleted: false });
       await expect(service.restoreMovie(1)).rejects.toThrow(BadRequestException);
     });
+    describe('5.restoreMovie - additional tests', () => {
+      it('❌ 5.4 should throw BadRequestException if is_deleted is null or undefined', async () => {
+        mockMovieRepo.findOne.mockResolvedValue({ id: 1, is_deleted: null });
+        await expect(service.restoreMovie(1)).rejects.toThrow(BadRequestException);
+    
+        mockMovieRepo.findOne.mockResolvedValue({ id: 1, is_deleted: undefined });
+        await expect(service.restoreMovie(1)).rejects.toThrow(BadRequestException);
+      });
+    
+      it('❌ 5.5 should throw error if save fails', async () => {
+        mockMovieRepo.findOne.mockResolvedValue({ id: 1, is_deleted: true });
+        mockMovieRepo.save.mockRejectedValue(new Error('DB save error'));
+    
+        await expect(service.restoreMovie(1)).rejects.toThrow('DB save error');
+      });
+    
+      it('❌ 5.6 should throw error if id param is invalid', async () => {
+        // Tùy cách bạn validate id, nếu không có validate riêng thì có thể test trường hợp id = null
+        await expect(service.restoreMovie(null as any)).rejects.toThrow();
+        await expect(service.restoreMovie(undefined as any)).rejects.toThrow();
+        await expect(service.restoreMovie(-5)).rejects.toThrow();
+        await expect(service.restoreMovie(0)).rejects.toThrow();
+      });
+    });
+    
   });
 
   describe('6.getActorsOfMovie', () => {
@@ -251,6 +316,16 @@ describe('MovieService', () => {
     it('❌ 6.2 should throw NotFoundException if movie not found', async () => {
       mockMovieRepo.findOne.mockResolvedValue(undefined);
       await expect(service.getActorsOfMovie(1)).rejects.toThrow(NotFoundException);
+    });
+    it('✅ 6.3 should return empty array if movie has no actors', async () => {
+      mockMovieRepo.findOne.mockResolvedValue({ id: 1, actors: [] });
+      const result = await service.getActorsOfMovie(1);
+      expect(result).toEqual([]);
+    });
+  
+    it('❌ 6.4 should throw error if movieId invalid', async () => {
+      await expect(service.getActorsOfMovie(null as any)).rejects.toThrow();
+      await expect(service.getActorsOfMovie(undefined as any)).rejects.toThrow();
     });
   });
 
@@ -270,6 +345,25 @@ describe('MovieService', () => {
       mockMovieRepo.findOne.mockResolvedValue({ id: 1, actors: [] });
       mockActorRepo.findOne.mockResolvedValue(undefined);
       await expect(service.removeActorFromMovie(1, 1)).rejects.toThrow(NotFoundException);
+    });
+    it('❌ 7.4 should do nothing if actor is not in movie actors list', async () => {
+      mockMovieRepo.findOne.mockResolvedValue({ id: 1, actors: [{ id: 2, name: 'B' }] });
+      mockActorRepo.findOne.mockResolvedValue({ id: 1, name: 'A' });
+      mockMovieRepo.save.mockResolvedValue({ id: 1, actors: [{ id: 2, name: 'B' }] });
+      const result = await service.removeActorFromMovie(1, 1);
+      expect(result.actors.some(actor => actor.id === 1)).toBe(false);
+    });
+  
+    it('❌ 7.5 should throw error if save fails', async () => {
+      mockMovieRepo.findOne.mockResolvedValue({ id: 1, actors: [{ id: 1, name: 'A' }] });
+      mockActorRepo.findOne.mockResolvedValue({ id: 1, name: 'A' });
+      mockMovieRepo.save.mockRejectedValue(new Error('DB save error'));
+      await expect(service.removeActorFromMovie(1, 1)).rejects.toThrow('DB save error');
+    });
+  
+    it('❌ 7.6 should throw error if movieId or actorId invalid', async () => {
+      await expect(service.removeActorFromMovie(null as any, 1)).rejects.toThrow();
+      await expect(service.removeActorFromMovie(1, null as any)).rejects.toThrow();
     });
   });
 
@@ -306,6 +400,32 @@ describe('MovieService', () => {
       mockMovieRepo.findOne.mockResolvedValue({ id: 1, gernes: [{ id: 2, genre_name: 'B' }] });
       mockGerneRepo.findOne.mockResolvedValue({ id: 1, genre_name: 'G' });
       await expect(service.removeGerneFromMovie(1, 1)).rejects.toThrow(BadRequestException);
+    });
+    it('✅ 8.3 should return empty array if movie has no gernes', async () => {
+      mockMovieRepo.findOne.mockResolvedValue({ id: 1, gernes: [] });
+      const result = await service.getGernesOfMovie(1);
+      expect(result).toEqual([]);
+    });
+  
+    it('❌ 8.4 should throw error if movieId invalid', async () => {
+      await expect(service.getGernesOfMovie(null as any)).rejects.toThrow();
+      await expect(service.getGernesOfMovie(undefined as any)).rejects.toThrow();
+    });
+  });
+  
+  describe('8.removeGerneFromMovie - additional tests', () => {
+   
+  
+    it('❌ 8.6 should throw error if save fails', async () => {
+      mockMovieRepo.findOne.mockResolvedValue({ id: 1, gernes: [{ id: 1, genre_name: 'G' }] });
+      mockGerneRepo.findOne.mockResolvedValue({ id: 1, genre_name: 'G' });
+      mockMovieRepo.save.mockRejectedValue(new Error('DB save error'));
+      await expect(service.removeGerneFromMovie(1, 1)).rejects.toThrow('DB save error');
+    });
+  
+    it('❌ 8.7 should throw error if movieId or gerneId invalid', async () => {
+      await expect(service.removeGerneFromMovie(null as any, 1)).rejects.toThrow();
+      await expect(service.removeGerneFromMovie(1, null as any)).rejects.toThrow();
     });
   });
 
