@@ -36,7 +36,7 @@ export default () => ({
     callbackUrl: process.env.GOOGLE_CALLBACK_URL,
   },
   redirectFE: {
-    url: process.env.FRONTEND_REDIRECT_URL,
+    url: process.env.FRONTEND_REDIRECT_URL 
   },
 
   momo: {
