@@ -293,4 +293,83 @@ describe('ProductService', () => {
       msg: 'Product created successfully',
     });
   });
+
+  it('✅ 10.1 should create correct instance types based on type', async () => {
+    const dtoDrink = { type: 'drink', name: 'Tea', price: '5000' } as any;
+    const dtoFood = { type: 'food', name: 'Rice', price: '10000' } as any;
+    const dtoCombo = { type: 'combo', name: 'ComboMeal', price: '20000' } as any;
+  
+    (mockProductRepo.save as jest.Mock).mockResolvedValueOnce(dtoDrink).mockResolvedValueOnce(dtoFood).mockResolvedValueOnce(dtoCombo);
+  
+    await expect(service.createProduct(dtoDrink)).resolves.toEqual({ msg: 'Product created successfully' });
+    await expect(service.createProduct(dtoFood)).resolves.toEqual({ msg: 'Product created successfully' });
+    await expect(service.createProduct(dtoCombo)).resolves.toEqual({ msg: 'Product created successfully' });
+  });
+  it('✅ 11.1 should not change existing fields if dto omits them', async () => {
+    const existing = { id: 1, name: 'Coke', price: 10000 };
+    (mockProductRepo.findOne as jest.Mock).mockResolvedValue(existing);
+    (mockProductRepo.save as jest.Mock).mockResolvedValue(existing);
+  
+    const result = await service.updateProduct(1, { name: 'Coke Zero' } as any);
+    expect(result).toEqual({ msg: 'Product updated successfully' });
+    expect(mockProductRepo.save).toHaveBeenCalledWith(expect.objectContaining({ price: 10000 }));
+  });
+  it('❌ 16.1 should throw when id is NaN', async () => {
+    (mockProductRepo.findOne as jest.Mock).mockResolvedValue(null);
+    await expect(service.restoreProduct(NaN)).rejects.toThrow(NotFoundException);
+  });
+
+  it('❌ 18.1 should throw if id param is undefined', async () => {
+    await expect(service.updateProduct(undefined as any, {} as any)).rejects.toThrow();
+  });
+  it('❌ 19.1 should throw when id = 0', async () => {
+    (mockProductRepo.find as jest.Mock).mockResolvedValue([]);
+    await expect(service.getProdcutById(0)).rejects.toThrow(NotFoundException);
+  });
+  it('✅ 20.1 should call save with is_deleted=false when restoring', async () => {
+    const existing = { id: 2, is_deleted: true };
+    (mockProductRepo.findOne as jest.Mock).mockResolvedValue(existing);
+    (mockProductRepo.save as jest.Mock).mockResolvedValue({ ...existing, is_deleted: false });
+  
+    const result = await service.restoreProduct(2);
+    expect(mockProductRepo.save).toHaveBeenCalledWith(expect.objectContaining({ is_deleted: false }));
+    expect(result).toEqual({ msg: 'Product restored successfully' });
+  });
+        
+  it('✅ 15.1 should not re-save if product already is_deleted true', async () => {
+    const existing = { id: 1, is_deleted: true };
+    (mockProductRepo.findOne as jest.Mock).mockResolvedValue(existing);
+    const result = await service.softDeleteProduct(1);
+    expect(result).toEqual({ msg: 'Product soft deleted successfully' });
+    expect(mockProductRepo.save).toHaveBeenCalledTimes(1);
+  });
+  
+  
+ 
+  it('✅ 24.1 should not save if values are unchanged', async () => {
+    const existing = { id: 1, name: 'Coke', price: 10000 };
+    (mockProductRepo.findOne as jest.Mock).mockResolvedValue(existing);
+    const result = await service.updateProduct(1, { name: 'Coke', price: 10000 } as any);
+    expect(mockProductRepo.save).toHaveBeenCalledWith(existing);
+  });
+ 
+  it('✅ 26.1 should convert string id to number and delete', async () => {
+    (mockProductRepo.delete as jest.Mock).mockResolvedValue({ affected: 1 });
+    const result = await service.deleteProduct('3' as unknown as number);
+    expect(result).toEqual({ msg: 'Product deleted successfully' });
+  });
+  it('❌ 27.1 should throw NotFound if product does not exist on soft delete', async () => {
+    (mockProductRepo.findOne as jest.Mock).mockResolvedValue(null);
+    await expect(service.softDeleteProduct(99)).rejects.toThrow(NotFoundException);
+  });
+  
+  it('✅ 29.1 should return non-deleted products', async () => {
+    const products = [{ id: 1, is_deleted: false }];
+    (mockProductRepo.find as jest.Mock).mockResolvedValue(products);
+    const result = await service.getProdcutById(1);
+    expect(result).toEqual(products);
+  });
+  
+                     
 });
+

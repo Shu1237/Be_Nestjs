@@ -4,6 +4,7 @@ import { SeatTypeService } from './seat-type.service';
 import { SeatType } from 'src/database/entities/cinema/seat-type';
 import { NotFoundException } from 'src/common/exceptions/not-found.exception';
 import { Repository } from 'typeorm';
+import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
 
 describe('SeatTypeService', () => {
   let service: SeatTypeService;
@@ -96,4 +97,75 @@ describe('SeatTypeService', () => {
       expect(mockRepo.remove).toHaveBeenCalledWith(seatType);
     });
   });
+
+  describe('0.getAllSeatTypes', () => {
+    it(' ✅ 0.1 should return all seat types', async () => {
+      const seatTypes = [
+        { id: 1, seat_type_name: 'Normal' },
+        { id: 2, seat_type_name: 'VIP' },
+      ];
+      (mockRepo.find as jest.Mock).mockResolvedValue(seatTypes);
+      const result = await service.getAllSeatTypes();
+      expect(result).toEqual(seatTypes);
+      expect(mockRepo.find).toHaveBeenCalled();
+    });
+    it('✅ 1.3 should throw NotFoundException when ID is negative', async () => {
+      await expect(service.getSeatTypeById("-1")).rejects.toThrow(NotFoundException);
+    });
+    
+  });
+
+  describe('2.updateSeatType (negative case)', () => {
+    it(' ❌ 2.2 should throw NotFoundException when updating a non-existent seat type', async () => {
+      service.getSeatTypeById = jest.fn().mockRejectedValue(new NotFoundException('Seat type with ID 99 not found'));
+      await expect(
+        service.updateSeatType('99', { seat_type_name: 'Premium' } as any),
+      ).rejects.toThrow(NotFoundException);
+    });
+    // it('✅ 2.3 should trim name and create successfully', async () => {
+    //   (mockRepo.findOne as jest.Mock).mockResolvedValue(null);
+    //   (mockRepo.create as jest.Mock).mockImplementation(dto => dto);
+    //   (mockRepo.save as jest.Mock).mockResolvedValue({ id: 2, seat_type_name: 'Normal' });
+    
+    //   const dto = { seat_type_name: ' Normal ' };
+    //   const result = await service.createSeatType(dto);
+    //   expect(result.msg).toBe('  Normal ');
+    // });
+    
+  });
+
+  describe('3.deleteSeatType (negative case)', () => {
+    it(' ❌ 3.2 should throw NotFoundException when deleting a non-existent seat type', async () => {
+      service.getSeatTypeById = jest.fn().mockRejectedValue(new NotFoundException('Seat type with ID 99 not found'));
+      await expect(service.deleteSeatType('99')).rejects.toThrow(NotFoundException);
+    });
+    it('❌ 3.3 should throw NotFoundException if seat type not found', async () => {
+      (mockRepo.findOne as jest.Mock).mockResolvedValue(null);
+      await expect(service.updateSeatType("1", { seat_type_name: 'Updated' }))
+        .rejects.toThrow(NotFoundException);
+    });
+    
+  });
+  describe('3.getAllSeatTypes', () => {
+    it(' ✅ 3.1 should return all seat types', async () => {
+      const seatTypes = [
+        { id: 1, seat_type_name: 'Normal' },
+        { id: 2, seat_type_name: 'VIP' },
+      ];
+      (mockRepo.find as jest.Mock).mockResolvedValue(seatTypes);
+
+      const result = await service.getAllSeatTypes();
+      expect(result).toEqual(seatTypes);
+      expect(mockRepo.find).toHaveBeenCalled();
+    });
+    
+it('✅ 5.2 should return empty array if no seat types exist', async () => {
+  (mockRepo.find as jest.Mock).mockResolvedValue([]);
+  const result = await service.getAllSeatTypes();
+  expect(result).toEqual([]);
 });
+});
+
+
+
+

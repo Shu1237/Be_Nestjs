@@ -229,6 +229,16 @@ describe('OrderService', () => {
         NotFoundException,
       );
     });
+    it('✅ 1.3 should return user even if role is missing', async () => {
+      const fakeUser = { id: '123', role: null };
+      (mockUserRepo.findOne as jest.Mock).mockResolvedValue(fakeUser);
+      expect(await service['getUserById']('123')).toBe(fakeUser);
+    });
+    
+    it('❌ 1.4 should throw error if userId is null or empty string', async () => {
+      await expect(service['getUserById'](null as any)).rejects.toThrow();
+      await expect(service['getUserById']('')).rejects.toThrow();
+    });
   });
 
   describe('2.getPromotionById', () => {
@@ -243,6 +253,9 @@ describe('OrderService', () => {
         NotFoundException,
       );
     });
+    
+    
+    
   });
 
   describe('3.getScheduleById', () => {
@@ -257,6 +270,9 @@ describe('OrderService', () => {
         NotFoundException,
       );
     });
+    
+    
+    
   });
 
   describe('4.getOrderById', () => {
@@ -271,9 +287,15 @@ describe('OrderService', () => {
         NotFoundException,
       );
     });
+    
+    
+    it('❌ 4.4 should throw error if orderId is string', async () => {
+      await expect(service['getOrderById']('abc' as any)).rejects.toThrow();
+    });
+    
   });
 
-  describe('5.getPaymentCode', () => {
+  describe('5.getPaymentCode', () =>   {
     it('✅ 5.1 should return payUrl for MOMO', async () => {
       (mockMomoService.createOrderMomo as jest.Mock).mockResolvedValue({
         payUrl: 'momo-url',
@@ -321,7 +343,15 @@ describe('OrderService', () => {
       );
       expect(res.payUrl).toMatch(/Payment successful by Cash/);
     });
+   
+    
+    it('❌ 5.4 should throw error if transactionId is null or undefined', async () => {
+      await expect(service['getTransactionById'](null as any)).rejects.toThrow();
+      await expect(service['getTransactionById'](undefined as any)).rejects.toThrow();
+    });
+    
   });
+  
   describe('6.validateBeforeOrder', () => {
     it('✅ 6.1 should return true if no conflicting seat holds', async () => {
       // User's own hold exists, no other holds
@@ -359,6 +389,16 @@ describe('OrderService', () => {
         service['validateBeforeOrder'](1, '123', ['s1']),
       ).resolves.toBe(false);
     });
+    it('❌ 6.4 should throw NotFoundException if audienceTypes is empty array', async () => {
+      (mockTicketTypeRepo.find as jest.Mock).mockResolvedValue([]);
+      await expect(service['getTicketTypesByAudienceTypes']([])).rejects.toThrow(NotFoundException);
+    });
+    
+    it('❌ 6.5 should throw error if audienceTypes is null or undefined', async () => {
+      await expect(service['getTicketTypesByAudienceTypes'](null as any)).rejects.toThrow();
+      await expect(service['getTicketTypesByAudienceTypes'](undefined as any)).rejects.toThrow();
+    });
+    
   });
 
   describe('7.changeStatusScheduleSeatToBooked', () => {
