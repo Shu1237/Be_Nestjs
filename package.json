@@ -10,7 +10,6 @@
   },
   "scripts": {
     "build": "nest build && npx copyfiles -u 1 template/* dist/template",
-    "postinstall": "npm run build",
     "start": "node dist/main.js",
     "dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
