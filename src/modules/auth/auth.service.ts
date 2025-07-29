@@ -34,7 +34,19 @@ export class AuthService {
     private qrcodeService: QrCodeService,
   ) { }
 
- 
+  async checkStatus(payload: JWTUserType) : Promise<void> {
+    const user = await this.userRepository.findOne({
+      where: { id: payload.account_id },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (!user.status) {
+      throw new ForbiddenException('Account is disabled');
+    }
+  }
   async validateRefreshToken(token: string) {
     const record = await this.refreshTokenRepository.findOne({
       where: { refresh_token: token, revoked: false },
