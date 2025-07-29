@@ -70,6 +70,24 @@ describe('ActorService', () => {
     });
   });
 
+  describe('1.1.createActor edge cases', () => {
+    it('❌ 1.1.1 should throw if createActorDto is null', async () => {
+      await expect(service.createActor(null as any)).rejects.toThrow();
+    });
+    
+    it('❌ 1.1.3 should throw if repo throws error', async () => {
+      (mockActorRepo.findOneBy as jest.Mock).mockRejectedValue(new Error('DB error'));
+      await expect(service.createActor({ name: 'A', gender: Gender.MALE, date_of_birth: new Date(), nationality: '', biography: '', profile_image: '' } as any)).rejects.toThrow('DB error');
+    });
+    it('❌ 1.1.4 should throw if save throws error', async () => {
+      (mockActorRepo.findOneBy as jest.Mock).mockResolvedValue(undefined);
+      (mockActorRepo.create as jest.Mock).mockReturnValue({ name: 'A' });
+      (mockActorRepo.save as jest.Mock).mockRejectedValue(new Error('Save error'));
+      await expect(service.createActor({ name: 'A', gender: Gender.MALE, date_of_birth: new Date(), nationality: '', biography: '', profile_image: '' } as any)).rejects.toThrow('Save error');
+    });
+    
+  });
+
   describe('2.findActorById', () => {
     it('✅ 2.1 should return the actor if found', async () => {
       (mockActorRepo.findOne as jest.Mock).mockResolvedValue({ id: 1 });
@@ -152,6 +170,117 @@ describe('ActorService', () => {
     it('❌ 7.2 should throw NotFoundException if actor not found', async () => {
       (mockActorRepo.findOne as jest.Mock).mockResolvedValue(undefined);
       await expect(service.removeActor(123)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('1.2.getAllActorsUser', () => {
+    it('✅ 1.2.1 should return empty array if no actors', async () => {
+      (mockActorRepo.find as jest.Mock).mockResolvedValue([]);
+      expect(await service.getAllActorsUser()).toEqual([]);
+    });
+    it('✅ 1.2.2 should return actors if exist', async () => {
+      (mockActorRepo.find as jest.Mock).mockResolvedValue([{ id: 1, name: 'A' }]);
+      expect(await service.getAllActorsUser()).toEqual([{ id: 1, name: 'A' }]);
+    });
+    it('❌ 1.2.3 should throw if repo throws error', async () => {
+      (mockActorRepo.find as jest.Mock).mockRejectedValue(new Error('DB error'));
+      await expect(service.getAllActorsUser()).rejects.toThrow('DB error');
+    });
+  });
+
+  describe('1.3.getAllActors', () => {
+    it('✅ 1.3.1 should return paginated actors', async () => {
+      (mockActorRepo.createQueryBuilder as jest.Mock).mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        getManyAndCount: jest.fn().mockResolvedValue([[{ id: 1 }], 1]),
+        getRawOne: jest.fn().mockResolvedValue({ activeCount: '1', deletedCount: '0' }),
+      });
+      const filters = { page: 1, take: 10, sortBy: 'name', sortOrder: 'ASC' } as any;
+      const result = await service.getAllActors(filters);
+      expect(result.data.length).toBe(1);
+      expect(result.meta.total).toBe(1);
+    });
+    it('❌ 1.3.2 should handle page/take = 0', async () => {
+      const filters = { page: 0, take: 0 } as any;
+      await expect(service.getAllActors(filters)).resolves.toBeDefined();
+    });
+    it('❌ 1.3.3 should handle negative page/take', async () => {
+      const filters = { page: -1, take: -5 } as any;
+      await expect(service.getAllActors(filters)).resolves.toBeDefined();
+    });
+    it('❌ 1.3.4 should handle missing filters', async () => {
+      await expect(service.getAllActors(undefined as any)).rejects.toThrow();
+    });
+  });
+
+  // BỔ SUNG THÊM UNIT TEST CHO getAllActors (edge case, filter, sort, count null, v.v.)
+  describe('1.3.getAllActors additional edge cases', () => {
+    it('❌ 1.3.5 should handle allowedSortFields with invalid sortBy', async () => {
+      (mockActorRepo.createQueryBuilder as jest.Mock).mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        getManyAndCount: jest.fn().mockResolvedValue([[{ id: 1 }], 1]),
+        getRawOne: jest.fn().mockResolvedValue({ activeCount: '1', deletedCount: '0' }),
+      });
+      const filters = { page: 1, take: 10, sortBy: 'invalid_field', sortOrder: 'ASC' } as any;
+      const result = await service.getAllActors(filters);
+      expect(result.data.length).toBe(1);
+      expect(result.meta.total).toBe(1);
+    });
+    it('❌ 1.3.6 should handle counts is null', async () => {
+      (mockActorRepo.createQueryBuilder as jest.Mock).mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        getManyAndCount: jest.fn().mockResolvedValue([[{ id: 1 }], 1]),
+        getRawOne: jest.fn().mockResolvedValue(null),
+      });
+      const filters = { page: 1, take: 10, sortBy: 'name', sortOrder: 'ASC' } as any;
+      const result = await service.getAllActors(filters);
+      expect(result.data.length).toBe(1);
+      expect(result.meta.total).toBe(1);
+      expect('activeCount' in result.meta).toBe(true);
+      expect('deletedCount' in result.meta).toBe(true);
+    });
+    it('❌ 1.3.7 should handle getManyAndCount throws error', async () => {
+      (mockActorRepo.createQueryBuilder as jest.Mock).mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        getManyAndCount: jest.fn().mockRejectedValue(new Error('getManyAndCount error')),
+        getRawOne: jest.fn().mockResolvedValue({ activeCount: '1', deletedCount: '0' }),
+      });
+      const filters = { page: 1, take: 10, sortBy: 'name', sortOrder: 'ASC' } as any;
+      await expect(service.getAllActors(filters)).rejects.toThrow('getManyAndCount error');
+    });
+    it('❌ 1.3.8 should handle getRawOne throws error', async () => {
+      (mockActorRepo.createQueryBuilder as jest.Mock).mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        getManyAndCount: jest.fn().mockResolvedValue([[{ id: 1 }], 1]),
+        getRawOne: jest.fn().mockRejectedValue(new Error('getRawOne error')),
+      });
+      const filters = { page: 1, take: 10, sortBy: 'name', sortOrder: 'ASC' } as any;
+      await expect(service.getAllActors(filters)).rejects.toThrow('getRawOne error');
     });
   });
 });
