@@ -35,9 +35,8 @@ export default () => ({
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     callbackUrl: process.env.GOOGLE_CALLBACK_URL,
   },
-  redirectUrls: {
-    successUrl: process.env.FRONTEND_SUCCESS_URL,
-    failureUrl: process.env.FRONTEND_FAILURE_URL,
+  redirectFE: {
+    url: process.env.FRONTEND_REDIRECT_URL 
   },
 
   momo: {
