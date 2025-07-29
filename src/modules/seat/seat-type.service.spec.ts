@@ -168,4 +168,4 @@ it('✅ 5.2 should return empty array if no seat types exist', async () => {
 
 
 
-
+});

@@ -12,6 +12,7 @@ import { TicketType } from 'src/database/entities/order/ticket-type';
 import { OrderExtra } from 'src/database/entities/order/order-extra';
 import { Schedule } from 'src/database/entities/cinema/schedule';
 import { DailyTransactionSummary } from 'src/database/entities/order/daily_transaction_summary';
+import { DailyReportDto } from 'src/common/pagination/dto/dailyReport/dailyReport.dto';
 
 const mockRepo = () => ({
   createQueryBuilder: jest.fn(() => ({
@@ -782,5 +783,6 @@ describe('OverviewService', () => {
         'Database error',
       );
     });
+});
   });
 
