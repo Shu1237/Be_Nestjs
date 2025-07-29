@@ -14,21 +14,27 @@ import { InternalServerErrorException } from '../exceptions/internal-server-erro
 
 @Injectable()
 export class RefreshGuard implements CanActivate {
-  constructor(private authService: AuthService,
-    private readonly configService: ConfigService, 
-  ) { }
+  constructor(
+    private authService: AuthService,
+    private readonly configService: ConfigService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest<Request>();
     const jwtSecret = this.configService.get<string>('jwt.secret');
 
     if (!jwtSecret) {
-      throw new InternalServerErrorException('JWT_SECRET_KEY is not defined in environment variables');
+      throw new InternalServerErrorException(
+        'JWT_SECRET_KEY is not defined in environment variables',
+      );
     }
 
     // get access token từ header
     const authHeader = req.headers['authorization'];
-    const accessToken = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : undefined;
+    const accessToken =
+      authHeader && authHeader.startsWith('Bearer ')
+        ? authHeader.split(' ')[1]
+        : undefined;
     // check login
     if (!accessToken) {
       throw new UnauthorizedException('Access token is missing');
@@ -38,7 +44,9 @@ export class RefreshGuard implements CanActivate {
       // not expired
       jwt.verify(accessToken, jwtSecret);
       //  Nếu access token còn hạn → không cần refresh
-      throw new ForbiddenException('Access token is still valid, refresh not allowed');
+      throw new ForbiddenException(
+        'Access token is still valid, refresh not allowed',
+      );
     } catch (err: any) {
       // !  het han token
       if (err.name !== 'TokenExpiredError') {

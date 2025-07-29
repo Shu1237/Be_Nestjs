@@ -17,5 +17,4 @@ export class VerifyOtpDto {
   @IsNotEmpty()
   @IsEmail()
   email: string;
-
 }

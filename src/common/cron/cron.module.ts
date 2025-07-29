@@ -19,14 +19,22 @@ import { SeatModule } from 'src/modules/seat/seat.module';
 import { OrderModule } from 'src/modules/order/order.module';
 import { ReportService } from './daily-transaction/daily-transaction.service';
 
-
 @Module({
   imports: [
     RedisModule,
     MyGateWayModule,
     SeatModule,
-    TypeOrmModule.forFeature([RefreshToken, ScheduleSeat, Schedule, Movie, Order, Promotion, OrderExtra, Transaction]),
-    OrderModule
+    TypeOrmModule.forFeature([
+      RefreshToken,
+      ScheduleSeat,
+      Schedule,
+      Movie,
+      Order,
+      Promotion,
+      OrderExtra,
+      Transaction,
+    ]),
+    OrderModule,
   ],
   providers: [
     RefreshTokenService,
@@ -36,6 +44,5 @@ import { ReportService } from './daily-transaction/daily-transaction.service';
     PromotionCronService,
     ReportService,
   ],
-
 })
-export class CronModule { }
+export class CronModule {}

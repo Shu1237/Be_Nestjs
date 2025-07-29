@@ -1,6 +1,4 @@
-import {
-  Injectable,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CinemaRoom } from '../../database/entities/cinema/cinema-room';
@@ -15,14 +13,13 @@ import { applySorting } from 'src/common/pagination/apply_sort';
 import { applyPagination } from 'src/common/pagination/applyPagination';
 import { buildPaginationResponse } from 'src/common/pagination/pagination-response';
 
-
 @Injectable()
 export class CinemaRoomService {
   constructor(
     @InjectRepository(CinemaRoom)
     private readonly cinemaRoomRepository: Repository<CinemaRoom>,
-  ) { }
-  
+  ) {}
+
   async getAllCinemaRoomsUser(): Promise<CinemaRoom[]> {
     try {
       return await this.cinemaRoomRepository.find({
@@ -32,25 +29,26 @@ export class CinemaRoomService {
       throw error;
     }
   }
-  
-  async create(createCinemaRoomDto: CreateCinemaRoomDto):
-    Promise<{ message: string }> {
+
+  async create(
+    createCinemaRoomDto: CreateCinemaRoomDto,
+  ): Promise<{ message: string }> {
     if (!createCinemaRoomDto) {
       throw new BadRequestException('Create cinema room DTO is required');
     }
-    
+
     const trimmedName = createCinemaRoomDto.cinema_room_name?.trim();
     if (!trimmedName) {
       throw new BadRequestException('Cinema room name is required');
     }
-    
+
     const existing = await this.cinemaRoomRepository.findOne({
       where: { cinema_room_name: trimmedName },
     });
     if (existing) {
       throw new BadRequestException('The cinema room name already exists');
     }
-    
+
     const cinemaRoom = this.cinemaRoomRepository.create({
       ...createCinemaRoomDto,
       cinema_room_name: trimmedName,
@@ -65,11 +63,17 @@ export class CinemaRoomService {
     if (!filters) {
       throw new BadRequestException('Filters are required');
     }
-    
+
     const qb = this.cinemaRoomRepository.createQueryBuilder('cinemaRoom');
     applyCommonFilters(qb, filters, cinemaRoomFieldMapping);
-    const allowedSortFields = ['cinemaRoom.id', 'cinemaRoom.cinema_room_name']; 
-    applySorting(qb, filters.sortBy, filters.sortOrder, allowedSortFields, 'cinemaRoom.id');
+    const allowedSortFields = ['cinemaRoom.id', 'cinemaRoom.cinema_room_name'];
+    applySorting(
+      qb,
+      filters.sortBy,
+      filters.sortOrder,
+      allowedSortFields,
+      'cinemaRoom.id',
+    );
 
     applyPagination(qb, {
       take: filters.take,
@@ -92,14 +96,19 @@ export class CinemaRoomService {
       take: filters.take,
       activeCount,
       deletedCount,
-    })
+    });
   }
 
   async findOne(id: number): Promise<CinemaRoom> {
-    if (id === null || id === undefined || isNaN(id) || typeof id !== 'number') {
+    if (
+      id === null ||
+      id === undefined ||
+      isNaN(id) ||
+      typeof id !== 'number'
+    ) {
       throw new BadRequestException('Valid ID is required');
     }
-    
+
     const cinemaRoom = await this.cinemaRoomRepository.findOne({
       where: { id },
     });
@@ -116,25 +125,28 @@ export class CinemaRoomService {
     if (!updateCinemaRoomDto) {
       throw new BadRequestException('Update cinema room DTO is required');
     }
-    
+
     const trimmedName = updateCinemaRoomDto.cinema_room_name?.trim();
     if (!trimmedName) {
       throw new BadRequestException('Cinema room name is required');
     }
-    
+
     const existing = await this.cinemaRoomRepository.findOne({
       where: { cinema_room_name: trimmedName },
     });
     if (existing && existing.id !== id) {
       throw new BadRequestException('The cinema room name already exists');
     }
-    
+
     const cinemaRoom = await this.findOne(id);
-    Object.assign(cinemaRoom, { ...updateCinemaRoomDto, cinema_room_name: trimmedName });
+    Object.assign(cinemaRoom, {
+      ...updateCinemaRoomDto,
+      cinema_room_name: trimmedName,
+    });
     await this.cinemaRoomRepository.save(cinemaRoom);
     return {
       message: 'Cinema room updated successfully',
-    }
+    };
   }
 
   async remove(id: number): Promise<{ msg: string }> {
@@ -146,14 +158,19 @@ export class CinemaRoomService {
       throw error;
     }
   }
-  
+
   async softDeleteCinemaRoom(
     id: number,
   ): Promise<{ msg: string; cinemaRoom: CinemaRoom }> {
-    if (id === null || id === undefined || isNaN(id) || typeof id !== 'number') {
+    if (
+      id === null ||
+      id === undefined ||
+      isNaN(id) ||
+      typeof id !== 'number'
+    ) {
       throw new BadRequestException('Valid ID is required');
     }
-    
+
     const cinemaRoom = await this.cinemaRoomRepository.findOne({
       where: { id },
     });
@@ -170,10 +187,15 @@ export class CinemaRoomService {
   async restoreCinemaRoom(
     id: number,
   ): Promise<{ msg: string; cinemaRoom: CinemaRoom }> {
-    if (id === null || id === undefined || isNaN(id) || typeof id !== 'number') {
+    if (
+      id === null ||
+      id === undefined ||
+      isNaN(id) ||
+      typeof id !== 'number'
+    ) {
       throw new BadRequestException('Valid ID is required');
     }
-    
+
     const cinemaRoom = await this.cinemaRoomRepository.findOne({
       where: { id },
     });

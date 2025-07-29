@@ -1,7 +1,10 @@
 import * as bcrypt from 'bcrypt';
 import { Stripe } from 'stripe';
 import { OrderBillType, ProductType } from './type';
-import { BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import {
+  BadRequestException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { TicketType } from 'src/database/entities/order/ticket-type';
 import { ScheduleSeat } from 'src/database/entities/cinema/schedule_seat';
 import { Product } from 'src/database/entities/item/product';
@@ -10,13 +13,15 @@ import { Combo } from 'src/database/entities/item/combo';
 
 const SALT_ROUNDS = 10;
 
-
 export const hashPassword = async (password: string): Promise<string> => {
   const salt = await bcrypt.genSalt(SALT_ROUNDS);
   return bcrypt.hash(password, salt);
 };
 
-export const comparePassword = async (password: string, hash: string): Promise<boolean> => {
+export const comparePassword = async (
+  password: string,
+  hash: string,
+): Promise<boolean> => {
   return bcrypt.compare(password, hash);
 };
 
@@ -31,9 +36,7 @@ export const changeVnToUSD = (total: string) => {
   return usdAmount.toFixed(2);
 };
 
-
 export const changeUSDToVN = (total: string): string => {
-
   const usdAmount = parseFloat(total.replace(/[,\s]/g, ''));
 
   if (isNaN(usdAmount)) {
@@ -58,7 +61,11 @@ export const changeVNtoUSDToCent = (total: string): number => {
 };
 
 // Hàm áp dụng khuyến mãi (giảm giá)
-export const applyPromotion = (price: number, discount: number, isPercent: boolean): number => {
+export const applyPromotion = (
+  price: number,
+  discount: number,
+  isPercent: boolean,
+): number => {
   if (isPercent) {
     return Math.round(price * (1 - discount / 100));
   } else {
@@ -66,25 +73,35 @@ export const applyPromotion = (price: number, discount: number, isPercent: boole
   }
 };
 
-export const applyAudienceDiscount = (price: number, discount: number): number => {
+export const applyAudienceDiscount = (
+  price: number,
+  discount: number,
+): number => {
   return Math.round(price * (1 - discount / 100));
 };
 
-export const roundUpToNearest = (value: number, step: number = 1000): number => {
+export const roundUpToNearest = (
+  value: number,
+  step: number = 1000,
+): number => {
   return Math.ceil(value / step) * step;
 };
 
 export const calculateProductTotal = (
   orderExtras: Product[], // chứa cả combo
-  orderBill: OrderBillType
+  orderBill: OrderBillType,
 ) => {
   let totalProduct = 0;
 
   for (const product of orderExtras) {
-    const found = (orderBill.products ?? []).find(p => p.product_id === product.id);
+    const found = (orderBill.products ?? []).find(
+      (p) => p.product_id === product.id,
+    );
 
     if (!found || found.quantity <= 0) {
-      throw new BadRequestException(`Invalid quantity for product ${product.id}`);
+      throw new BadRequestException(
+        `Invalid quantity for product ${product.id}`,
+      );
     }
 
     const productPrice = parseFloat(product.price);
@@ -105,9 +122,6 @@ export const calculateProductTotal = (
   return totalProduct;
 };
 
-
-
-
 export const LineItemsVisa = (
   orderBill: OrderBillType,
   scheduleSeats: ScheduleSeat[],
@@ -123,10 +137,12 @@ export const LineItemsVisa = (
 
   // === Tính giá từng vé sau audience discount ===
   for (const seatData of orderBill.seats) {
-    const seat = scheduleSeats.find(s => s.seat.id === seatData.id);
+    const seat = scheduleSeats.find((s) => s.seat.id === seatData.id);
     if (!seat) continue;
 
-    const ticketType = ticketForAudienceTypes.find(t => t.audience_type === seatData.audience_type);
+    const ticketType = ticketForAudienceTypes.find(
+      (t) => t.audience_type === seatData.audience_type,
+    );
     const discount = parseFloat(ticketType?.discount ?? '0');
     const basePrice = Number(seat.seat.seatType.seat_type_price);
     const priceAfterAudience = applyAudienceDiscount(basePrice, discount);
@@ -136,8 +152,10 @@ export const LineItemsVisa = (
   }
 
   // === Tính tổng sản phẩm ===
-  const productTotals = orderExtras.map(product => {
-    const quantity = orderBill.products?.find(p => p.product_id === product.id)?.quantity || 0;
+  const productTotals = orderExtras.map((product) => {
+    const quantity =
+      orderBill.products?.find((p) => p.product_id === product.id)?.quantity ||
+      0;
     return {
       product,
       quantity,
@@ -161,10 +179,12 @@ export const LineItemsVisa = (
 
   // === Vé xem phim ===
   for (const seatData of orderBill.seats) {
-    const seat = scheduleSeats.find(s => s.seat.id === seatData.id);
+    const seat = scheduleSeats.find((s) => s.seat.id === seatData.id);
     if (!seat) continue;
 
-    const ticketType = ticketForAudienceTypes.find(t => t.audience_type === seatData.audience_type);
+    const ticketType = ticketForAudienceTypes.find(
+      (t) => t.audience_type === seatData.audience_type,
+    );
     const discountPercent = parseFloat(ticketType?.discount || '0');
     const priceAfterAudience = seatPriceMap.get(seatData.id) || 0;
 
@@ -196,7 +216,9 @@ export const LineItemsVisa = (
     const productDiscountShare = productDiscount * shareRatio;
     const unitDiscount = productDiscountShare / quantity;
 
-    const unit_price_after_discount = Math.round(Number(product.price) - unitDiscount);
+    const unit_price_after_discount = Math.round(
+      Number(product.price) - unitDiscount,
+    );
 
     lineItems.push({
       quantity,
@@ -214,7 +236,7 @@ export const LineItemsVisa = (
   return lineItems;
 };
 
-export  function formatDate(date: Date): string {
+export function formatDate(date: Date): string {
   const pad = (n: number) => n.toString().padStart(2, '0');
   return (
     date.getFullYear().toString() +
@@ -225,6 +247,3 @@ export  function formatDate(date: Date): string {
     pad(date.getSeconds())
   );
 }
-
-
-

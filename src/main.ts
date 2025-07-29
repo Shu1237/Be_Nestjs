@@ -1,4 +1,4 @@
-// (global as any).crypto = require('crypto');
+(global as any).crypto = require('crypto');
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';

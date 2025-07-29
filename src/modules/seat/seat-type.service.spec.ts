@@ -30,7 +30,10 @@ describe('SeatTypeService', () => {
 
   describe('1.getSeatTypeById', () => {
     it(' ✅ 1.1 should return seat type if found', async () => {
-      (mockRepo.findOne as jest.Mock).mockResolvedValue({ id: 2, seat_type_name: 'VIP' });
+      (mockRepo.findOne as jest.Mock).mockResolvedValue({
+        id: 2,
+        seat_type_name: 'VIP',
+      });
       const result = await service.getSeatTypeById('2');
       expect(result).toEqual({ id: 2, seat_type_name: 'VIP' });
       expect(mockRepo.findOne).toHaveBeenCalledWith({ where: { id: 2 } });
@@ -38,7 +41,9 @@ describe('SeatTypeService', () => {
 
     it(' ❌ 1.2 should throw NotFoundException if not found', async () => {
       (mockRepo.findOne as jest.Mock).mockResolvedValue(undefined);
-      await expect(service.getSeatTypeById('5')).rejects.toThrow(NotFoundException);
+      await expect(service.getSeatTypeById('5')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -48,7 +53,7 @@ describe('SeatTypeService', () => {
         seat_type_name: 'VIP',
         seat_type_price: 150000,
         seat_type_description: 'Ghế VIP với không gian rộng rãi',
-        cinema_room_id: '2'
+        cinema_room_id: '2',
       };
       (mockRepo.create as jest.Mock).mockReturnValue(dto);
       (mockRepo.save as jest.Mock).mockResolvedValue(dto);
@@ -66,7 +71,7 @@ describe('SeatTypeService', () => {
         seat_type_name: 'Normal',
         seat_type_price: 100000,
         seat_type_description: 'Bình thường',
-        cinema_room_id: '2'
+        cinema_room_id: '2',
       };
       const updateDto = {
         seat_type_name: 'VIP',

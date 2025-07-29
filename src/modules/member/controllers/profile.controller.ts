@@ -23,9 +23,7 @@ import { checkEmployeeRole } from 'src/common/role/emloyee';
 @Controller('profile')
 @UseGuards(JwtAuthGuard)
 export class ProfileController {
-  constructor(
-    private readonly profileService: ProfileService,
-  ) { }
+  constructor(private readonly profileService: ProfileService) {}
 
   @Get()
   @ApiOperation({ summary: 'Get user profile' })
@@ -40,19 +38,18 @@ export class ProfileController {
     @Req() req: Request,
     @Body() updateUserDto: UpdateUserDto,
   ) {
-
     const user = req.user as JWTUserType;
     return this.profileService.updateProfile(user.account_id, updateUserDto);
-
-
   }
-  
+
   @Post('qrcode')
   @ApiOperation({ summary: 'Get QR code for current user (image)' })
   @ApiBody({ type: ScanQrCodeDto, description: 'QR code data' })
   async getQrCode(@Body() body: ScanQrCodeDto, @Req() req) {
-    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can access QR code.');
+    checkAdminEmployeeRole(
+      req.user,
+      'Unauthorized: Only admin or employee can access QR code.',
+    );
     return this.profileService.getQrCode(body.qrCode);
-
   }
 }

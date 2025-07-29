@@ -12,24 +12,21 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { QrCodeModule } from 'src/common/qrcode/qr.module';
 
-
-
-
-
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Role, RefreshToken]),
-  JwtModule.registerAsync({
-    inject: [ConfigService],
-    useFactory: (configService: ConfigService) => ({
-      secret: configService.get<string>('jwt.secret'),
-      signOptions: {
-        expiresIn: configService.get<string>('jwt.expiresIn'),
-      },
+  imports: [
+    TypeOrmModule.forFeature([User, Role, RefreshToken]),
+    JwtModule.registerAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get<string>('jwt.secret'),
+        signOptions: {
+          expiresIn: configService.get<string>('jwt.expiresIn'),
+        },
+      }),
     }),
-  }),
-  QrCodeModule,
-],
+    QrCodeModule,
+  ],
   controllers: [AuthController],
-  providers: [AuthService, LocalStrategy, JwtStrategy, GoogleStrategy]
+  providers: [AuthService, LocalStrategy, JwtStrategy, GoogleStrategy],
 })
-export class AuthModule { }
+export class AuthModule {}

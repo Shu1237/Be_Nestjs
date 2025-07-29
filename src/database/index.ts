@@ -51,5 +51,5 @@ export const allEntities = [
   PromotionType,
   HistoryScore,
   Product,
-  DailyTransactionSummary
+  DailyTransactionSummary,
 ];

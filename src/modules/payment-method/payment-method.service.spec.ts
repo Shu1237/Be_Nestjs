@@ -42,14 +42,22 @@ describe('PaymentMethodService', () => {
     });
 
     it('❌ 1.2 should throw BadRequestException if name already exists', async () => {
-      (mockRepo.findOne as jest.Mock).mockResolvedValue({ id: 1, name: 'Credit Card' });
-      await expect(service.create({ name: 'Credit Card' })).rejects.toThrow(BadRequestException);
+      (mockRepo.findOne as jest.Mock).mockResolvedValue({
+        id: 1,
+        name: 'Credit Card',
+      });
+      await expect(service.create({ name: 'Credit Card' })).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
   describe('2.findOne', () => {
     it('✅ 2.1 should return the payment method if found', async () => {
-      (mockRepo.findOne as jest.Mock).mockResolvedValue({ id: 1, name: 'Credit Card' });
+      (mockRepo.findOne as jest.Mock).mockResolvedValue({
+        id: 1,
+        name: 'Credit Card',
+      });
       const result = await service.findOne(1);
       expect(result).toEqual({ id: 1, name: 'Credit Card' });
     });
@@ -62,8 +70,14 @@ describe('PaymentMethodService', () => {
 
   describe('3.update', () => {
     it('✅ 3.1 should update a payment method', async () => {
-      (mockRepo.findOne as jest.Mock).mockResolvedValue({ id: 1, name: 'Credit Card' });
-      (mockRepo.save as jest.Mock).mockResolvedValue({ id: 1, name: 'Bank Transfer' });
+      (mockRepo.findOne as jest.Mock).mockResolvedValue({
+        id: 1,
+        name: 'Credit Card',
+      });
+      (mockRepo.save as jest.Mock).mockResolvedValue({
+        id: 1,
+        name: 'Bank Transfer',
+      });
 
       const result = await service.update(1, { name: 'Bank Transfer' });
       expect(result).toEqual({ msg: 'Payment method updated successfully' });
@@ -72,7 +86,9 @@ describe('PaymentMethodService', () => {
 
     it('❌ 3.2 should throw NotFoundException if not found', async () => {
       (mockRepo.findOne as jest.Mock).mockResolvedValue(undefined);
-      await expect(service.update(1, { name: 'Bank Transfer' })).rejects.toThrow(NotFoundException);
+      await expect(
+        service.update(1, { name: 'Bank Transfer' }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -91,11 +107,21 @@ describe('PaymentMethodService', () => {
 
   describe('5.softDelete', () => {
     it('✅ 5.1 should soft delete a payment method', async () => {
-      (mockRepo.findOne as jest.Mock).mockResolvedValue({ id: 1, name: 'Credit Card', is_deleted: false });
-      (mockRepo.save as jest.Mock).mockResolvedValue({ id: 1, name: 'Credit Card', is_deleted: true });
+      (mockRepo.findOne as jest.Mock).mockResolvedValue({
+        id: 1,
+        name: 'Credit Card',
+        is_deleted: false,
+      });
+      (mockRepo.save as jest.Mock).mockResolvedValue({
+        id: 1,
+        name: 'Credit Card',
+        is_deleted: true,
+      });
 
       const result = await service.softDelete(1);
-      expect(result).toEqual({ msg: 'Payment method soft deleted successfully' });
+      expect(result).toEqual({
+        msg: 'Payment method soft deleted successfully',
+      });
       expect(mockRepo.save).toHaveBeenCalled();
     });
 
@@ -107,8 +133,14 @@ describe('PaymentMethodService', () => {
 
   describe('6.restore', () => {
     it('✅ 6.1 should restore a soft-deleted payment method', async () => {
-      (mockRepo.findOne as jest.Mock).mockResolvedValue({ id: 1, is_deleted: true });
-      (mockRepo.save as jest.Mock).mockResolvedValue({ id: 1, is_deleted: false });
+      (mockRepo.findOne as jest.Mock).mockResolvedValue({
+        id: 1,
+        is_deleted: true,
+      });
+      (mockRepo.save as jest.Mock).mockResolvedValue({
+        id: 1,
+        is_deleted: false,
+      });
 
       const result = await service.restore(1);
       expect(result).toEqual({ msg: 'Payment method restored successfully' });
@@ -121,7 +153,10 @@ describe('PaymentMethodService', () => {
     });
 
     it('❌ 6.3 should throw BadRequestException if not soft-deleted', async () => {
-      (mockRepo.findOne as jest.Mock).mockResolvedValue({ id: 1, is_deleted: false });
+      (mockRepo.findOne as jest.Mock).mockResolvedValue({
+        id: 1,
+        is_deleted: false,
+      });
       await expect(service.restore(1)).rejects.toThrow(BadRequestException);
     });
   });

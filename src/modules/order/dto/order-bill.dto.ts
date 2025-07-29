@@ -16,7 +16,7 @@ class SeatInfoDto {
   @ApiProperty({ example: 'abc123', description: 'Seat ID' })
   @IsString()
   id: string;
-  
+
   @ApiProperty({ enum: AudienceType, description: 'Audience type' })
   @IsEnum(AudienceType)
   audience_type: AudienceType;
@@ -50,7 +50,10 @@ export class CreateOrderBillDto {
   @IsNumber()
   schedule_id: number;
 
-  @ApiPropertyOptional({ example: 'uuid-customer-id', description: 'ID của khách hàng nếu nhân viên đặt giúp' })
+  @ApiPropertyOptional({
+    example: 'uuid-customer-id',
+    description: 'ID của khách hàng nếu nhân viên đặt giúp',
+  })
   @IsOptional()
   @IsString()
   customer_id: string;
@@ -61,7 +64,10 @@ export class CreateOrderBillDto {
   @Type(() => SeatInfoDto)
   seats: SeatInfoDto[];
 
-  @ApiPropertyOptional({ type: [ProductItemDto], description: 'List of products ordered' })
+  @ApiPropertyOptional({
+    type: [ProductItemDto],
+    description: 'List of products ordered',
+  })
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })

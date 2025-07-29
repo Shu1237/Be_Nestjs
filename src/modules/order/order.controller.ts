@@ -1,11 +1,30 @@
-import { Controller, Get, Post, Body, Query, Res, UseGuards, Req, Param, ParseIntPipe, Patch } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Query,
+  Res,
+  UseGuards,
+  Req,
+  Param,
+  ParseIntPipe,
+  Patch,
+} from '@nestjs/common';
 import { OrderService } from './order.service';
 import { MomoService } from './payment-menthod/momo/momo.service';
 import { PayPalService } from './payment-menthod/paypal/paypal.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { Response } from 'express';
 import { CreateOrderBillDto } from './dto/order-bill.dto';
-import { ApiOperation, ApiBody, ApiResponse, ApiBearerAuth, ApiExcludeEndpoint, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiOperation,
+  ApiBody,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiExcludeEndpoint,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { VnpayService } from './payment-menthod/vnpay/vnpay.service';
 import { ZalopayService } from './payment-menthod/zalopay/zalopay.service';
 import { JWTUserType } from 'src/common/utils/type';
@@ -30,10 +49,7 @@ export class OrderController {
     private readonly vnpayService: VnpayService,
     private readonly zalopayService: ZalopayService,
     private readonly configService: ConfigService,
-  ) { }
-
-
-  
+  ) {}
 
   // POST /order - Create new order
   @UseGuards(JwtAuthGuard)
@@ -56,7 +72,10 @@ export class OrderController {
   @ApiBearerAuth()
   @Post('scan-qr')
   scanQrCode(@Body() data: ScanQrCodeDto, @Req() req) {
-    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can scan QR code.');
+    checkAdminEmployeeRole(
+      req.user,
+      'Unauthorized: Only admin or employee can scan QR code.',
+    );
     return this.orderService.scanQrCode(data.qrCode);
   }
 
@@ -64,7 +83,7 @@ export class OrderController {
   @UseGuards(JwtAuthGuard)
   @Post('user/process-payment/:orderId')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'User re-payment for pending order', })
+  @ApiOperation({ summary: 'User re-payment for pending order' })
   async userProcessOrderPayment(
     @Param('orderId', ParseIntPipe) orderId: number,
     @Body() orderData: CreateOrderBillDto,
@@ -80,10 +99,9 @@ export class OrderController {
       orderId,
       orderData,
       user.account_id,
-      clientIp
+      clientIp,
     );
   }
-
 
   // @Post('refund/:id')
   // async refundOrder(@Param('id', ParseIntPipe) id: number) {
@@ -97,7 +115,10 @@ export class OrderController {
 
   @Get('checkStatus/:orderId')
   @ApiOperation({ summary: 'Check order status by Order ID' })
-  @ApiResponse({ status: 200, description: 'Order status checked successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Order status checked successfully',
+  })
   async checkOrderStatus(@Param('orderId', ParseIntPipe) orderId: number) {
     return this.orderService.checkQueryOrderByGateway(orderId);
   }
@@ -112,7 +133,7 @@ export class OrderController {
   @UseGuards(JwtAuthGuard)
   @Post('admin/update-order/:orderId')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Admin/Employee update pending order', })
+  @ApiOperation({ summary: 'Admin/Employee update pending order' })
   async adminUpdateOrder(
     @Param('orderId', ParseIntPipe) orderId: number,
     @Body() updateData: CreateOrderBillDto,
@@ -130,16 +151,14 @@ export class OrderController {
       orderId,
       updateData,
       clientIp,
-      user
+      user,
     );
   }
-
-
 
   @UseGuards(JwtAuthGuard)
   @Patch('admin/cancel-order/:orderId')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Admin/Employee cancel order', })
+  @ApiOperation({ summary: 'Admin/Employee cancel order' })
   async adminCancelOrder(
     @Param('orderId', ParseIntPipe) orderId: number,
     @Req() req,
@@ -156,11 +175,27 @@ export class OrderController {
   @ApiOperation({ summary: 'View all orders for admin' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
-  @ApiQuery({ name: 'status', required: false, enum: ['all', ...Object.values(StatusOrder)], example: 'all', description: 'Trạng thái đơn hàng', })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: ['all', ...Object.values(StatusOrder)],
+    example: 'all',
+    description: 'Trạng thái đơn hàng',
+  })
   @ApiQuery({ name: 'search', required: false, type: String, example: '' })
   @ApiQuery({ name: 'userId', required: false, type: String, example: 'uuid' })
-  @ApiQuery({ name: 'startDate', required: false, type: String, example: '2025-07-01' })
-  @ApiQuery({ name: 'endDate', required: false, type: String, example: '2025-07-03' })
+  @ApiQuery({
+    name: 'startDate',
+    required: false,
+    type: String,
+    example: '2025-07-01',
+  })
+  @ApiQuery({
+    name: 'endDate',
+    required: false,
+    type: String,
+    example: '2025-07-03',
+  })
   @ApiQuery({
     name: 'sortBy',
     required: false,
@@ -173,21 +208,21 @@ export class OrderController {
     enum: ['ASC', 'DESC'],
     example: 'DESC',
   })
-  @ApiQuery({ name: 'paymentMethod', required: false, type: String, example: 'momo' })
+  @ApiQuery({
+    name: 'paymentMethod',
+    required: false,
+    type: String,
+    example: 'momo',
+  })
   @ApiResponse({ status: 200, description: 'List of all orders' })
-  async getAllOrders(
-    @Req() req,
-    @Query() query: OrderPaginationDto,
-  ) {
+  async getAllOrders(@Req() req, @Query() query: OrderPaginationDto) {
     const user = req.user;
-    checkAdminEmployeeRole(user, 'You do not have permission to view all orders');
+    checkAdminEmployeeRole(
+      user,
+      'You do not have permission to view all orders',
+    );
 
-    const {
-      page = 1,
-      take = 10,
-      status,
-      ...restFilters
-    } = query;
+    const { page = 1, take = 10, status, ...restFilters } = query;
 
     const statusValue: StatusOrder | undefined =
       status === 'all' ? undefined : (status as StatusOrder);
@@ -207,17 +242,45 @@ export class OrderController {
   @ApiOperation({ summary: 'View my orders' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
-  @ApiQuery({ name: 'status', required: false, enum: ['all', ...Object.values(StatusOrder)], example: 'all', default: 'all' })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: ['all', ...Object.values(StatusOrder)],
+    example: 'all',
+    default: 'all',
+  })
   @ApiQuery({ name: 'search', required: false, type: String, example: '' })
-  @ApiQuery({ name: 'startDate', required: false, type: String, example: '2025-07-01' })
-  @ApiQuery({ name: 'endDate', required: false, type: String, example: '2025-07-03' })
-  @ApiQuery({ name: 'sortBy', required: false, type: String, example: 'order_date|movie_name|room_name' })
-  @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], example: 'ASC' })
-  @ApiQuery({ name: 'paymentMethod', required: false, type: String, example: 'momo' })
-  async getMyOrders(
-    @Req() req,
-    @Query() query: OrderPaginationDto,
-  ) {
+  @ApiQuery({
+    name: 'startDate',
+    required: false,
+    type: String,
+    example: '2025-07-01',
+  })
+  @ApiQuery({
+    name: 'endDate',
+    required: false,
+    type: String,
+    example: '2025-07-03',
+  })
+  @ApiQuery({
+    name: 'sortBy',
+    required: false,
+    type: String,
+    example: 'order_date|movie_name|room_name',
+  })
+  @ApiQuery({
+    name: 'sortOrder',
+    required: false,
+    enum: ['ASC', 'DESC'],
+    example: 'ASC',
+  })
+  @ApiQuery({
+    name: 'paymentMethod',
+    required: false,
+    type: String,
+    example: 'momo',
+  })
+  async getMyOrders(@Req() req, @Query() query: OrderPaginationDto) {
     const user = req.user as JWTUserType;
     const { page = 1, take = 10, status, ...restFilters } = query;
     const takeLimit = Math.min(take, 100);
@@ -250,7 +313,9 @@ export class OrderController {
       const result = await this.momoService.handleReturn(query);
       return res.redirect(result);
     } catch (error) {
-      const failureUrl = `${this.configService.get<string>('redirectFE.url')}?status=failed` || 'http://localhost:3000/booking/result?status=failed';
+      const failureUrl =
+        `${this.configService.get<string>('redirectFE.url')}?status=failed` ||
+        'http://localhost:3000/booking/result?status=failed';
       return res.redirect(failureUrl);
     }
   }
@@ -263,13 +328,16 @@ export class OrderController {
     @Res() res: Response,
   ) {
     try {
-      const result = await this.payPalService.handleReturnSuccessPaypal(orderId);
+      const result =
+        await this.payPalService.handleReturnSuccessPaypal(orderId);
       if (!result) {
         throw new BadRequestException('Invalid order ID or token');
       }
       return res.redirect(result);
     } catch (error) {
-      const failureUrl = `${this.configService.get<string>('redirectFE.url')}?status=failed` || 'http://localhost:3000/booking/result?status=failed';
+      const failureUrl =
+        `${this.configService.get<string>('redirectFE.url')}?status=failed` ||
+        'http://localhost:3000/booking/result?status=failed';
       return res.redirect(failureUrl);
     }
   }
@@ -277,12 +345,17 @@ export class OrderController {
   // GET /order/paypal/cancel/return - PayPal cancel callback
   @ApiExcludeEndpoint()
   @Get('paypal/cancel/return')
-  async handlePaypalCancel(@Query('token') orderId: string, @Res() res: Response) {
+  async handlePaypalCancel(
+    @Query('token') orderId: string,
+    @Res() res: Response,
+  ) {
     try {
       const result = await this.payPalService.handleReturnCancelPaypal(orderId);
       return res.redirect(result);
     } catch (error) {
-      const failureUrl = `${this.configService.get<string>('redirectFE.url')}?status=failed` || 'http://localhost:3000/booking/result?status=failed';
+      const failureUrl =
+        `${this.configService.get<string>('redirectFE.url')}?status=failed` ||
+        'http://localhost:3000/booking/result?status=failed';
       return res.redirect(failureUrl);
     }
   }
@@ -290,7 +363,10 @@ export class OrderController {
   // GET /order/visa/success/return - Visa success callback
   @ApiExcludeEndpoint()
   @Get('visa/success/return')
-  async handleVisaSuccess(@Query('session_id') sessionId: string, @Res() res: Response) {
+  async handleVisaSuccess(
+    @Query('session_id') sessionId: string,
+    @Res() res: Response,
+  ) {
     try {
       if (!sessionId) {
         throw new BadRequestException('Missing session_id parameter');
@@ -302,7 +378,9 @@ export class OrderController {
       return res.redirect(result);
     } catch (error) {
       console.error('Visa payment error:', error);
-      const failureUrl = `${this.configService.get<string>('redirectFE.url')}?status=failed` || 'http://localhost:3000/booking/result?status=failed';
+      const failureUrl =
+        `${this.configService.get<string>('redirectFE.url')}?status=failed` ||
+        'http://localhost:3000/booking/result?status=failed';
       return res.redirect(failureUrl);
     }
   }
@@ -310,7 +388,10 @@ export class OrderController {
   // GET /order/visa/cancel/return - Visa cancel callback
   @ApiExcludeEndpoint()
   @Get('visa/cancel/return')
-  async handleVisaCancel(@Query('session_id') sessionId: string, @Res() res: Response) {
+  async handleVisaCancel(
+    @Query('session_id') sessionId: string,
+    @Res() res: Response,
+  ) {
     try {
       if (!sessionId) {
         throw new BadRequestException('Missing session_id parameter');
@@ -319,7 +400,9 @@ export class OrderController {
       return res.redirect(result);
     } catch (error) {
       console.error('Visa payment error:', error);
-      const failureUrl = `${this.configService.get<string>('redirectFE.url')}?status=failed` || 'http://localhost:3000/booking/result?status=failed';
+      const failureUrl =
+        `${this.configService.get<string>('redirectFE.url')}?status=failed` ||
+        'http://localhost:3000/booking/result?status=failed';
       return res.redirect(failureUrl);
     }
   }
@@ -332,7 +415,9 @@ export class OrderController {
       const result = await this.vnpayService.handleReturnVnPay(query);
       return res.redirect(result);
     } catch (error) {
-      const failureUrl = `${this.configService.get<string>('redirectFE.url')}?status=failed` || 'http://localhost:3000/booking/result?status=failed';
+      const failureUrl =
+        `${this.configService.get<string>('redirectFE.url')}?status=failed` ||
+        'http://localhost:3000/booking/result?status=failed';
       return res.redirect(failureUrl);
     }
   }
@@ -345,7 +430,9 @@ export class OrderController {
       const result = await this.zalopayService.handleReturnZaloPay(query);
       return res.redirect(result);
     } catch (error) {
-      const failureUrl = `${this.configService.get<string>('redirectFE.url')}?status=failed` || 'http://localhost:3000/booking/result?status=failed';
+      const failureUrl =
+        `${this.configService.get<string>('redirectFE.url')}?status=failed` ||
+        'http://localhost:3000/booking/result?status=failed';
       return res.redirect(failureUrl);
     }
   }

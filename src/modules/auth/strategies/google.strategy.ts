@@ -11,14 +11,15 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
-
   ) {
     const googleClientId = configService.get<string>('google.clientId');
     const googleClientSecret = configService.get<string>('google.clientSecret');
     const googleCallbackUrl = configService.get<string>('google.callbackUrl');
 
     if (!googleClientId || !googleClientSecret || !googleCallbackUrl) {
-      throw new InternalServerErrorException('Google OAuth environment variables are not defined');
+      throw new InternalServerErrorException(
+        'Google OAuth environment variables are not defined',
+      );
     }
     super({
       clientID: googleClientId,
@@ -27,12 +28,10 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       scope: ['email', 'profile'],
     });
 
-    if (
-      !googleClientId ||
-      !googleClientSecret ||
-      !googleCallbackUrl
-    ) {
-      throw new InternalServerErrorException('Google OAuth environment variables are not defined');
+    if (!googleClientId || !googleClientSecret || !googleCallbackUrl) {
+      throw new InternalServerErrorException(
+        'Google OAuth environment variables are not defined',
+      );
     }
   }
 
