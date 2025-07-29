@@ -5,6 +5,9 @@
   "author": "",
   "private": true,
   "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20.11"
+  },
   "scripts": {
     "build": "nest build && npx copyfiles -u 1 template/* dist/template",
     "postinstall": "npm run build",
