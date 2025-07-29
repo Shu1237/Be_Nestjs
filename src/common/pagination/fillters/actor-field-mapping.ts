@@ -1,5 +1,3 @@
-
-
 import { FilterField } from 'src/common/utils/type';
 import { SelectQueryBuilder } from 'typeorm';
 
@@ -12,7 +10,7 @@ export const actorFieldMapping: Record<string, FilterField> = {
           actor.stage_name LIKE :search OR
           actor.nationality LIKE :search
         )`,
-        { search: `%${value}%` }
+        { search: `%${value}%` },
       );
     },
   },

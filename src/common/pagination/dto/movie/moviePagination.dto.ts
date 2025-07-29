@@ -23,7 +23,6 @@ export class MoviePaginationDto extends BasePaginationDto {
   @IsString()
   toDate?: string;
 
-
   @IsOptional()
   @IsString()
   actor_id?: string;

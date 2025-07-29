@@ -23,8 +23,6 @@ import axios from 'axios';
 import { PaymentGateway } from 'src/common/enums/payment_gatewat.enum';
 import { formatDate } from 'src/common/utils/helper';
 
-
-
 @Injectable()
 export class VnpayService extends AbstractPaymentService {
   [x: string]: any;
@@ -117,8 +115,6 @@ export class VnpayService extends AbstractPaymentService {
     return url;
   }
 
-
-
   async handleReturnVnPay(query: any) {
     const receivedParams = { ...query };
     const secureHash = receivedParams['vnp_SecureHash'];
@@ -136,7 +132,8 @@ export class VnpayService extends AbstractPaymentService {
 
     const signData = qs.stringify(sortedParams, { encode: false });
     const secretKey = this.configService.get<string>('vnpay.hashSecret');
-    if (!secretKey) throw new InternalServerErrorException('Missing VNP_HASH_SECRET');
+    if (!secretKey)
+      throw new InternalServerErrorException('Missing VNP_HASH_SECRET');
 
     const hmac = crypto.createHmac('sha512', secretKey);
     const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
@@ -159,9 +156,6 @@ export class VnpayService extends AbstractPaymentService {
       return `${this.configService.get<string>('redirectUrls.failureUrl')}`;
     }
   }
-
-
-
 
   // async createRefund({ orderId, clientIp }: { orderId: number; clientIp: string }) {
   //   // First check if refund record already exists
@@ -199,8 +193,6 @@ export class VnpayService extends AbstractPaymentService {
   //   if (!tmnCode || !secretKey || !refundUrl) {
   //     throw new InternalServerErrorException('VNPAY configuration is missing');
   //   }
-
-
 
   //   // Use transaction creation date if available, otherwise use current date
   //   const transactionDate = transaction.transaction_date
@@ -247,13 +239,10 @@ export class VnpayService extends AbstractPaymentService {
   //     .digest('hex');
   //   try {
 
-
   //     // Gửi yêu cầu hoàn tiền
   //     const response = await axios.post(refundUrl, vnpParams, {
   //       headers: { 'Content-Type': 'application/json' },
   //     });
-
-
 
   //     const data = response.data;
 
@@ -283,9 +272,6 @@ export class VnpayService extends AbstractPaymentService {
   //   }
   // }
 
-
-
-
   async queryOrderStatusVnpay(orderId: string, transactionDate: string) {
     const vnp_TmnCode = this.configService.get<string>('vnpay.tmnCode');
     const vnp_HashSecret = this.configService.get<string>('vnpay.hashSecret');
@@ -296,7 +282,7 @@ export class VnpayService extends AbstractPaymentService {
     }
 
     const requestId = `${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-    const createDate = formatDate(new Date()); 
+    const createDate = formatDate(new Date());
     const ipAddr = '127.0.0.1';
     const orderInfo = 'Query order status';
 
@@ -325,21 +311,31 @@ export class VnpayService extends AbstractPaymentService {
       params.vnp_OrderInfo,
     ].join('|');
 
-    const secureHash = crypto.createHmac('sha512', vnp_HashSecret).update(rawData).digest('hex');
+    const secureHash = crypto
+      .createHmac('sha512', vnp_HashSecret)
+      .update(rawData)
+      .digest('hex');
 
     try {
-      const res = await axios.post(vnp_ApiUrl, {
-        ...params,
-        vnp_SecureHash: secureHash,
-      }, {
-        headers: { 'Content-Type': 'application/json' },
-      });
+      const res = await axios.post(
+        vnp_ApiUrl,
+        {
+          ...params,
+          vnp_SecureHash: secureHash,
+        },
+        {
+          headers: { 'Content-Type': 'application/json' },
+        },
+      );
 
       const data = res.data;
 
       return {
         method: 'VNPAY',
-        status: data.vnp_ResponseCode === '00' && data.vnp_TransactionStatus === '00' ? 'PAID' : 'UNPAID',
+        status:
+          data.vnp_ResponseCode === '00' && data.vnp_TransactionStatus === '00'
+            ? 'PAID'
+            : 'UNPAID',
         paid: data.vnp_TransactionStatus === '00',
         total: data.vnp_Amount ? parseFloat(data.vnp_Amount) / 100 : 0,
         currency: data.vnp_CurrCode || 'VND',
@@ -348,10 +344,4 @@ export class VnpayService extends AbstractPaymentService {
       throw new InternalServerErrorException('Failed to query VNPAY order');
     }
   }
-
-
-
-
-
-
 }

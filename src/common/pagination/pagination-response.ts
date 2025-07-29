@@ -1,4 +1,4 @@
-import { MetaOptions } from "../utils/type";
+import { MetaOptions } from '../utils/type';
 
 export function buildPaginationResponse<T>(data: T[], meta: MetaOptions) {
   const {

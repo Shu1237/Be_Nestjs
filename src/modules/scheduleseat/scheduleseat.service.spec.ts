@@ -8,7 +8,9 @@ import { StatusSeat } from 'src/common/enums/status_seat.enum';
 
 describe('ScheduleSeatService', () => {
   let service: ScheduleSeatService;
-  let mockScheduleSeatRepo: Partial<Record<keyof Repository<ScheduleSeat>, jest.Mock>>;
+  let mockScheduleSeatRepo: Partial<
+    Record<keyof Repository<ScheduleSeat>, jest.Mock>
+  >;
 
   beforeEach(async () => {
     mockScheduleSeatRepo = {
@@ -19,7 +21,10 @@ describe('ScheduleSeatService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ScheduleSeatService,
-        { provide: getRepositoryToken(ScheduleSeat), useValue: mockScheduleSeatRepo },
+        {
+          provide: getRepositoryToken(ScheduleSeat),
+          useValue: mockScheduleSeatRepo,
+        },
       ],
     }).compile();
 
@@ -44,7 +49,9 @@ describe('ScheduleSeatService', () => {
         },
       ];
 
-      (mockScheduleSeatRepo.find as jest.Mock).mockResolvedValue(mockScheduleSeats);
+      (mockScheduleSeatRepo.find as jest.Mock).mockResolvedValue(
+        mockScheduleSeats,
+      );
 
       const result = await service.findSeatByScheduleId(1);
 
@@ -58,13 +65,19 @@ describe('ScheduleSeatService', () => {
     it('❌ 1.2 should throw NotFoundException when no seats found', async () => {
       (mockScheduleSeatRepo.find as jest.Mock).mockResolvedValue([]);
 
-      await expect(service.findSeatByScheduleId(999)).rejects.toThrow(NotFoundException);
+      await expect(service.findSeatByScheduleId(999)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('❌ 1.3 should handle database error', async () => {
-      (mockScheduleSeatRepo.find as jest.Mock).mockRejectedValue(new Error('Database error'));
+      (mockScheduleSeatRepo.find as jest.Mock).mockRejectedValue(
+        new Error('Database error'),
+      );
 
-      await expect(service.findSeatByScheduleId(1)).rejects.toThrow('Database error');
+      await expect(service.findSeatByScheduleId(1)).rejects.toThrow(
+        'Database error',
+      );
     });
 
     it('✅ 1.4 should return seats with different statuses', async () => {
@@ -74,7 +87,9 @@ describe('ScheduleSeatService', () => {
         { id: 3, status: StatusSeat.HELD },
       ];
 
-      (mockScheduleSeatRepo.find as jest.Mock).mockResolvedValue(mockScheduleSeats);
+      (mockScheduleSeatRepo.find as jest.Mock).mockResolvedValue(
+        mockScheduleSeats,
+      );
 
       const result = await service.findSeatByScheduleId(1);
 
@@ -93,7 +108,9 @@ describe('ScheduleSeatService', () => {
         },
       ];
 
-      (mockScheduleSeatRepo.find as jest.Mock).mockResolvedValue(mockScheduleSeats);
+      (mockScheduleSeatRepo.find as jest.Mock).mockResolvedValue(
+        mockScheduleSeats,
+      );
 
       const result = await service.findSeatByScheduleId(1);
 
@@ -105,7 +122,9 @@ describe('ScheduleSeatService', () => {
   describe('2.deleteUnbookedSeatsBySchedule', () => {
     it('✅ 2.1 should delete unbooked seats successfully', async () => {
       const mockDeleteResult = { affected: 5 };
-      (mockScheduleSeatRepo.delete as jest.Mock).mockResolvedValue(mockDeleteResult);
+      (mockScheduleSeatRepo.delete as jest.Mock).mockResolvedValue(
+        mockDeleteResult,
+      );
 
       const result = await service.deleteUnbookedSeatsBySchedule(1);
 
@@ -118,7 +137,9 @@ describe('ScheduleSeatService', () => {
 
     it('✅ 2.2 should return 0 when no seats to delete', async () => {
       const mockDeleteResult = { affected: 0 };
-      (mockScheduleSeatRepo.delete as jest.Mock).mockResolvedValue(mockDeleteResult);
+      (mockScheduleSeatRepo.delete as jest.Mock).mockResolvedValue(
+        mockDeleteResult,
+      );
 
       const result = await service.deleteUnbookedSeatsBySchedule(1);
 
@@ -126,18 +147,24 @@ describe('ScheduleSeatService', () => {
     });
 
     it('❌ 2.3 should handle database error during deletion', async () => {
-      (mockScheduleSeatRepo.delete as jest.Mock).mockRejectedValue(new Error('Delete failed'));
+      (mockScheduleSeatRepo.delete as jest.Mock).mockRejectedValue(
+        new Error('Delete failed'),
+      );
 
-      await expect(service.deleteUnbookedSeatsBySchedule(1)).rejects.toThrow('Delete failed');
+      await expect(service.deleteUnbookedSeatsBySchedule(1)).rejects.toThrow(
+        'Delete failed',
+      );
     });
 
     it('✅ 2.4 should handle null affected result', async () => {
       const mockDeleteResult = { affected: null };
-      (mockScheduleSeatRepo.delete as jest.Mock).mockResolvedValue(mockDeleteResult);
+      (mockScheduleSeatRepo.delete as jest.Mock).mockResolvedValue(
+        mockDeleteResult,
+      );
 
       const result = await service.deleteUnbookedSeatsBySchedule(1);
 
       expect(result).toBe(0);
     });
   });
-}); 
+});

@@ -1,4 +1,9 @@
-import { ForbiddenException, Injectable, NotFoundException, Redirect } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  Redirect,
+} from '@nestjs/common';
 import * as crypto from 'crypto';
 import axios from 'axios';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -78,7 +83,10 @@ export class MomoService extends AbstractPaymentService {
 
     const rawSignature = `accessKey=${accessKey}&amount=${total}&extraData=${extraData}&ipnUrl=${ipnUrl}&orderId=${orderId}&orderInfo=${orderInfo}&partnerCode=${partnerCode}&redirectUrl=${redirectUrl}&requestId=${requestId}&requestType=${requestType}`;
 
-    const signature = crypto.createHmac('sha256', secretKey).update(rawSignature).digest('hex');
+    const signature = crypto
+      .createHmac('sha256', secretKey)
+      .update(rawSignature)
+      .digest('hex');
     // console.log('Momo signature:', signature);
     const requestBody = {
       partnerCode,
@@ -99,11 +107,14 @@ export class MomoService extends AbstractPaymentService {
     };
 
     try {
-      const result = await axios.post('https://test-payment.momo.vn/v2/gateway/api/create', requestBody, {
-        headers: { 'Content-Type': 'application/json' },
-      });
+      const result = await axios.post(
+        'https://test-payment.momo.vn/v2/gateway/api/create',
+        requestBody,
+        {
+          headers: { 'Content-Type': 'application/json' },
+        },
+      );
       return result.data;
-
     } catch (error: any) {
       return {
         error: 'Failed to create Momo payment',
@@ -126,7 +137,7 @@ export class MomoService extends AbstractPaymentService {
       payType,
       responseTime,
       extraData,
-      signature
+      signature,
     } = query;
 
     const accessKey = this.configService.get<string>('momo.accessKey');
@@ -135,10 +146,12 @@ export class MomoService extends AbstractPaymentService {
       throw new InternalServerErrorException('Momo configuration is missing');
     }
 
-
     const rawSignature = `accessKey=${accessKey}&amount=${amount}&extraData=${extraData}&message=${message}&orderId=${orderId}&orderInfo=${orderInfo}&orderType=${orderType}&partnerCode=${partnerCode}&payType=${payType}&requestId=${requestId}&responseTime=${responseTime}&resultCode=${resultCode}&transId=${transId}`;
 
-    const computedSignature = crypto.createHmac('sha256', secretKey).update(rawSignature).digest('hex');
+    const computedSignature = crypto
+      .createHmac('sha256', secretKey)
+      .update(rawSignature)
+      .digest('hex');
 
     if (computedSignature !== signature) {
       throw new ForbiddenException('Invalid MoMo signature');
@@ -154,7 +167,6 @@ export class MomoService extends AbstractPaymentService {
       // Giao dịch thất bại
       return this.handleReturnFailed(transaction);
     }
-
   }
   // async createRefund({ orderId }: { orderId: number }) {
   //   const accessKey = this.configService.get<string>('momo.accessKey');
@@ -201,7 +213,6 @@ export class MomoService extends AbstractPaymentService {
   //     signature,
   //   };
 
-
   //   try {
   //     const res = await axios.post(
   //       'https://test-payment.momo.vn/v2/gateway/api/refund',
@@ -219,9 +230,7 @@ export class MomoService extends AbstractPaymentService {
   //     refund.refund_status = RefundStatus.SUCCESS;
   //     refund.signature = signature;
 
-
   //     await this.orderRefundRepository.save(refund);
-
 
   //     return res.data;
   //   } catch (error) {
@@ -242,7 +251,10 @@ export class MomoService extends AbstractPaymentService {
     const requestId = partnerCode + Date.now(); // Hoặc có thể dùng UUID
 
     const rawSignature = `accessKey=${accessKey}&orderId=${orderId}&partnerCode=${partnerCode}&requestId=${requestId}`;
-    const signature = crypto.createHmac('sha256', secretKey).update(rawSignature).digest('hex');
+    const signature = crypto
+      .createHmac('sha256', secretKey)
+      .update(rawSignature)
+      .digest('hex');
 
     const body = {
       partnerCode,
@@ -253,11 +265,9 @@ export class MomoService extends AbstractPaymentService {
     };
 
     try {
-      const response = await axios.post(
-        endpoint,
-        body,
-        { headers: { 'Content-Type': 'application/json' } },
-      );
+      const response = await axios.post(endpoint, body, {
+        headers: { 'Content-Type': 'application/json' },
+      });
       return {
         method: PaymentGateway.MOMO,
         status: response.data.resultCode === 0 ? 'PAID' : 'UNPAID',
@@ -266,12 +276,10 @@ export class MomoService extends AbstractPaymentService {
         curency: 'VND',
       };
     } catch (error: any) {
-      throw new InternalServerErrorException('Failed to query MoMo order', error?.response?.data);
+      throw new InternalServerErrorException(
+        'Failed to query MoMo order',
+        error?.response?.data,
+      );
     }
   }
-
-
-
-
-
 }

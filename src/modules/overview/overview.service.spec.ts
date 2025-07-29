@@ -18,10 +18,16 @@ describe('OverviewService', () => {
   let mockMovieRepo: Partial<Record<keyof Repository<Movie>, jest.Mock>>;
   let mockTicketRepo: Partial<Record<keyof Repository<Ticket>, jest.Mock>>;
   let mockUserRepo: Partial<Record<keyof Repository<User>, jest.Mock>>;
-  let mockTicketTypeRepo: Partial<Record<keyof Repository<TicketType>, jest.Mock>>;
-  let mockOrderExtraRepo: Partial<Record<keyof Repository<OrderExtra>, jest.Mock>>;
+  let mockTicketTypeRepo: Partial<
+    Record<keyof Repository<TicketType>, jest.Mock>
+  >;
+  let mockOrderExtraRepo: Partial<
+    Record<keyof Repository<OrderExtra>, jest.Mock>
+  >;
   let mockScheduleRepo: Partial<Record<keyof Repository<Schedule>, jest.Mock>>;
-  let mockDailyTransactionSummaryRepo: Partial<Record<keyof Repository<DailyTransactionSummary>, jest.Mock>>;
+  let mockDailyTransactionSummaryRepo: Partial<
+    Record<keyof Repository<DailyTransactionSummary>, jest.Mock>
+  >;
 
   const mockQueryBuilder = {
     leftJoinAndSelect: jest.fn().mockReturnThis(),
@@ -85,10 +91,19 @@ describe('OverviewService', () => {
         { provide: getRepositoryToken(Movie), useValue: mockMovieRepo },
         { provide: getRepositoryToken(Ticket), useValue: mockTicketRepo },
         { provide: getRepositoryToken(User), useValue: mockUserRepo },
-        { provide: getRepositoryToken(TicketType), useValue: mockTicketTypeRepo },
-        { provide: getRepositoryToken(OrderExtra), useValue: mockOrderExtraRepo },
+        {
+          provide: getRepositoryToken(TicketType),
+          useValue: mockTicketTypeRepo,
+        },
+        {
+          provide: getRepositoryToken(OrderExtra),
+          useValue: mockOrderExtraRepo,
+        },
         { provide: getRepositoryToken(Schedule), useValue: mockScheduleRepo },
-        { provide: getRepositoryToken(DailyTransactionSummary), useValue: mockDailyTransactionSummaryRepo },
+        {
+          provide: getRepositoryToken(DailyTransactionSummary),
+          useValue: mockDailyTransactionSummaryRepo,
+        },
       ],
     }).compile();
 
@@ -97,7 +112,12 @@ describe('OverviewService', () => {
 
   describe('1.getDailyOrderReports', () => {
     it('✅ 1.1 should return daily order reports with filters', async () => {
-      const filters = { page: 1, take: 10, fromDate: new Date('2024-01-01'), toDate: new Date('2024-01-01') };
+      const filters = {
+        page: 1,
+        take: 10,
+        fromDate: new Date('2024-01-01'),
+        toDate: new Date('2024-01-01'),
+      };
       const mockReports = [
         {
           id: 1,
@@ -106,15 +126,15 @@ describe('OverviewService', () => {
           totalOrders: 50,
           totalSuccess: 50,
           totalFailed: 0,
-          paymentMethod: { id: 1, name: 'MOMO' }
-        }
+          paymentMethod: { id: 1, name: 'MOMO' },
+        },
       ];
-      
+
       // Mock the getManyAndCount instead of getRawMany/getCount
       mockQueryBuilder.getManyAndCount.mockResolvedValue([mockReports, 1]);
-      
+
       const result = await service.getDailyOrderReports(filters);
-      
+
       expect(result.data).toHaveLength(1);
       expect(result.meta.total).toBe(1);
     });
@@ -122,7 +142,10 @@ describe('OverviewService', () => {
     it('✅ 1.2 should handle empty results', async () => {
       const filters: DailyReportDto = { page: 1, take: 10 };
       mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
-      mockQueryBuilder.getRawOne.mockResolvedValue({ totalRevenue: 0, totalOrders: 0 });
+      mockQueryBuilder.getRawOne.mockResolvedValue({
+        totalRevenue: 0,
+        totalOrders: 0,
+      });
 
       const result = await service.getDailyOrderReports(filters);
 
@@ -142,15 +165,25 @@ describe('OverviewService', () => {
 
       await service.getDailyOrderReports(filters);
 
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith('DATE(dailyReport.reportDate) >= DATE(:fromDate)', { fromDate: new Date('2024-01-01') });
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith('DATE(dailyReport.reportDate) <= DATE(:toDate)', { toDate: new Date('2024-01-31') });
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'DATE(dailyReport.reportDate) >= DATE(:fromDate)',
+        { fromDate: new Date('2024-01-01') },
+      );
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'DATE(dailyReport.reportDate) <= DATE(:toDate)',
+        { toDate: new Date('2024-01-31') },
+      );
     });
 
     it('❌ 1.4 should handle database error', async () => {
       const filters: DailyReportDto = { page: 1, take: 10 };
-      mockQueryBuilder.getManyAndCount.mockRejectedValue(new Error('Database error'));
+      mockQueryBuilder.getManyAndCount.mockRejectedValue(
+        new Error('Database error'),
+      );
 
-      await expect(service.getDailyOrderReports(filters)).rejects.toThrow('Database error');
+      await expect(service.getDailyOrderReports(filters)).rejects.toThrow(
+        'Database error',
+      );
     });
 
     it('✅ 1.5 should apply sorting correctly', async () => {
@@ -165,7 +198,10 @@ describe('OverviewService', () => {
 
       await service.getDailyOrderReports(filters);
 
-      expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith('dailyReport.reportDate', 'DESC');
+      expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith(
+        'dailyReport.reportDate',
+        'DESC',
+      );
     });
   });
 
@@ -182,8 +218,18 @@ describe('OverviewService', () => {
 
       // Mock getRawMany for ticket type sales report
       mockQueryBuilder.getRawMany.mockResolvedValue([
-        { ticketName: 'Adult', audienceType: 'ADULT', totalSold: '100', totalRevenue: '2000000' },
-        { ticketName: 'Child', audienceType: 'CHILD', totalSold: '50', totalRevenue: '1000000' },
+        {
+          ticketName: 'Adult',
+          audienceType: 'ADULT',
+          totalSold: '100',
+          totalRevenue: '2000000',
+        },
+        {
+          ticketName: 'Child',
+          audienceType: 'CHILD',
+          totalSold: '50',
+          totalRevenue: '1000000',
+        },
       ]);
 
       const result = await service.getOverview();
@@ -196,8 +242,18 @@ describe('OverviewService', () => {
 
     it('✅ 2.2 should return ticket type sales report', async () => {
       const mockTicketSales = [
-        { ticketName: 'Adult', audienceType: 'ADULT', totalSold: '100', totalRevenue: '2000000' },
-        { ticketName: 'Child', audienceType: 'CHILD', totalSold: '50', totalRevenue: '1000000' },
+        {
+          ticketName: 'Adult',
+          audienceType: 'ADULT',
+          totalSold: '100',
+          totalRevenue: '2000000',
+        },
+        {
+          ticketName: 'Child',
+          audienceType: 'CHILD',
+          totalSold: '50',
+          totalRevenue: '1000000',
+        },
       ];
 
       mockQueryBuilder.getRawMany.mockResolvedValue(mockTicketSales);
@@ -205,8 +261,18 @@ describe('OverviewService', () => {
       const result = await service.getOverview();
 
       expect(result.reports.ticketTypeSales).toEqual([
-        { ticketName: 'Adult', audienceType: 'ADULT', totalSold: 100, totalRevenue: 2000000 },
-        { ticketName: 'Child', audienceType: 'CHILD', totalSold: 50, totalRevenue: 1000000 },
+        {
+          ticketName: 'Adult',
+          audienceType: 'ADULT',
+          totalSold: 100,
+          totalRevenue: 2000000,
+        },
+        {
+          ticketName: 'Child',
+          audienceType: 'CHILD',
+          totalSold: 50,
+          totalRevenue: 1000000,
+        },
       ]);
     });
 
@@ -239,13 +305,13 @@ describe('OverviewService', () => {
         hour: 10,
         timeSlot: '10:00',
         ticketsSold: 20,
-        revenue: 400000
+        revenue: 400000,
       });
       expect(result.reports.timeSlotReport[14]).toEqual({
         hour: 14,
         timeSlot: '14:00',
         ticketsSold: 30,
-        revenue: 600000
+        revenue: 600000,
       });
     });
 
@@ -261,10 +327,18 @@ describe('OverviewService', () => {
 
       // The service calculates peak hours from time slot data
       expect(result.reports.revenueByPeakHours).toHaveLength(4);
-      expect(result.reports.revenueByPeakHours[0].category).toBe('Morning (6-12)');
-      expect(result.reports.revenueByPeakHours[1].category).toBe('Afternoon (12-18)');
-      expect(result.reports.revenueByPeakHours[2].category).toBe('Evening (18-24)');
-      expect(result.reports.revenueByPeakHours[3].category).toBe('Late Night (0-6)');
+      expect(result.reports.revenueByPeakHours[0].category).toBe(
+        'Morning (6-12)',
+      );
+      expect(result.reports.revenueByPeakHours[1].category).toBe(
+        'Afternoon (12-18)',
+      );
+      expect(result.reports.revenueByPeakHours[2].category).toBe(
+        'Evening (18-24)',
+      );
+      expect(result.reports.revenueByPeakHours[3].category).toBe(
+        'Late Night (0-6)',
+      );
     });
 
     it('✅ 2.6 should return top movies by revenue', async () => {
@@ -341,7 +415,10 @@ describe('OverviewService', () => {
       await service.getNowShowing();
 
       // The service doesn't filter by is_deleted in getNowShowing
-      expect(mockQueryBuilder.where).toHaveBeenCalledWith('movie.from_date <= :currentDate', expect.any(Object));
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith(
+        'movie.from_date <= :currentDate',
+        expect.any(Object),
+      );
     });
 
     it('✅ 3.3 should filter by current date range', async () => {
@@ -350,8 +427,14 @@ describe('OverviewService', () => {
 
       await service.getNowShowing();
 
-      expect(mockQueryBuilder.where).toHaveBeenCalledWith('movie.from_date <= :currentDate', { currentDate });
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith('movie.to_date >= :currentDate', { currentDate });
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith(
+        'movie.from_date <= :currentDate',
+        { currentDate },
+      );
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'movie.to_date >= :currentDate',
+        { currentDate },
+      );
     });
 
     it('❌ 3.4 should handle database error in now showing', async () => {
@@ -396,13 +479,20 @@ describe('OverviewService', () => {
 
       await service.getTopMoviesByRevenue();
 
-      expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith('totalRevenue', 'DESC');
+      expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith(
+        'totalRevenue',
+        'DESC',
+      );
     });
 
     it('❌ 4.4 should handle database error in top movies', async () => {
-      mockQueryBuilder.getRawMany.mockRejectedValue(new Error('Database error'));
+      mockQueryBuilder.getRawMany.mockRejectedValue(
+        new Error('Database error'),
+      );
 
-      await expect(service.getTopMoviesByRevenue()).rejects.toThrow('Database error');
+      await expect(service.getTopMoviesByRevenue()).rejects.toThrow(
+        'Database error',
+      );
     });
   });
 
@@ -442,7 +532,9 @@ describe('OverviewService', () => {
     it('❌ 5.4 should handle database error in revenue growth', async () => {
       mockQueryBuilder.getRawOne.mockRejectedValue(new Error('Database error'));
 
-      await expect(service.getRevenueGrowth(30)).rejects.toThrow('Database error');
+      await expect(service.getRevenueGrowth(30)).rejects.toThrow(
+        'Database error',
+      );
     });
   });
 
@@ -466,7 +558,9 @@ describe('OverviewService', () => {
     it('❌ 6.3 should handle database error in average order value', async () => {
       mockQueryBuilder.getRawOne.mockRejectedValue(new Error('Database error'));
 
-      await expect(service.getAverageOrderValue()).rejects.toThrow('Database error');
+      await expect(service.getAverageOrderValue()).rejects.toThrow(
+        'Database error',
+      );
     });
   });
 
@@ -498,7 +592,9 @@ describe('OverviewService', () => {
     it('❌ 7.3 should handle database error in customer retention', async () => {
       mockQueryBuilder.getCount.mockRejectedValue(new Error('Database error'));
 
-      await expect(service.getCustomerRetentionRate()).rejects.toThrow('Database error');
+      await expect(service.getCustomerRetentionRate()).rejects.toThrow(
+        'Database error',
+      );
     });
   });
 
@@ -519,9 +615,13 @@ describe('OverviewService', () => {
     });
 
     it('❌ 8.2 should handle database error in peak hours analysis', async () => {
-      mockQueryBuilder.getRawMany.mockRejectedValue(new Error('Database error'));
+      mockQueryBuilder.getRawMany.mockRejectedValue(
+        new Error('Database error'),
+      );
 
-      await expect(service.getPeakHoursAnalysis()).rejects.toThrow('Database error');
+      await expect(service.getPeakHoursAnalysis()).rejects.toThrow(
+        'Database error',
+      );
     });
   });
 
@@ -542,9 +642,13 @@ describe('OverviewService', () => {
     });
 
     it('❌ 9.2 should handle database error in movie performance', async () => {
-      (mockMovieRepo.count as jest.Mock).mockRejectedValue(new Error('Database error'));
+      (mockMovieRepo.count as jest.Mock).mockRejectedValue(
+        new Error('Database error'),
+      );
 
-      await expect(service.getMoviePerformanceAnalysis()).rejects.toThrow('Database error');
+      await expect(service.getMoviePerformanceAnalysis()).rejects.toThrow(
+        'Database error',
+      );
     });
   });
-}); 
+});

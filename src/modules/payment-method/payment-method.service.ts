@@ -23,7 +23,9 @@ export class PaymentMethodService {
         `Payment method with name "${createPaymentMethodDto.name}" already exists.`,
       );
     }
-    const paymentMethod = this.paymentMethodRepository.create(createPaymentMethodDto);
+    const paymentMethod = this.paymentMethodRepository.create(
+      createPaymentMethodDto,
+    );
     await this.paymentMethodRepository.save(paymentMethod);
     return { msg: 'Payment method created successfully' };
   }
@@ -33,7 +35,9 @@ export class PaymentMethodService {
   }
 
   async findOne(id: number) {
-    const paymentMethod = await this.paymentMethodRepository.findOne({ where: { id, is_deleted: false } });
+    const paymentMethod = await this.paymentMethodRepository.findOne({
+      where: { id, is_deleted: false },
+    });
     if (!paymentMethod) {
       throw new NotFoundException(`Payment method with ID ${id} not found`);
     }
@@ -41,7 +45,9 @@ export class PaymentMethodService {
   }
 
   async update(id: number, updatePaymentMethodDto: UpdatePaymentMethodDto) {
-    const paymentMethod = await this.paymentMethodRepository.findOne({ where: { id, is_deleted: false } });
+    const paymentMethod = await this.paymentMethodRepository.findOne({
+      where: { id, is_deleted: false },
+    });
     if (!paymentMethod) {
       throw new NotFoundException(`Payment method with ID ${id} not found`);
     }
@@ -59,7 +65,9 @@ export class PaymentMethodService {
   }
 
   async softDelete(id: number) {
-    const paymentMethod = await this.paymentMethodRepository.findOne({ where: { id, is_deleted: false } });
+    const paymentMethod = await this.paymentMethodRepository.findOne({
+      where: { id, is_deleted: false },
+    });
     if (!paymentMethod) {
       throw new NotFoundException(`Payment method with ID ${id} not found`);
     }
@@ -69,7 +77,9 @@ export class PaymentMethodService {
   }
 
   async restore(id: number): Promise<{ msg: string }> {
-    const paymentMethod = await this.paymentMethodRepository.findOne({ where: { id } });
+    const paymentMethod = await this.paymentMethodRepository.findOne({
+      where: { id },
+    });
     if (!paymentMethod) {
       throw new NotFoundException(`Payment method with ID ${id} not found`);
     }

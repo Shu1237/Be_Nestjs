@@ -1,4 +1,3 @@
-
 import { FilterField } from 'src/common/utils/type';
 import { SelectQueryBuilder } from 'typeorm';
 
@@ -13,10 +12,9 @@ export const orderFieldMapping: Record<string, FilterField> = {
   },
   search: {
     customWhere: (qb: SelectQueryBuilder<any>, value: string) => {
-      qb.andWhere(
-        '(user.username LIKE :search OR movie.name LIKE :search)',
-        { search: `%${value}%` }
-      );
+      qb.andWhere('(user.username LIKE :search OR movie.name LIKE :search)', {
+        search: `%${value}%`,
+      });
     },
   },
   paymentMethod: {

@@ -1,4 +1,4 @@
-import { Injectable, } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Gerne } from 'src/database/entities/cinema/gerne';
 import { Repository } from 'typeorm';
@@ -19,8 +19,7 @@ export class GerneService {
   constructor(
     @InjectRepository(Gerne)
     private readonly gerneRepository: Repository<Gerne>,
-
-  ) { }
+  ) {}
   async getAllGernesUser(): Promise<Gerne[]> {
     return await this.gerneRepository.find({
       where: { is_deleted: false },
@@ -46,12 +45,16 @@ export class GerneService {
   async findAllGernes(filters: GernePaginationDto) {
     const qb = this.gerneRepository.createQueryBuilder('gerne');
 
-    applyCommonFilters(qb, filters, gerneFieldMapping)
+    applyCommonFilters(qb, filters, gerneFieldMapping);
 
-    const allowedSortFields = [
+    const allowedSortFields = ['gerne.genre_name'];
+    applySorting(
+      qb,
+      filters.sortBy,
+      filters.sortOrder,
+      allowedSortFields,
       'gerne.genre_name',
-    ]
-    applySorting(qb, filters.sortBy, filters.sortOrder, allowedSortFields, 'gerne.genre_name')
+    );
 
     applyPagination(qb, {
       page: filters.page,
@@ -59,12 +62,11 @@ export class GerneService {
     });
 
     const [gernes, total] = await qb.getManyAndCount();
-     return buildPaginationResponse(gernes,{
+    return buildPaginationResponse(gernes, {
       page: filters.page,
       take: filters.take,
       total,
-     })
-  
+    });
   }
 
   async findGerneById(id: number): Promise<Gerne> {
@@ -124,9 +126,7 @@ export class GerneService {
       throw new NotFoundException(`Gerne with ID ${id} not found`);
     }
     if (!gerne.is_deleted) {
-      throw new BadRequestException(
-        `Gerne with ID ${id} is not soft-deleted`,
-      );
+      throw new BadRequestException(`Gerne with ID ${id} is not soft-deleted`);
     }
     gerne.is_deleted = false;
     await this.gerneRepository.save(gerne);

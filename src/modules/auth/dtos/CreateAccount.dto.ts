@@ -21,7 +21,6 @@ export class CreateAccountDto {
   @ApiProperty()
   @IsDateString()
   @Transform(({ value }) => new Date(value).toISOString().split('T')[0]) // Chuyển đổi sang định dạng YYYY-MM-DD
-
   @IsNotEmpty()
   date_of_birth: Date;
 
@@ -64,7 +63,10 @@ export class CreateAccountDto {
   @IsNotEmpty()
   username: string;
 
-  @ApiPropertyOptional({ default: 1, description: '1: User, 2: Employee, 3: Admin' })
+  @ApiPropertyOptional({
+    default: 1,
+    description: '1: User, 2: Employee, 3: Admin',
+  })
   @IsOptional()
   @IsNumber()
   role_id?: number;

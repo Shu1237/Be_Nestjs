@@ -57,8 +57,18 @@ describe('UserService', () => {
   describe('1.findAll', () => {
     it('✅ 1.1 should return paginated users with filters', async () => {
       const mockUsers = [
-        { id: '1', username: 'user1', email: 'user1@test.com', is_deleted: false },
-        { id: '2', username: 'user2', email: 'user2@test.com', is_deleted: false },
+        {
+          id: '1',
+          username: 'user1',
+          email: 'user1@test.com',
+          is_deleted: false,
+        },
+        {
+          id: '2',
+          username: 'user2',
+          email: 'user2@test.com',
+          is_deleted: false,
+        },
       ];
 
       const filters: UserPaginationDto = {
@@ -71,7 +81,10 @@ describe('UserService', () => {
       };
 
       mockQueryBuilder.getManyAndCount.mockResolvedValue([mockUsers, 2]);
-      mockQueryBuilder.getRawOne.mockResolvedValue({ activeCount: 2, deletedCount: 0 });
+      mockQueryBuilder.getRawOne.mockResolvedValue({
+        activeCount: 2,
+        deletedCount: 0,
+      });
 
       const result = await service.findAll(filters);
 
@@ -84,7 +97,10 @@ describe('UserService', () => {
     it('✅ 1.2 should handle empty results', async () => {
       const filters: UserPaginationDto = { page: 1, take: 10 };
       mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
-      mockQueryBuilder.getRawOne.mockResolvedValue({ activeCount: 0, deletedCount: 0 });
+      mockQueryBuilder.getRawOne.mockResolvedValue({
+        activeCount: 0,
+        deletedCount: 0,
+      });
 
       const result = await service.findAll(filters);
 
@@ -117,7 +133,10 @@ describe('UserService', () => {
       await service.findAll(filters);
 
       // Updated to match implementation which passes roleId as string
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith('user.role_id = :roleId', { roleId: '2' });
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'user.role_id = :roleId',
+        { roleId: '2' },
+      );
     });
 
     it('✅ 1.6 should apply status filter', async () => {
@@ -127,22 +146,27 @@ describe('UserService', () => {
       await service.findAll(filters);
 
       // Updated to match implementation which uses status, not is_deleted
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith('user.status = :status', { status: true });
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'user.status = :status',
+        { status: true },
+      );
     });
 
     it('❌ 1.7 should handle database error', async () => {
       const filters: UserPaginationDto = { page: 1, take: 10 };
-      mockQueryBuilder.getManyAndCount.mockRejectedValue(new Error('Database error'));
+      mockQueryBuilder.getManyAndCount.mockRejectedValue(
+        new Error('Database error'),
+      );
 
       await expect(service.findAll(filters)).rejects.toThrow('Database error');
     });
 
     it('✅ 1.8 should apply sorting correctly', async () => {
-      const filters: UserPaginationDto = { 
-        page: 1, 
-        take: 10, 
-        sortBy: 'email', 
-        sortOrder: 'DESC' 
+      const filters: UserPaginationDto = {
+        page: 1,
+        take: 10,
+        sortBy: 'email',
+        sortOrder: 'DESC',
       };
       mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
 
@@ -197,11 +221,15 @@ describe('UserService', () => {
     it('❌ 2.2 should throw NotFoundException when user not found', async () => {
       (mockUserRepo.findOne as jest.Mock).mockResolvedValue(undefined);
 
-      await expect(service.findOne('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('❌ 2.3 should handle database error', async () => {
-      (mockUserRepo.findOne as jest.Mock).mockRejectedValue(new Error('DB error'));
+      (mockUserRepo.findOne as jest.Mock).mockRejectedValue(
+        new Error('DB error'),
+      );
 
       await expect(service.findOne('1')).rejects.toThrow('DB error');
     });
@@ -236,7 +264,10 @@ describe('UserService', () => {
       };
 
       (mockUserRepo.findOne as jest.Mock).mockResolvedValue(mockUser);
-      (mockUserRepo.save as jest.Mock).mockResolvedValue({ ...mockUser, ...updateDto });
+      (mockUserRepo.save as jest.Mock).mockResolvedValue({
+        ...mockUser,
+        ...updateDto,
+      });
 
       const result = await service.update('1', updateDto);
 
@@ -247,7 +278,9 @@ describe('UserService', () => {
     it('❌ 3.2 should throw NotFoundException when user not found', async () => {
       (mockUserRepo.findOne as jest.Mock).mockResolvedValue(undefined);
 
-      await expect(service.update('nonexistent', { username: 'new' })).rejects.toThrow(NotFoundException);
+      await expect(
+        service.update('nonexistent', { username: 'new' }),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('✅ 3.3 should update only provided fields', async () => {
@@ -260,7 +293,10 @@ describe('UserService', () => {
       const updateDto = { username: 'newuser' };
 
       (mockUserRepo.findOne as jest.Mock).mockResolvedValue(mockUser);
-      (mockUserRepo.save as jest.Mock).mockResolvedValue({ ...mockUser, username: 'newuser' });
+      (mockUserRepo.save as jest.Mock).mockResolvedValue({
+        ...mockUser,
+        username: 'newuser',
+      });
 
       const result = await service.update('1', updateDto);
 
@@ -270,9 +306,13 @@ describe('UserService', () => {
 
     it('❌ 3.4 should handle database error during update', async () => {
       (mockUserRepo.findOne as jest.Mock).mockResolvedValue({ id: '1' });
-      (mockUserRepo.save as jest.Mock).mockRejectedValue(new Error('Save failed'));
+      (mockUserRepo.save as jest.Mock).mockRejectedValue(
+        new Error('Save failed'),
+      );
 
-      await expect(service.update('1', { username: 'new' })).rejects.toThrow('Save failed');
+      await expect(service.update('1', { username: 'new' })).rejects.toThrow(
+        'Save failed',
+      );
     });
 
     it('✅ 3.5 should validate role_id if provided', async () => {
@@ -282,7 +322,10 @@ describe('UserService', () => {
       (mockUserRepo.findOne as jest.Mock).mockResolvedValue(mockUser);
       // Add findOneBy method to mockRoleRepo
       mockRoleRepo.findOneBy = jest.fn().mockResolvedValue(mockRole);
-      (mockUserRepo.save as jest.Mock).mockResolvedValue({ ...mockUser, role: mockRole });
+      (mockUserRepo.save as jest.Mock).mockResolvedValue({
+        ...mockUser,
+        role: mockRole,
+      });
 
       const result = await service.update('1', { role_id: 2 });
 
@@ -305,27 +348,36 @@ describe('UserService', () => {
         id: '1',
         username: 'testuser',
         is_deleted: false,
-        status: true
+        status: true,
       };
 
       (mockUserRepo.findOne as jest.Mock).mockResolvedValue(mockUser);
-      (mockUserRepo.save as jest.Mock).mockResolvedValue({ ...mockUser, status: false });
+      (mockUserRepo.save as jest.Mock).mockResolvedValue({
+        ...mockUser,
+        status: false,
+      });
 
       await service.softDelete('1');
 
       // Updated to check for status: false instead of is_deleted: true
-      expect(mockUserRepo.save).toHaveBeenCalledWith(expect.objectContaining({ status: false }));
+      expect(mockUserRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: false }),
+      );
     });
 
     it('❌ 4.2 should throw NotFoundException when user not found', async () => {
       (mockUserRepo.findOne as jest.Mock).mockResolvedValue(undefined);
 
-      await expect(service.softDelete('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.softDelete('nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('❌ 4.3 should handle database error during soft delete', async () => {
       (mockUserRepo.findOne as jest.Mock).mockResolvedValue({ id: '1' });
-      (mockUserRepo.save as jest.Mock).mockRejectedValue(new Error('Save failed'));
+      (mockUserRepo.save as jest.Mock).mockRejectedValue(
+        new Error('Save failed'),
+      );
 
       await expect(service.softDelete('1')).rejects.toThrow('Save failed');
     });
@@ -341,7 +393,9 @@ describe('UserService', () => {
 
       await service.softDelete('1');
 
-      expect(mockUserRepo.save).toHaveBeenCalledWith(expect.objectContaining({ is_deleted: true }));
+      expect(mockUserRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ is_deleted: true }),
+      );
     });
   });
 
@@ -351,22 +405,29 @@ describe('UserService', () => {
         id: '1',
         username: 'testuser',
         is_deleted: true,
-        status: true  // In the real service logic, status=true means not deleted!
+        status: true, // In the real service logic, status=true means not deleted!
       };
 
       (mockUserRepo.findOne as jest.Mock).mockResolvedValue(mockUser);
-      (mockUserRepo.save as jest.Mock).mockResolvedValue({ ...mockUser, status: true });
+      (mockUserRepo.save as jest.Mock).mockResolvedValue({
+        ...mockUser,
+        status: true,
+      });
 
       const result = await service.restore('1');
 
       expect(result).toEqual({ msg: 'User restored successfully' });
-      expect(mockUserRepo.save).toHaveBeenCalledWith(expect.objectContaining({ status: true }));
+      expect(mockUserRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: true }),
+      );
     });
 
     it('❌ 5.2 should throw NotFoundException when user not found', async () => {
       (mockUserRepo.findOne as jest.Mock).mockResolvedValue(undefined);
 
-      await expect(service.restore('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.restore('nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('❌ 5.3 should throw BadRequestException when user is not deleted', async () => {
@@ -374,13 +435,15 @@ describe('UserService', () => {
         id: '1',
         username: 'testuser',
         is_deleted: false,
-        status: false  // Status false means "not soft-deleted" according to the error message
+        status: false, // Status false means "not soft-deleted" according to the error message
       };
 
       (mockUserRepo.findOne as jest.Mock).mockResolvedValue(mockUser);
 
       // This should now throw the expected error
-      await expect(service.restore('1')).rejects.toThrow("User with ID 1 is not soft-deleted");
+      await expect(service.restore('1')).rejects.toThrow(
+        'User with ID 1 is not soft-deleted',
+      );
     });
 
     it('❌ 5.4 should handle database error during restore', async () => {
@@ -388,13 +451,15 @@ describe('UserService', () => {
         id: '1',
         username: 'testuser',
         is_deleted: true,
-        status: true  // status=true allows restore to proceed past the check
+        status: true, // status=true allows restore to proceed past the check
       };
 
       (mockUserRepo.findOne as jest.Mock).mockResolvedValue(mockUser);
-      (mockUserRepo.save as jest.Mock).mockRejectedValue(new Error('Save failed'));
+      (mockUserRepo.save as jest.Mock).mockRejectedValue(
+        new Error('Save failed'),
+      );
 
       await expect(service.restore('1')).rejects.toThrow('Save failed');
     });
   });
-}); 
+});

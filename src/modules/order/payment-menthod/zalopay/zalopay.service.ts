@@ -72,10 +72,16 @@ export class ZalopayService extends AbstractPaymentService {
     const callback_url = this.configService.get<string>('zalopay.returnUrl');
 
     if (!app_id || !key1 || !endpoint) {
-      throw new InternalServerErrorException('ZaloPay configuration is missing');
+      throw new InternalServerErrorException(
+        'ZaloPay configuration is missing',
+      );
     }
 
-    if (!orderItem || !Array.isArray(orderItem.seats) || orderItem.seats.length === 0) {
+    if (
+      !orderItem ||
+      !Array.isArray(orderItem.seats) ||
+      orderItem.seats.length === 0
+    ) {
       throw new InternalServerErrorException('No seat selected');
     }
 
@@ -84,7 +90,7 @@ export class ZalopayService extends AbstractPaymentService {
     const app_time = dayjs().valueOf();
     const embed_data = {
       redirecturl: callback_url,
-      preferred_payment_method: []
+      preferred_payment_method: [],
     };
 
     const rawData = {
@@ -103,7 +109,7 @@ export class ZalopayService extends AbstractPaymentService {
       ]),
       embed_data: JSON.stringify(embed_data),
       description: 'Thanh toan ve xem phim',
-            bank_code: '',
+      bank_code: '',
     };
 
     const dataToMac = [
@@ -116,7 +122,10 @@ export class ZalopayService extends AbstractPaymentService {
       rawData.item,
     ].join('|');
 
-    const mac = crypto.createHmac('sha256', key1).update(dataToMac).digest('hex');
+    const mac = crypto
+      .createHmac('sha256', key1)
+      .update(dataToMac)
+      .digest('hex');
 
     const requestBody = {
       ...rawData,
@@ -141,7 +150,7 @@ export class ZalopayService extends AbstractPaymentService {
     } catch (error) {
       throw new InternalServerErrorException(
         'ZaloPay API failed: ' +
-        (error.response?.data?.sub_return_message || error.message),
+          (error.response?.data?.sub_return_message || error.message),
       );
     }
   }
@@ -214,19 +223,21 @@ export class ZalopayService extends AbstractPaymentService {
   //   }
   // }
 
-
-
-
   async queryOrderStatusZaloPay(app_trans_id: string) {
     const app_id = this.configService.get<string>('zalopay.appId');
     const key1 = this.configService.get<string>('zalopay.key1');
     const endpoint = this.configService.get<string>('zalopay.queryUrl');
     if (!app_id || !key1 || !endpoint) {
-      throw new InternalServerErrorException('ZaloPay configuration is missing');
+      throw new InternalServerErrorException(
+        'ZaloPay configuration is missing',
+      );
     }
 
     const dataToSign = `${app_id}|${app_trans_id}|${key1}`;
-    const mac = crypto.createHmac('sha256', key1).update(dataToSign).digest('hex');
+    const mac = crypto
+      .createHmac('sha256', key1)
+      .update(dataToSign)
+      .digest('hex');
 
     const body = {
       app_id: +app_id,
@@ -242,8 +253,11 @@ export class ZalopayService extends AbstractPaymentService {
       const data = res.data;
 
       return {
-        method:PaymentGateway.ZALOPAY,
-        status: data.return_code === 1 && data.sub_return_code === 1 ? 'PAID' : 'UNPAID',
+        method: PaymentGateway.ZALOPAY,
+        status:
+          data.return_code === 1 && data.sub_return_code === 1
+            ? 'PAID'
+            : 'UNPAID',
         paid: data.sub_return_code === 1,
         total: data.amount,
         currency: 'VND',
@@ -254,5 +268,4 @@ export class ZalopayService extends AbstractPaymentService {
       );
     }
   }
-
 }

@@ -16,14 +16,16 @@ export class CreateScheduleDto {
 
   @IsString()
   @ApiProperty({
-    description: 'Thời gian bắt đầu chiếu (giờ Việt Nam, định dạng YYYY-MM-DD HH:mm)',
+    description:
+      'Thời gian bắt đầu chiếu (giờ Việt Nam, định dạng YYYY-MM-DD HH:mm)',
     example: '2025-06-10 14:00',
   })
   start_movie_time: string;
 
   @IsString()
   @ApiProperty({
-    description: 'Thời gian kết thúc chiếu (giờ Việt Nam, định dạng YYYY-MM-DD HH:mm)',
+    description:
+      'Thời gian kết thúc chiếu (giờ Việt Nam, định dạng YYYY-MM-DD HH:mm)',
     example: '2025-06-10 16:00',
   })
   end_movie_time: string;

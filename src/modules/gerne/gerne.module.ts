@@ -1,4 +1,4 @@
-import {  Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Gerne } from 'src/database/entities/cinema/gerne';
 import { GerneService } from './gerne.service';

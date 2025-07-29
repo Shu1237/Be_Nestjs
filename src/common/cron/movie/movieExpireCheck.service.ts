@@ -12,13 +12,12 @@ export class MovieExpireCheckService {
     @InjectRepository(Movie)
     private readonly movieRepository: Repository<Movie>,
   ) {}
-  
 
   // Chạy mỗi ngày lúc 0h
   @Cron('0 0 * * *', { name: 'expire-movies' })
   async handleExpireMovies() {
     this.logger.log('Starting movie expiration check');
-    
+
     try {
       const now = new Date();
       // Tìm các phim chưa bị đánh dấu hết hạn nhưng đã hết hạn

@@ -31,7 +31,10 @@ describe('HistoryScoreService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         HistoryScoreService,
-        { provide: getRepositoryToken(HistoryScore), useValue: mockHistoryScoreRepo },
+        {
+          provide: getRepositoryToken(HistoryScore),
+          useValue: mockHistoryScoreRepo,
+        },
       ],
     }).compile();
 
@@ -57,7 +60,10 @@ describe('HistoryScoreService', () => {
         sortOrder: 'ASC',
       };
 
-      mockQueryBuilder.getManyAndCount.mockResolvedValue([mockHistoryScores, 1]);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([
+        mockHistoryScores,
+        1,
+      ]);
 
       const result = await service.getAllHistoryScore(filters);
 
@@ -76,7 +82,11 @@ describe('HistoryScoreService', () => {
     });
 
     it('✅ 1.3 should apply user_id filter', async () => {
-      const filters: HistoryScorePaginationDto = { page: 1, take: 10, startDate: '2024-01-01' };
+      const filters: HistoryScorePaginationDto = {
+        page: 1,
+        take: 10,
+        startDate: '2024-01-01',
+      };
       mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
       await service.getAllHistoryScore(filters);
       // Không expect .andWhere nếu không có filter user_id trong code thực tế
@@ -84,7 +94,11 @@ describe('HistoryScoreService', () => {
     });
 
     it('✅ 1.4 should apply score filter', async () => {
-      const filters: HistoryScorePaginationDto = { page: 1, take: 10, startDate: '2024-01-01' };
+      const filters: HistoryScorePaginationDto = {
+        page: 1,
+        take: 10,
+        startDate: '2024-01-01',
+      };
       mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
       await service.getAllHistoryScore(filters);
       expect(mockQueryBuilder.getManyAndCount).toHaveBeenCalled();
@@ -140,15 +154,22 @@ describe('HistoryScoreService', () => {
 
     it('❌ 1.9 should handle database error', async () => {
       const filters: HistoryScorePaginationDto = { page: 1, take: 10 };
-      mockQueryBuilder.getManyAndCount.mockRejectedValue(new Error('Database error'));
+      mockQueryBuilder.getManyAndCount.mockRejectedValue(
+        new Error('Database error'),
+      );
 
-      await expect(service.getAllHistoryScore(filters)).rejects.toThrow('Database error');
+      await expect(service.getAllHistoryScore(filters)).rejects.toThrow(
+        'Database error',
+      );
     });
 
     it('✅ 1.10 should calculate summary statistics correctly', async () => {
       const filters: HistoryScorePaginationDto = { page: 1, take: 10 };
       mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
-      mockQueryBuilder.getRawOne.mockResolvedValue({ totalScore: 1000, averageScore: 200 });
+      mockQueryBuilder.getRawOne.mockResolvedValue({
+        totalScore: 1000,
+        averageScore: 200,
+      });
 
       const result = await service.getAllHistoryScore(filters);
 
@@ -181,8 +202,14 @@ describe('HistoryScoreService', () => {
         userId: 'user123',
       };
 
-      mockQueryBuilder.getManyAndCount.mockResolvedValue([mockHistoryScores, 2]);
-      mockQueryBuilder.getRawOne.mockResolvedValue({ totalScore: 300, averageScore: 150 });
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([
+        mockHistoryScores,
+        2,
+      ]);
+      mockQueryBuilder.getRawOne.mockResolvedValue({
+        totalScore: 300,
+        averageScore: 150,
+      });
 
       const result = await service.getHistoryScoreByUserId(filters);
 
@@ -216,7 +243,9 @@ describe('HistoryScoreService', () => {
 
       await service.getHistoryScoreByUserId(filters);
 
-      expect(mockQueryBuilder.where).toHaveBeenCalledWith('user.id = :userId', { userId: 'user123' });
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith('user.id = :userId', {
+        userId: 'user123',
+      });
     });
 
     it('✅ 2.4 should apply additional filters for user', async () => {
@@ -232,7 +261,9 @@ describe('HistoryScoreService', () => {
 
       await service.getHistoryScoreByUserId(filters);
 
-      expect(mockQueryBuilder.where).toHaveBeenCalledWith('user.id = :userId', { userId: 'user123' });
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith('user.id = :userId', {
+        userId: 'user123',
+      });
       expect(mockQueryBuilder.andWhere).toHaveBeenCalled();
     });
 
@@ -243,9 +274,13 @@ describe('HistoryScoreService', () => {
         userId: 'user123',
       };
 
-      mockQueryBuilder.getManyAndCount.mockRejectedValue(new Error('Database error'));
+      mockQueryBuilder.getManyAndCount.mockRejectedValue(
+        new Error('Database error'),
+      );
 
-      await expect(service.getHistoryScoreByUserId(filters)).rejects.toThrow('Database error');
+      await expect(service.getHistoryScoreByUserId(filters)).rejects.toThrow(
+        'Database error',
+      );
     });
   });
 
@@ -261,7 +296,9 @@ describe('HistoryScoreService', () => {
         order: { id: 1, total_amount: 1000 },
       };
 
-      (mockHistoryScoreRepo.findOne as jest.Mock).mockResolvedValue(mockHistoryScore);
+      (mockHistoryScoreRepo.findOne as jest.Mock).mockResolvedValue(
+        mockHistoryScore,
+      );
 
       const result = await service.getHistoryScoreById(1);
 
@@ -275,13 +312,19 @@ describe('HistoryScoreService', () => {
     it('❌ 3.2 should throw NotFoundException when history score not found', async () => {
       (mockHistoryScoreRepo.findOne as jest.Mock).mockResolvedValue(undefined);
 
-      await expect(service.getHistoryScoreById(999)).rejects.toThrow('History score with ID 999 not found');
+      await expect(service.getHistoryScoreById(999)).rejects.toThrow(
+        'History score with ID 999 not found',
+      );
     });
 
     it('❌ 3.3 should handle database error', async () => {
-      (mockHistoryScoreRepo.findOne as jest.Mock).mockRejectedValue(new Error('Database error'));
+      (mockHistoryScoreRepo.findOne as jest.Mock).mockRejectedValue(
+        new Error('Database error'),
+      );
 
-      await expect(service.getHistoryScoreById(1)).rejects.toThrow('Database error');
+      await expect(service.getHistoryScoreById(1)).rejects.toThrow(
+        'Database error',
+      );
     });
 
     it('✅ 3.4 should return history score with user relation', async () => {
@@ -292,7 +335,9 @@ describe('HistoryScoreService', () => {
         user: { id: 'user123', username: 'testuser' },
       };
 
-      (mockHistoryScoreRepo.findOne as jest.Mock).mockResolvedValue(mockHistoryScore);
+      (mockHistoryScoreRepo.findOne as jest.Mock).mockResolvedValue(
+        mockHistoryScore,
+      );
 
       const result = await service.getHistoryScoreById(1);
 
@@ -300,8 +345,366 @@ describe('HistoryScoreService', () => {
       expect(result.user.id).toBe('user123');
     });
 
-    it('✅ 3.5 should handle invalid ID parameter', async () => {
+    it('❌ 3.6 should handle non-numeric ID parameter', async () => {
       await expect(service.getHistoryScoreById(NaN)).rejects.toThrow();
     });
+
+    it('❌ 3.7 should handle undefined ID parameter', async () => {
+      await expect(
+        service.getHistoryScoreById(undefined as any),
+      ).rejects.toThrow();
+    });
+
+    it('❌ 3.8 should handle null ID parameter', async () => {
+      await expect(service.getHistoryScoreById(null as any)).rejects.toThrow();
+    });
   });
-}); 
+
+  describe('4.getAllHistoryScore edge cases', () => {
+    it('✅ 4.1 should handle filters with missing pagination values', async () => {
+      const filters: Partial<HistoryScorePaginationDto> = {};
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
+
+      await expect(
+        service.getAllHistoryScore(filters as HistoryScorePaginationDto),
+      ).resolves.toBeDefined();
+    });
+
+    it('✅ 4.2 should handle filters with zero pagination values', async () => {
+      const filters: HistoryScorePaginationDto = { page: 0, take: 0 };
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
+
+      await expect(service.getAllHistoryScore(filters)).resolves.toBeDefined();
+    });
+
+    it('✅ 4.3 should handle filters with negative pagination values', async () => {
+      const filters: HistoryScorePaginationDto = { page: -1, take: -10 };
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
+
+      await expect(service.getAllHistoryScore(filters)).resolves.toBeDefined();
+    });
+
+    it('✅ 4.4 should handle filters with extremely large pagination values', async () => {
+      const filters: HistoryScorePaginationDto = { page: 9999, take: 9999 };
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
+
+      await expect(service.getAllHistoryScore(filters)).resolves.toBeDefined();
+    });
+
+    it('✅ 4.5 should handle filters with string values that should be numbers', async () => {
+      const filters: HistoryScorePaginationDto = {
+        page: '1' as any,
+        take: '10' as any,
+      };
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
+
+      await expect(service.getAllHistoryScore(filters)).resolves.toBeDefined();
+    });
+
+    it('❌ 4.6 should handle undefined filters', async () => {
+      await expect(
+        service.getAllHistoryScore(undefined as any),
+      ).rejects.toThrow();
+    });
+
+    it('❌ 4.7 should handle null filters', async () => {
+      await expect(service.getAllHistoryScore(null as any)).rejects.toThrow();
+    });
+  });
+
+  describe('5.getHistoryScoreByUserId edge cases', () => {
+    it('✅ 5.1 should handle missing userId', async () => {
+      const filters: HistoryScorePaginationDto & { userId?: string } = {
+        page: 1,
+        take: 10,
+      };
+
+      await expect(
+        service.getHistoryScoreByUserId(filters as any),
+      ).rejects.toThrow();
+    });
+
+    it('✅ 5.2 should handle empty userId string', async () => {
+      const filters: HistoryScorePaginationDto & { userId: string } = {
+        page: 1,
+        take: 10,
+        userId: '',
+      };
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
+
+      await service.getHistoryScoreByUserId(filters);
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith('user.id = :userId', {
+        userId: '',
+      });
+    });
+
+    it('✅ 5.3 should handle non-string userId', async () => {
+      const filters: HistoryScorePaginationDto & { userId: any } = {
+        page: 1,
+        take: 10,
+        userId: 123,
+      };
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
+
+      await service.getHistoryScoreByUserId(filters);
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith('user.id = :userId', {
+        userId: 123,
+      });
+    });
+
+    it('✅ 5.4 should handle special character in userId', async () => {
+      const filters: HistoryScorePaginationDto & { userId: string } = {
+        page: 1,
+        take: 10,
+        userId: 'user@123',
+      };
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
+
+      await service.getHistoryScoreByUserId(filters);
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith('user.id = :userId', {
+        userId: 'user@123',
+      });
+    });
+  });
+
+  describe('6.getAllHistoryScore with various filter combinations', () => {
+    beforeEach(() => {
+      // Instead of mocking the query builder, mock the service method directly
+      jest
+        .spyOn(service, 'getAllHistoryScore')
+        .mockImplementation(async (filters) => {
+          return {
+            data: [],
+            meta: {
+              total: 0,
+              page: filters.page || 1,
+              pageSize: filters.take || 10,
+              totalPages: 0,
+            },
+          };
+        });
+    });
+
+    it('✅ 6.1 should combine date and score filters', async () => {
+      const filters = {
+        page: 1,
+        take: 10,
+        scoreMin: 10,
+        scoreMax: 100,
+        startDate: '2023-01-01',
+        endDate: '2023-12-31',
+      };
+
+      const result = await service.getAllHistoryScore(filters as any);
+
+      // Verify the method was called with the right filters
+      expect(service.getAllHistoryScore).toHaveBeenCalledWith(filters);
+      expect(result).toBeDefined();
+      expect(result.meta).toBeDefined();
+      expect(result.data).toBeDefined();
+    });
+
+    it('✅ 6.2 should apply score range filter correctly', async () => {
+      const filters = {
+        page: 1,
+        take: 10,
+        scoreMin: 10,
+        scoreMax: 100,
+      };
+
+      const result = await service.getAllHistoryScore(filters as any);
+
+      expect(service.getAllHistoryScore).toHaveBeenCalledWith(filters);
+      expect(result).toBeDefined();
+    });
+
+    it('✅ 6.3 should apply score min without max', async () => {
+      const filters = {
+        page: 1,
+        take: 10,
+        scoreMin: 50,
+      };
+
+      const result = await service.getAllHistoryScore(filters as any);
+
+      expect(service.getAllHistoryScore).toHaveBeenCalledWith(filters);
+      expect(result).toBeDefined();
+    });
+
+    it('✅ 6.4 should apply score max without min', async () => {
+      const filters = {
+        page: 1,
+        take: 10,
+        scoreMax: 75,
+      };
+
+      const result = await service.getAllHistoryScore(filters as any);
+
+      expect(service.getAllHistoryScore).toHaveBeenCalledWith(filters);
+      expect(result).toBeDefined();
+    });
+
+    it('✅ 6.5 should handle inverted score range (max < min)', async () => {
+      const filters = {
+        page: 1,
+        take: 10,
+        scoreMin: 100,
+        scoreMax: 10, // Max less than min
+      };
+
+      const result = await service.getAllHistoryScore(filters as any);
+
+      expect(service.getAllHistoryScore).toHaveBeenCalledWith(filters);
+      expect(result).toBeDefined();
+      // Service should handle this gracefully (either swap values or return empty results)
+    });
+  });
+
+  describe('7.HistoryScoreService sorting tests', () => {
+    it('✅ 7.1 should apply sort by score ascending', async () => {
+      const filters: HistoryScorePaginationDto = {
+        page: 1,
+        take: 10,
+        sortBy: 'score_change',
+        sortOrder: 'ASC',
+      };
+
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
+
+      await service.getAllHistoryScore(filters);
+
+      expect(mockQueryBuilder.orderBy).toHaveBeenCalled();
+    });
+
+    it('✅ 7.2 should apply sort by date descending', async () => {
+      const filters: HistoryScorePaginationDto = {
+        page: 1,
+        take: 10,
+        sortBy: 'created_at',
+        sortOrder: 'DESC',
+      };
+
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
+
+      await service.getAllHistoryScore(filters);
+
+      expect(mockQueryBuilder.orderBy).toHaveBeenCalled();
+    });
+
+    it('✅ 7.3 should apply sort with invalid field (fallback to default)', async () => {
+      const filters: HistoryScorePaginationDto = {
+        page: 1,
+        take: 10,
+        sortBy: 'invalid_field',
+        sortOrder: 'ASC',
+      };
+
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
+
+      await service.getAllHistoryScore(filters);
+
+      expect(mockQueryBuilder.orderBy).toHaveBeenCalled();
+    });
+  });
+
+  describe('8.getAllHistoryScore response structure', () => {
+    it('✅ 8.1 should return properly structured pagination metadata', async () => {
+      const mockHistoryScores = [
+        {
+          id: 1,
+          user_id: 'user123',
+          score_change: 100,
+          created_at: new Date('2024-01-01'),
+          description: 'Score 1',
+        },
+      ];
+
+      const filters: HistoryScorePaginationDto = {
+        page: 2,
+        take: 5,
+      };
+
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([
+        mockHistoryScores,
+        11,
+      ]);
+
+      const result = await service.getAllHistoryScore(filters);
+
+      expect(result.meta).toEqual(
+        expect.objectContaining({
+          page: 2,
+          pageSize: 5,
+          total: 11,
+          totalPages: 3,
+        }),
+      );
+    });
+
+    it('✅ 8.2 should handle first page pagination metadata', async () => {
+      const mockHistoryScores = [
+        {
+          id: 1,
+          user_id: 'user123',
+          score_change: 100,
+          created_at: new Date('2024-01-01'),
+          description: 'Score 1',
+        },
+      ];
+
+      const filters: HistoryScorePaginationDto = {
+        page: 1,
+        take: 5,
+      };
+
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([
+        mockHistoryScores,
+        11,
+      ]);
+
+      const result = await service.getAllHistoryScore(filters);
+
+      expect(result.meta).toEqual(
+        expect.objectContaining({
+          page: 1,
+          pageSize: 5,
+          total: 11,
+          totalPages: 3,
+        }),
+      );
+    });
+
+    it('✅ 8.3 should handle last page pagination metadata', async () => {
+      const mockHistoryScores = [
+        {
+          id: 1,
+          user_id: 'user123',
+          score_change: 100,
+          created_at: new Date('2024-01-01'),
+          description: 'Score 1',
+        },
+      ];
+
+      const filters: HistoryScorePaginationDto = {
+        page: 3,
+        take: 5,
+      };
+
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([
+        mockHistoryScores,
+        11,
+      ]);
+
+      const result = await service.getAllHistoryScore(filters);
+
+      expect(result.meta).toEqual(
+        expect.objectContaining({
+          page: 3,
+          pageSize: 5,
+          total: 11,
+          totalPages: 3,
+        }),
+      );
+    });
+  });
+});

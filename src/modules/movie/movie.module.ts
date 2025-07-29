@@ -9,7 +9,7 @@ import { Gerne } from 'src/database/entities/cinema/gerne';
 import { Version } from 'src/database/entities/cinema/version';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Movie,Actor, Gerne,Version])],
+  imports: [TypeOrmModule.forFeature([Movie, Actor, Gerne, Version])],
   controllers: [MovieController],
   providers: [MovieService],
 })

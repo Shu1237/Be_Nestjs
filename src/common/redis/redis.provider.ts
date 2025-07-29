@@ -9,11 +9,13 @@ export const RedisProvider: Provider = {
   useFactory: (configService: ConfigService) => {
     const redisUrl = configService.get<string>('redis.url');
     if (!redisUrl) {
-      throw new InternalServerErrorException('Redis URL is not defined in config');
+      throw new InternalServerErrorException(
+        'Redis URL is not defined in config',
+      );
     }
 
     return new Redis(redisUrl, {
-      tls: {}, 
+      tls: {},
     });
   },
 };

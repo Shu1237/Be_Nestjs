@@ -30,7 +30,7 @@ export class ScheduleService {
 
     @InjectRepository(Version)
     private readonly versionRepository: Repository<Version>,
-  ) { }
+  ) {}
   private getScheduleSummary(schedule: Schedule): ISchedule {
     return {
       id: schedule.id,
@@ -47,9 +47,9 @@ export class ScheduleService {
       },
       version: schedule.version
         ? {
-          id: schedule.version.id,
-          name: schedule.version.name,
-        }
+            id: schedule.version.id,
+            name: schedule.version.name,
+          }
         : null, // Nếu version là null, trả về null
     };
   }
@@ -58,7 +58,6 @@ export class ScheduleService {
       where: { is_deleted: false },
       relations: ['movie', 'cinemaRoom', 'version'],
     });
-
 
     return schedules.map((schedule) => this.getScheduleSummary(schedule));
   }
@@ -141,7 +140,8 @@ export class ScheduleService {
     };
   }
   async findAll(fillters: SchedulePaginationDto) {
-    const qb = this.scheduleRepository.createQueryBuilder('schedule')
+    const qb = this.scheduleRepository
+      .createQueryBuilder('schedule')
       .leftJoinAndSelect('schedule.movie', 'movie')
       .leftJoinAndSelect('schedule.cinemaRoom', 'cinemaRoom')
       .leftJoinAndSelect('schedule.version', 'version');
@@ -153,12 +153,18 @@ export class ScheduleService {
       'version.id',
       'cinemaRoom.cinema_room_name',
     ];
-    applySorting(qb, fillters.sortBy, fillters.sortOrder, allowedFields, 'schedule.id');
+    applySorting(
+      qb,
+      fillters.sortBy,
+      fillters.sortOrder,
+      allowedFields,
+      'schedule.id',
+    );
 
     applyPagination(qb, {
       page: fillters.page,
-      take: fillters.take
-    })
+      take: fillters.take,
+    });
 
     const [schedules, total] = await qb.getManyAndCount();
     const summaries = schedules.map((schedule) =>
@@ -204,7 +210,6 @@ export class ScheduleService {
     });
   }
 
-
   async find(): Promise<ISchedule[]> {
     const schedules = await this.scheduleRepository.find({
       relations: ['movie', 'cinemaRoom', 'version'],
@@ -213,7 +218,6 @@ export class ScheduleService {
     // Gói gọn dữ liệu trả về
     return schedules.map((schedule) => this.getScheduleSummary(schedule));
   }
-
 
   async findOut(id: number): Promise<ISchedule> {
     const schedule = await this.scheduleRepository.findOne({
@@ -291,9 +295,7 @@ export class ScheduleService {
     }
   }
 
-  async softDeleteSchedule(
-    id: number,
-  ): Promise<{ msg: string; }> {
+  async softDeleteSchedule(id: number): Promise<{ msg: string }> {
     const schedule = await this.scheduleRepository.findOne({ where: { id } });
 
     if (!schedule) {
@@ -304,12 +306,10 @@ export class ScheduleService {
     schedule.is_deleted = true;
     await this.scheduleRepository.save(schedule);
 
-
     return {
-      msg: 'Schedule soft-deleted successfully'
+      msg: 'Schedule soft-deleted successfully',
     };
   }
-
 
   async restoreSchedule(
     id: number,

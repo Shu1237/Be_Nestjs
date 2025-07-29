@@ -109,8 +109,6 @@ import { OverviewModule } from './modules/overview/overview.module';
     CronModule,
     MyGateWayModule,
     S3Module,
-
   ],
-
 })
 export class AppModule {}
