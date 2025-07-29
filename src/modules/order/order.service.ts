@@ -98,7 +98,7 @@ export class OrderService {
     private readonly jwtService: JwtService,
 
     @Inject('REDIS_CLIENT') private readonly redisClient: Redis,
-  ) { }
+  ) {}
   private async getUserById(userId: string) {
     const user = await this.userRepository.findOne({
       where: { id: userId },
@@ -1145,8 +1145,6 @@ export class OrderService {
       if (newPromotion.exchange > checkUser.score) {
         throw new ConflictException('Not enough points to use this promotion');
       }
-
-
     }
 
     const ticketTotal = existingOrder.orderDetails.reduce(
@@ -1465,7 +1463,7 @@ export class OrderService {
     // const endOfDay = new Date(2025, 6, 22, 23, 59, 59);   // ngày 22/7/2025 lúc 23:59:59
 
     const orders = await this.orderRepository.find({
-      where: { order_date: Between(startOfDay, endOfDay)},
+      where: { order_date: Between(startOfDay, endOfDay) },
       relations: ['transaction', 'transaction.paymentMethod'],
     });
 
@@ -1583,8 +1581,6 @@ export class OrderService {
 
     return result;
   }
-
-
 
   // refund order
   // async refundOrder(orderId: number) {

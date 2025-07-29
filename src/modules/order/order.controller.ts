@@ -250,7 +250,7 @@ export class OrderController {
       const result = await this.momoService.handleReturn(query);
       return res.redirect(result);
     } catch (error) {
-      const failureUrl = this.configService.get<string>('redirectUrls.failureUrl') || 'http://localhost:3000/payment/failed';
+      const failureUrl = `${this.configService.get<string>('redirectFE.url')}?status=failed` || 'http://localhost:3000/booking/result?status=failed';
       return res.redirect(failureUrl);
     }
   }
@@ -269,7 +269,7 @@ export class OrderController {
       }
       return res.redirect(result);
     } catch (error) {
-      const failureUrl = this.configService.get<string>('redirectUrls.failureUrl') || 'http://localhost:3000/payment/failed';
+      const failureUrl = `${this.configService.get<string>('redirectFE.url')}?status=failed` || 'http://localhost:3000/booking/result?status=failed';
       return res.redirect(failureUrl);
     }
   }
@@ -282,7 +282,7 @@ export class OrderController {
       const result = await this.payPalService.handleReturnCancelPaypal(orderId);
       return res.redirect(result);
     } catch (error) {
-      const failureUrl = this.configService.get<string>('redirectUrls.failureUrl') || 'http://localhost:3000/payment/failed';
+      const failureUrl = `${this.configService.get<string>('redirectFE.url')}?status=failed` || 'http://localhost:3000/booking/result?status=failed';
       return res.redirect(failureUrl);
     }
   }
@@ -302,7 +302,7 @@ export class OrderController {
       return res.redirect(result);
     } catch (error) {
       console.error('Visa payment error:', error);
-      const failureUrl = this.configService.get<string>('redirectUrls.failureUrl') || 'http://localhost:3000/payment/failed';
+      const failureUrl = `${this.configService.get<string>('redirectFE.url')}?status=failed` || 'http://localhost:3000/booking/result?status=failed';
       return res.redirect(failureUrl);
     }
   }
@@ -319,7 +319,7 @@ export class OrderController {
       return res.redirect(result);
     } catch (error) {
       console.error('Visa payment error:', error);
-      const failureUrl = this.configService.get<string>('redirectUrls.failureUrl') || 'http://localhost:3000/payment/failed';
+      const failureUrl = `${this.configService.get<string>('redirectFE.url')}?status=failed` || 'http://localhost:3000/booking/result?status=failed';
       return res.redirect(failureUrl);
     }
   }
@@ -332,7 +332,7 @@ export class OrderController {
       const result = await this.vnpayService.handleReturnVnPay(query);
       return res.redirect(result);
     } catch (error) {
-      const failureUrl = this.configService.get<string>('redirectUrls.failureUrl') || 'http://localhost:3000/payment/failed';
+      const failureUrl = `${this.configService.get<string>('redirectFE.url')}?status=failed` || 'http://localhost:3000/booking/result?status=failed';
       return res.redirect(failureUrl);
     }
   }
@@ -345,7 +345,7 @@ export class OrderController {
       const result = await this.zalopayService.handleReturnZaloPay(query);
       return res.redirect(result);
     } catch (error) {
-      const failureUrl = this.configService.get<string>('redirectUrls.failureUrl') || 'http://localhost:3000/payment/failed';
+      const failureUrl = `${this.configService.get<string>('redirectFE.url')}?status=failed` || 'http://localhost:3000/booking/result?status=failed';
       return res.redirect(failureUrl);
     }
   }

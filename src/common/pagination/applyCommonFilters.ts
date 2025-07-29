@@ -1,8 +1,6 @@
 import { ObjectLiteral, SelectQueryBuilder } from 'typeorm';
 import { FilterField } from '../utils/type';
 
-
-
 export function applyCommonFilters<T extends ObjectLiteral>(
   qb: SelectQueryBuilder<T>,
   filters: Record<string, any>,
@@ -53,20 +51,27 @@ export function applyCommonFilters<T extends ObjectLiteral>(
           break;
         case 'IN':
           if (Array.isArray(value) && value.length > 0) {
-            qb.andWhere(`${config.field} IN (:...${param})`, { [param]: value });
+            qb.andWhere(`${config.field} IN (:...${param})`, {
+              [param]: value,
+            });
           }
           break;
         case 'NOT IN':
           if (Array.isArray(value) && value.length > 0) {
-            qb.andWhere(`${config.field} NOT IN (:...${param})`, { [param]: value });
+            qb.andWhere(`${config.field} NOT IN (:...${param})`, {
+              [param]: value,
+            });
           }
           break;
         case 'BETWEEN':
           if (Array.isArray(value) && value.length === 2) {
-            qb.andWhere(`${config.field} BETWEEN :${param}Start AND :${param}End`, {
-              [`${param}Start`]: value[0],
-              [`${param}End`]: value[1],
-            });
+            qb.andWhere(
+              `${config.field} BETWEEN :${param}Start AND :${param}End`,
+              {
+                [`${param}Start`]: value[0],
+                [`${param}End`]: value[1],
+              },
+            );
           }
           break;
         case 'IS NULL':

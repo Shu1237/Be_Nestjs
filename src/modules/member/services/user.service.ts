@@ -22,7 +22,7 @@ export class UserService {
     private userRepository: Repository<User>,
     @InjectRepository(RoleEntity)
     private roleRepository: Repository<RoleEntity>,
-  ) { }
+  ) {}
 
   async findAll(filters: UserPaginationDto) {
     const qb = this.userRepository
@@ -51,8 +51,6 @@ export class UserService {
       take: filters.take,
     });
 
-
-
     const [users, total] = await qb.getManyAndCount();
     const counts = await this.userRepository
       .createQueryBuilder('user')
@@ -70,7 +68,6 @@ export class UserService {
       accountActivity,
       accountInactivity,
     });
-
   }
 
   async findOne(id: string): Promise<User> {
@@ -79,7 +76,9 @@ export class UserService {
       relations: ['role'],
     });
     if (!user) {
-      throw new NotFoundException(`User with ID ${id} not found or is inactive`);
+      throw new NotFoundException(
+        `User with ID ${id} not found or is inactive`,
+      );
     }
     return user;
   }

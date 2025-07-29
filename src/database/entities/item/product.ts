@@ -1,5 +1,11 @@
-import { Entity, TableInheritance, PrimaryGeneratedColumn, Column, OneToMany } from "typeorm";
-import { OrderExtra } from "../order/order-extra";
+import {
+  Entity,
+  TableInheritance,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToMany,
+} from 'typeorm';
+import { OrderExtra } from '../order/order-extra';
 
 @Entity('product')
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
@@ -15,15 +21,13 @@ export abstract class Product {
 
   @Column({ nullable: true })
   category?: string;
-  
+
   @Column({ type: 'varchar' })
   type: string;
 
   @Column({ default: false })
   is_deleted: boolean;
 
-
-  @OneToMany(() => OrderExtra, orderExtra => orderExtra.product)
+  @OneToMany(() => OrderExtra, (orderExtra) => orderExtra.product)
   orderExtras: OrderExtra[];
-
 }

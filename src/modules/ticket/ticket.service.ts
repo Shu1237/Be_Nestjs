@@ -17,7 +17,7 @@ export class TicketService {
   constructor(
     @InjectRepository(Ticket) private ticketRepository: Repository<Ticket>,
     @InjectRepository(User) private userRepository: Repository<User>,
-  ) { }
+  ) {}
   private summaryTicket(ticket: Ticket) {
     return {
       id: ticket.id,
@@ -54,15 +54,15 @@ export class TicketService {
       seat_type: {
         id: ticket.seat.seatType.id,
         name: ticket.seat.seatType.seat_type_name,
-      }
+      },
     };
   }
   async getTicketOverview() {
     const result = await this.ticketRepository
-      .createQueryBuilder("ticket")
+      .createQueryBuilder('ticket')
       .select([
-        "COUNT(*) AS totalTickets",
-        "COUNT(CASE WHEN ticket.is_used = false AND ticket.status = true THEN 1 END) AS totalAvailable",
+        'COUNT(*) AS totalTickets',
+        'COUNT(CASE WHEN ticket.is_used = false AND ticket.status = true THEN 1 END) AS totalAvailable',
       ])
       .getRawOne();
 
@@ -80,7 +80,14 @@ export class TicketService {
   async getAllTicketsUser() {
     const tickets = await this.ticketRepository.find({
       where: { is_used: false, status: true },
-      relations: ['schedule', 'schedule.movie', 'schedule.cinemaRoom', 'seat', 'seat.seatType', 'ticketType']
+      relations: [
+        'schedule',
+        'schedule.movie',
+        'schedule.cinemaRoom',
+        'seat',
+        'seat.seatType',
+        'ticketType',
+      ],
     });
     return tickets.map((ticket) => this.summaryTicket(ticket));
   }
@@ -95,9 +102,7 @@ export class TicketService {
       .leftJoinAndSelect('seat.seatType', 'seatType')
       .leftJoinAndSelect('ticket.ticketType', 'ticketType')
       .leftJoinAndSelect('ticket.orderDetail', 'orderDetail')
-      .leftJoinAndSelect('orderDetail.order', 'order')
-
-
+      .leftJoinAndSelect('orderDetail.order', 'order');
 
     applyCommonFilters(qb, fillters, ticketFieldMapping);
 
@@ -114,7 +119,6 @@ export class TicketService {
       allowedSortFields,
       'schedule.id',
     );
-
 
     applyPagination(qb, {
       page: fillters.page,
@@ -133,34 +137,32 @@ export class TicketService {
 
     const totalAvailable = parseInt(result?.totalAvailable || '0', 10);
     const totalUsedActive = parseInt(result?.totalUsedActive || '0', 10);
-    return buildPaginationResponse(
-      summaries,
-      {
-        total,
-        page: fillters.page,
-        take: fillters.take,
-        totalAvailable,
-        totalUsedActive,
-      }
-
-    );
+    return buildPaginationResponse(summaries, {
+      total,
+      page: fillters.page,
+      take: fillters.take,
+      totalAvailable,
+      totalUsedActive,
+    });
   }
-
-
 
   async getTicketById(id: string) {
     const ticket = await this.ticketRepository.findOne({
       where: { id },
-      relations: ['schedule', 'schedule.movie', 'schedule.cinemaRoom', 'seat', 'seat.seatType', 'ticketType']
+      relations: [
+        'schedule',
+        'schedule.movie',
+        'schedule.cinemaRoom',
+        'seat',
+        'seat.seatType',
+        'ticketType',
+      ],
     });
     if (!ticket) {
       throw new NotFoundException(`Ticket with ID ${id} not found`);
     }
     return this.summaryTicket(ticket);
   }
-
-
-
 
   async getTicketsByUserId(fillters: TicketPaginationDto & { userId: string }) {
     const qb = this.ticketRepository
@@ -175,8 +177,6 @@ export class TicketService {
       .leftJoinAndSelect('ticket.orderDetail', 'orderDetail')
       .leftJoinAndSelect('orderDetail.order', 'order')
       .where('order.user_id = :userId', { userId: fillters.userId });
-
-
 
     applyCommonFilters(qb, fillters, ticketFieldMapping);
 
@@ -196,7 +196,6 @@ export class TicketService {
       'schedule.id',
     );
 
-
     applyPagination(qb, {
       page: fillters.page,
       take: fillters.take,
@@ -214,35 +213,32 @@ export class TicketService {
 
     const totalAvailable = parseInt(result?.totalAvailable || '0', 10);
     const totalUsedActive = parseInt(result?.totalUsedActive || '0', 10);
-    return buildPaginationResponse(
-      summaries,
-      {
-        total,
-        page: fillters.page,
-        take: fillters.take,
-        totalAvailable,
-        totalUsedActive,
-      }
-
-    );
-
-
-
+    return buildPaginationResponse(summaries, {
+      total,
+      page: fillters.page,
+      take: fillters.take,
+      totalAvailable,
+      totalUsedActive,
+    });
   }
-
-
 
   async markTicketsAsUsed(ticketIds: string[]) {
     const tickets = await this.ticketRepository.find({
       where: { id: In(ticketIds), is_used: false },
     });
     if (tickets.length === 0) {
-      throw new NotFoundException('No tickets found for the provided IDs or all tickets are already used.');
+      throw new NotFoundException(
+        'No tickets found for the provided IDs or all tickets are already used.',
+      );
     }
-    const foundTicketIds = tickets.map(ticket => ticket.id);
-    const usedTicketIds = ticketIds.filter(id => !foundTicketIds.includes(id));
+    const foundTicketIds = tickets.map((ticket) => ticket.id);
+    const usedTicketIds = ticketIds.filter(
+      (id) => !foundTicketIds.includes(id),
+    );
     if (usedTicketIds.length > 0) {
-      throw new BadRequestException(`Tickets with IDs ${usedTicketIds.join(', ')} are already used or invalid.`);
+      throw new BadRequestException(
+        `Tickets with IDs ${usedTicketIds.join(', ')} are already used or invalid.`,
+      );
     }
     for (const ticket of tickets) {
       ticket.is_used = true;

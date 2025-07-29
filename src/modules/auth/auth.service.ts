@@ -17,24 +17,33 @@ import { ConfigService } from '@nestjs/config';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
 import { QrCodeService } from 'src/common/qrcode/qrcode.service';
 
-
-
-
-
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
   constructor(
     @InjectRepository(User) private userRepository: Repository<User>,
     @InjectRepository(Role) private roleRepository: Repository<Role>,
-    @InjectRepository(RefreshToken) private refreshTokenRepository: Repository<RefreshToken>,
+    @InjectRepository(RefreshToken)
+    private refreshTokenRepository: Repository<RefreshToken>,
 
     private jwtService: JwtService,
     private configService: ConfigService,
     private qrcodeService: QrCodeService,
-  ) { }
+  ) {}
 
- 
+  async checkStatus(payload: JWTUserType): Promise<void> {
+    const user = await this.userRepository.findOne({
+      where: { id: payload.account_id },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (!user.status) {
+      throw new ForbiddenException('Account is disabled');
+    }
+  }
   async validateRefreshToken(token: string) {
     const record = await this.refreshTokenRepository.findOne({
       where: { refresh_token: token, revoked: false },
@@ -56,7 +65,6 @@ export class AuthService {
 
     return payload;
   }
-  
 
   async loginAzureAndGoogle(body: LoginAzureType) {
     const { sub, name, email, picture } = body;
@@ -78,7 +86,7 @@ export class AuthService {
       if (!role) throw new NotFoundException('Role not found');
       //qr code
       const id = uuidv4();
-      const qrCode = await this.qrcodeService.generateQrCode(id,'User');
+      const qrCode = await this.qrcodeService.generateQrCode(id, 'User');
       user = this.userRepository.create({
         id: id,
         sub: sub,
@@ -116,8 +124,7 @@ export class AuthService {
       if (!user.status) {
         throw new ForbiddenException('Account is disabled');
       }
-    } 
-  
+    }
 
     // check token
     let needNewToken = false;
@@ -143,7 +150,9 @@ export class AuthService {
         needNewToken = true;
 
         if (error.name === 'TokenExpiredError') {
-          this.logger.warn(`Access token expired at ${error.expiredAt?.toISOString?.()}`);
+          this.logger.warn(
+            `Access token expired at ${error.expiredAt?.toISOString?.()}`,
+          );
         } else {
           this.logger.warn(`Access token invalid: ${error.message}`);
         }
@@ -151,7 +160,6 @@ export class AuthService {
     } else {
       needNewToken = true;
     }
- 
 
     if (needNewToken) {
       const payload: JWTUserType = {
@@ -159,7 +167,6 @@ export class AuthService {
         username: user.username,
         role_id: user.role.role_id,
       };
-
 
       return {
         msg: 'Login successful',
@@ -278,7 +285,6 @@ export class AuthService {
   //   });
   //   return otpCode;
   // }
-
 
   // async validateUser(username: string, password: string) {
   //   const user = await this.userRepository.findOne({
@@ -407,7 +413,6 @@ export class AuthService {
   //   // const otpCode = await this.OtpCode(email);
   //   // await this.cacheManager.set(`email-${email}`, otpCode, { ttl: 60 * 5 } as any);
 
-
   //   // // await this.otpRepository.save({
   //   // //   otp: otpCode,
   //   // //   is_used: false,
@@ -418,28 +423,28 @@ export class AuthService {
   // }
 
   // async verifyOtp(otp: string, email: string) {
-     // const cachedOtp = await this.cacheManager.get(`email-${email}`);
-     // if (!cachedOtp) {
-     //   throw new UnauthorizedException('OTP has expired or does not exist');
-     // }
-     // if (cachedOtp !== otp) {
-     //   throw new UnauthorizedException('Invalid OTP');
-    // }
-    // if (otpRecord.is_used) {
-    //   throw new UnauthorizedException('OTP has already been used');
-    // }
-    // otpRecord.is_used = true;
-    // await this.otpRepository.save(otpRecord);
-    // const payload = {
-    //   sub: email,
-    //   purpose: 'verify_otp',
-    // };
-    // const tempToken = this.jwtService.sign(payload, {
-    //   secret: process.env.TMP_TOKEN_SECRET,
-    //   expiresIn: process.env.TMP_EXPIRES_IN,
-    // });
-    // // await this.otpRepository.delete(otpRecord.id);
-    // return { msg: 'OTP verified successfully', token: tempToken };
+  // const cachedOtp = await this.cacheManager.get(`email-${email}`);
+  // if (!cachedOtp) {
+  //   throw new UnauthorizedException('OTP has expired or does not exist');
+  // }
+  // if (cachedOtp !== otp) {
+  //   throw new UnauthorizedException('Invalid OTP');
+  // }
+  // if (otpRecord.is_used) {
+  //   throw new UnauthorizedException('OTP has already been used');
+  // }
+  // otpRecord.is_used = true;
+  // await this.otpRepository.save(otpRecord);
+  // const payload = {
+  //   sub: email,
+  //   purpose: 'verify_otp',
+  // };
+  // const tempToken = this.jwtService.sign(payload, {
+  //   secret: process.env.TMP_TOKEN_SECRET,
+  //   expiresIn: process.env.TMP_EXPIRES_IN,
+  // });
+  // // await this.otpRepository.delete(otpRecord.id);
+  // return { msg: 'OTP verified successfully', token: tempToken };
   // }
 
   // async changePassword(newPassword: string, tmptoken: string) {

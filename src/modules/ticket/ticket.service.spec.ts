@@ -7,7 +7,6 @@ import { TicketService } from './ticket.service';
 import { NotFoundException } from 'src/common/exceptions/not-found.exception';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
 
-
 describe('TicketService', () => {
   let service: TicketService;
   let mockTicketRepo: Partial<Repository<Ticket>>;
@@ -56,13 +55,19 @@ describe('TicketService', () => {
 
     it('❌ 1.2 should throw NotFoundException if no tickets found', async () => {
       (mockTicketRepo.find as jest.Mock).mockResolvedValue([]);
-      await expect(service.markTicketsAsUsed(['a', 'b'])).rejects.toThrow(NotFoundException);
+      await expect(service.markTicketsAsUsed(['a', 'b'])).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('❌ 1.3 should throw BadRequestException if any ticket is already used or invalid', async () => {
       // Only one ticket found, the other is missing/used
-      (mockTicketRepo.find as jest.Mock).mockResolvedValue([{ id: 'a', is_used: false }]);
-      await expect(service.markTicketsAsUsed(['a', 'b'])).rejects.toThrow(BadRequestException);
+      (mockTicketRepo.find as jest.Mock).mockResolvedValue([
+        { id: 'a', is_used: false },
+      ]);
+      await expect(service.markTicketsAsUsed(['a', 'b'])).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 });

@@ -33,5 +33,4 @@ export class Transaction {
   @ManyToOne(() => PaymentMethod, (paymentMethod) => paymentMethod.transactions)
   @JoinColumn({ name: 'payment_method_id' })
   paymentMethod: PaymentMethod;
- 
 }

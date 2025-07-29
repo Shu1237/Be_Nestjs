@@ -2,7 +2,6 @@ import { Entity, Column, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
 import { Seat } from './seat';
 import { Schedule } from './schedule';
 
-
 @Entity('cinema_room')
 export class CinemaRoom {
   @PrimaryGeneratedColumn({ type: 'int' })

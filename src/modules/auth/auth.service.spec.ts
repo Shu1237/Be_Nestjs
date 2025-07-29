@@ -11,7 +11,6 @@ import { Repository } from 'typeorm';
 import { NotFoundException } from 'src/common/exceptions/not-found.exception';
 import { ForbiddenException } from 'src/common/exceptions/forbidden.exception';
 
-
 describe('AuthService', () => {
   let service: AuthService;
   let userRepo: Repository<User>;
@@ -88,7 +87,9 @@ describe('AuthService', () => {
         expires_at: new Date(Date.now() + 10000),
         user: mockUser,
       };
-      jest.spyOn(refreshTokenRepo, 'findOne').mockResolvedValue(mockToken as any);
+      jest
+        .spyOn(refreshTokenRepo, 'findOne')
+        .mockResolvedValue(mockToken as any);
       jest.spyOn(refreshTokenRepo, 'save').mockResolvedValue({
         refresh_token: 'token',
         revoked: false,
@@ -103,7 +104,7 @@ describe('AuthService', () => {
         role_id: 2,
       });
     });
-     it('❌ 1.2 should return null if token not found', async () => {
+    it('❌ 1.2 should return null if token not found', async () => {
       jest.spyOn(refreshTokenRepo, 'findOne').mockResolvedValue(null);
       const result = await service.validateRefreshToken('invalid-token');
       expect(result).toBeNull();
@@ -116,11 +117,12 @@ describe('AuthService', () => {
         expires_at: new Date(Date.now() - 1000),
         user: { id: '1', username: 'testuser', role: { role_id: 2 } },
       };
-      jest.spyOn(refreshTokenRepo, 'findOne').mockResolvedValue(expiredToken as any);
+      jest
+        .spyOn(refreshTokenRepo, 'findOne')
+        .mockResolvedValue(expiredToken as any);
       const result = await service.validateRefreshToken('token');
       expect(result).toBeNull();
     });
-
   });
 
   describe('2.generateToken', () => {
@@ -176,12 +178,14 @@ describe('AuthService', () => {
         user: { id: '1' },
         revoked: false,
       };
-      jest.spyOn(refreshTokenRepo, 'findOne').mockResolvedValue(mockToken as any);
+      jest
+        .spyOn(refreshTokenRepo, 'findOne')
+        .mockResolvedValue(mockToken as any);
       jest.spyOn(refreshTokenRepo, 'save').mockResolvedValue({
         refresh_token: '123',
         revoked: true,
         expires_at: new Date(),
-        user: { id: '1' }
+        user: { id: '1' },
       } as any);
 
       const result = await service.logout(
@@ -191,39 +195,39 @@ describe('AuthService', () => {
       expect(result).toEqual({ msg: 'Logout successful' });
     });
   });
-      it('❌ 3.2 should throw NotFoundException if refresh token not found', async () => {
-      jest.spyOn(refreshTokenRepo, 'findOne').mockResolvedValue(null);
+  it('❌ 3.2 should throw NotFoundException if refresh token not found', async () => {
+    jest.spyOn(refreshTokenRepo, 'findOne').mockResolvedValue(null);
 
-      await expect(
-        service.logout(
-          { refresh_token: '123' },
-          { account_id: '1', username: 'u', role_id: 1 },
-        ),
-      ).rejects.toThrow(NotFoundException);
-    });
+    await expect(
+      service.logout(
+        { refresh_token: '123' },
+        { account_id: '1', username: 'u', role_id: 1 },
+      ),
+    ).rejects.toThrow(NotFoundException);
+  });
 
-    it('❌ 3.3 should throw ForbiddenException if user mismatch', async () => {
-      jest.spyOn(refreshTokenRepo, 'findOne').mockResolvedValue({
-        user: {
-          id: '2',
-          username: 'testuser2',
-          sub: 'sub2',
-          email: 'test2@email.com',
-          score: 0,
-          password: 'password2',
-          created_at: new Date(),
-          updated_at: new Date(),
-          role: { role_id: 1 },
-          refresh_tokens: [],
-          is_active: true,
-        },
-      } as any);
+  it('❌ 3.3 should throw ForbiddenException if user mismatch', async () => {
+    jest.spyOn(refreshTokenRepo, 'findOne').mockResolvedValue({
+      user: {
+        id: '2',
+        username: 'testuser2',
+        sub: 'sub2',
+        email: 'test2@email.com',
+        score: 0,
+        password: 'password2',
+        created_at: new Date(),
+        updated_at: new Date(),
+        role: { role_id: 1 },
+        refresh_tokens: [],
+        is_active: true,
+      },
+    } as any);
 
-      await expect(
-        service.logout(
-          { refresh_token: '123' },
-          { account_id: '1', username: 'u', role_id: 1 },
-        ),
-      ).rejects.toThrow(ForbiddenException);
-    });
+    await expect(
+      service.logout(
+        { refresh_token: '123' },
+        { account_id: '1', username: 'u', role_id: 1 },
+      ),
+    ).rejects.toThrow(ForbiddenException);
+  });
 });

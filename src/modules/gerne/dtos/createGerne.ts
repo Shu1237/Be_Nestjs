@@ -3,7 +3,7 @@ import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateGerneDto {
   @ApiProperty({
-    description: 'The content or description of the movie'
+    description: 'The content or description of the movie',
   })
   @IsNotEmpty()
   @IsString()

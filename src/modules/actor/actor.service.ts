@@ -1,6 +1,4 @@
-import {
-  Injectable,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Like, Repository } from 'typeorm';
 import { Actor } from '../../database/entities/cinema/actor';
@@ -20,8 +18,7 @@ export class ActorService {
   constructor(
     @InjectRepository(Actor)
     private readonly actorRepository: Repository<Actor>,
-  ) { }
-
+  ) {}
 
   async getAllActorsUser(): Promise<Actor[]> {
     return await this.actorRepository.find({
@@ -47,7 +44,7 @@ export class ActorService {
   }
 
   async getAllActors(filters: ActorPaginationDto) {
-    const qb = this.actorRepository.createQueryBuilder('actor')
+    const qb = this.actorRepository.createQueryBuilder('actor');
     applyCommonFilters(qb, filters, actorFieldMapping);
     const allowedSortFields = [
       'actor.name',
@@ -56,12 +53,18 @@ export class ActorService {
       'actor.date_of_birth',
       'actor.gender',
     ];
-    applySorting(qb, filters.sortBy, filters.sortOrder, allowedSortFields, 'actor.name');
+    applySorting(
+      qb,
+      filters.sortBy,
+      filters.sortOrder,
+      allowedSortFields,
+      'actor.name',
+    );
 
     // Apply pagination
     applyPagination(qb, {
       page: filters.page,
-      take: filters.take
+      take: filters.take,
     });
     const [actors, total] = await qb.getManyAndCount();
 
@@ -146,9 +149,7 @@ export class ActorService {
       throw new NotFoundException(`Actor with ID ${id} not found`);
     }
     if (!actor.is_deleted) {
-      throw new BadRequestException(
-        `Actor with ID ${id} is not soft-deleted`,
-      );
+      throw new BadRequestException(`Actor with ID ${id} is not soft-deleted`);
     }
     actor.is_deleted = false;
     await this.actorRepository.save(actor);

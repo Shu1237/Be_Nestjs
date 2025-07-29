@@ -285,7 +285,7 @@ export abstract class AbstractPaymentService {
         });
 
 
-        return `${this.configService.get<string>('redirectUrls.successUrl')}?orderId=${savedOrder.id}&total=${savedOrder.total_prices}&paymentMethod=${transaction.paymentMethod.name}`;
+        return `${this.configService.get<string>('redirectFE.url')}?status=success&orderId=${savedOrder.id}&total=${savedOrder.total_prices}&paymentMethod=${transaction.paymentMethod.name}`;
     }
     async handleReturnFailed(transaction: Transaction): Promise<string> {
         // const order = transaction.order;
@@ -312,7 +312,7 @@ export abstract class AbstractPaymentService {
         //     seatIds: order.orderDetails.map(detail => detail.ticket.seat.id),
         // });
 
-        return `${this.configService.get<string>('redirectUrls.failureUrl')}`;
+        return `${this.configService.get<string>('redirectFE.url')}?status=failed`;
     }
 
     async sendOrderConfirmationEmail(order: Order, transaction: Transaction) {

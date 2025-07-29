@@ -20,7 +20,7 @@ export class Schedule {
 
   @Column({ type: 'datetime', nullable: false })
   start_movie_time: Date;
-  
+
   @Column({ type: 'datetime', nullable: false })
   end_movie_time: Date;
 
@@ -31,7 +31,6 @@ export class Schedule {
   @JoinColumn({ name: 'cinema_room_id' })
   cinemaRoom: CinemaRoom;
 
-
   @ManyToOne(() => Movie, (movie) => movie.schedules)
   @JoinColumn({ name: 'movie_id' })
   movie: Movie;
@@ -40,15 +39,12 @@ export class Schedule {
   @JoinColumn({ name: 'version_id' })
   version: Version;
 
-
   @OneToMany(() => Ticket, (ticket) => ticket.schedule)
   tickets: Ticket[];
-
 
   @OneToMany(() => OrderDetail, (orderDetail) => orderDetail.schedule)
   orderDetails: OrderDetail[];
 
   @OneToMany(() => ScheduleSeat, (scheduleSeat) => scheduleSeat.schedule)
   scheduleSeats: ScheduleSeat[];
-
 }

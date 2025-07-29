@@ -26,11 +26,10 @@ import { JWTUserType } from 'src/common/utils/type';
 import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 import { ActorPaginationDto } from 'src/common/pagination/dto/actor/actor-pagination.dto';
 
-
 @ApiBearerAuth()
 @Controller('actor')
 export class ActorController {
-  constructor(private readonly actorService: ActorService) { }
+  constructor(private readonly actorService: ActorService) {}
 
   // GET - Lấy danh sách actors cho user
   @Get('user')
@@ -45,21 +44,57 @@ export class ActorController {
   @ApiOperation({ summary: 'Get all actors for admin' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
-  @ApiQuery({ name: 'search', required: false, type: String, example: 'name | stage_name | nationality' })
-  @ApiQuery({ name: 'sortBy', required: false, type: String, example: 'name | stage_name | nationality | gender | date_of_birth' })
-  @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], example: 'ASC' })
-  @ApiQuery({ name: 'name', required: false, type: String, example: 'Christopher' })
-  @ApiQuery({ name: 'stage_name', required: false, type: String, example: 'Johnny' })
-  @ApiQuery({ name: 'gender', required: false, enum: ['male', 'female'], example: 'male' })
-  @ApiQuery({ name: 'nationality', required: false, type: String, example: 'American' })
-  @ApiQuery({ name: 'date_of_birth', required: false, type: String, example: '1990-01-01' })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    example: 'name | stage_name | nationality',
+  })
+  @ApiQuery({
+    name: 'sortBy',
+    required: false,
+    type: String,
+    example: 'name | stage_name | nationality | gender | date_of_birth',
+  })
+  @ApiQuery({
+    name: 'sortOrder',
+    required: false,
+    enum: ['ASC', 'DESC'],
+    example: 'ASC',
+  })
+  @ApiQuery({
+    name: 'name',
+    required: false,
+    type: String,
+    example: 'Christopher',
+  })
+  @ApiQuery({
+    name: 'stage_name',
+    required: false,
+    type: String,
+    example: 'Johnny',
+  })
+  @ApiQuery({
+    name: 'gender',
+    required: false,
+    enum: ['male', 'female'],
+    example: 'male',
+  })
+  @ApiQuery({
+    name: 'nationality',
+    required: false,
+    type: String,
+    example: 'American',
+  })
+  @ApiQuery({
+    name: 'date_of_birth',
+    required: false,
+    type: String,
+    example: '1990-01-01',
+  })
   async getAllActors(@Query() query: ActorPaginationDto, @Req() req) {
     // checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can access this endpoint.');
-    const {
-      page = 1,
-      take = 10,
-      ...restFilters
-    } = query;
+    const { page = 1, take = 10, ...restFilters } = query;
     return await this.actorService.getAllActors({
       page,
       take: Math.min(take, 100),
@@ -79,7 +114,10 @@ export class ActorController {
   @Post()
   @ApiOperation({ summary: 'Create a new actor' })
   async createActor(@Req() req, @Body() createActorDto: CreateActorDto) {
-    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can create an actor.');
+    checkAdminEmployeeRole(
+      req.user,
+      'Unauthorized: Only admin or employee can create an actor.',
+    );
     return await this.actorService.createActor(createActorDto);
   }
 
@@ -92,7 +130,10 @@ export class ActorController {
     @Param('id') id: string,
     @Body() updateActorDto: UpdateActorDto,
   ) {
-    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can update an actor.');
+    checkAdminEmployeeRole(
+      req.user,
+      'Unauthorized: Only admin or employee can update an actor.',
+    );
     return await this.actorService.updateActor(+id, updateActorDto);
   }
 
@@ -102,17 +143,25 @@ export class ActorController {
   @ApiOperation({ summary: 'Soft delete an actor (admin, employee only)' })
   async softDeleteActor(@Param('id', ParseIntPipe) id: number, @Req() req) {
     const user = req.user as JWTUserType;
-    checkAdminEmployeeRole(user, 'Unauthorized: Only admin or employee can soft delete an actor.');
+    checkAdminEmployeeRole(
+      user,
+      'Unauthorized: Only admin or employee can soft delete an actor.',
+    );
     return await this.actorService.softDeleteActor(id);
   }
 
   // DELETE - Xóa actor vĩnh viễn
   @UseGuards(JwtAuthGuard)
   @Patch(':id/restore')
-  @ApiOperation({ summary: 'Restore a soft-deleted actor (admin, employee only)' })
+  @ApiOperation({
+    summary: 'Restore a soft-deleted actor (admin, employee only)',
+  })
   async restoreActor(@Param('id', ParseIntPipe) id: number, @Req() req) {
     const user = req.user as JWTUserType;
-    checkAdminEmployeeRole(user, 'Unauthorized: Only admin or employee can restore an actor.');
+    checkAdminEmployeeRole(
+      user,
+      'Unauthorized: Only admin or employee can restore an actor.',
+    );
     return await this.actorService.restoreActor(id);
   }
 
@@ -120,7 +169,10 @@ export class ActorController {
   @Delete(':id')
   @ApiOperation({ summary: 'Permanently delete an actor' })
   async removeActor(@Req() req, @Param('id') id: string) {
-    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin can permanently delete an actor.');
+    checkAdminEmployeeRole(
+      req.user,
+      'Unauthorized: Only admin can permanently delete an actor.',
+    );
     return await this.actorService.removeActor(+id);
   }
 

@@ -32,11 +32,6 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { DailyTransactionSummary } from 'src/database/entities/order/daily_transaction_summary';
 
-
-
-
-
-
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -57,10 +52,8 @@ import { DailyTransactionSummary } from 'src/database/entities/order/daily_trans
       Combo,
       OrderExtra,
       HistoryScore,
-      DailyTransactionSummary
-
-    ]
-  ),
+      DailyTransactionSummary,
+    ]),
     MomoModule,
     PayPalModule,
     VisaModule,
@@ -71,13 +64,11 @@ import { DailyTransactionSummary } from 'src/database/entities/order/daily_trans
     MyGateWayModule,
     TicketModule,
     JwtModule.registerAsync({
-       inject: [ConfigService],
-       useFactory: (configService: ConfigService) => ({
-         secret: configService.get<string>('jwt.secret'),
-       }),
-     }),
-
-
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get<string>('jwt.secret'),
+      }),
+    }),
   ],
   controllers: [OrderController],
   providers: [OrderService],

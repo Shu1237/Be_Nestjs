@@ -21,8 +21,7 @@ export class MyGateWay implements OnGatewayConnection, OnModuleInit {
   constructor(
     private seatService: SeatService,
     private configService: ConfigService,
-
-  ) { }
+  ) {}
 
   @WebSocketServer()
   server: Server;
@@ -89,11 +88,13 @@ export class MyGateWay implements OnGatewayConnection, OnModuleInit {
 
       // Gửi đến room cụ thể
       if (this.server) {
-        this.server.to(`schedule-${data.schedule_id}`).emit('seat_hold_update', {
-          seatIds: data.seatIds,
-          schedule_id: data.schedule_id,
-          status: StatusSeat.HELD,
-        });
+        this.server
+          .to(`schedule-${data.schedule_id}`)
+          .emit('seat_hold_update', {
+            seatIds: data.seatIds,
+            schedule_id: data.schedule_id,
+            status: StatusSeat.HELD,
+          });
       }
     } catch (err) {
       client.emit('error', { msg: err.message || 'Failed to hold seat' });
@@ -112,18 +113,20 @@ export class MyGateWay implements OnGatewayConnection, OnModuleInit {
       await this.seatService.cancelHoldSeat(data, user);
 
       if (this.server) {
-        this.server.to(`schedule-${data.schedule_id}`).emit('seat_cancel_hold_update', {
-          seatIds: data.seatIds,
-          schedule_id: data.schedule_id,
-          status: StatusSeat.NOT_YET,
-        });
+        this.server
+          .to(`schedule-${data.schedule_id}`)
+          .emit('seat_cancel_hold_update', {
+            seatIds: data.seatIds,
+            schedule_id: data.schedule_id,
+            status: StatusSeat.NOT_YET,
+          });
       }
     } catch (err) {
-      client.emit('error_message', { msg: err.message || 'Failed to cancel hold seat' });
+      client.emit('error_message', {
+        msg: err.message || 'Failed to cancel hold seat',
+      });
     }
   }
-
-
 
   // Method để xử lý order expired từ cron job
   // Thông báo huỷ đặt ghế khi order hết hạn cho tất cả client đang join schedule đó
@@ -134,14 +137,18 @@ export class MyGateWay implements OnGatewayConnection, OnModuleInit {
     }
 
     if (this.server) {
-      this.server.to(`schedule-${data.schedule_id}`).emit('seat_cancel_book_update_cron', {
-        seatIds: data.seatIds,
-        schedule_id: data.schedule_id,
-        status: StatusSeat.NOT_YET,
-      });
+      this.server
+        .to(`schedule-${data.schedule_id}`)
+        .emit('seat_cancel_book_update_cron', {
+          seatIds: data.seatIds,
+          schedule_id: data.schedule_id,
+          status: StatusSeat.NOT_YET,
+        });
     }
 
-    this.logger.log(`Order expired notification sent for schedule ${data.schedule_id}: ${data.seatIds.length} seats released`);
+    this.logger.log(
+      `Order expired notification sent for schedule ${data.schedule_id}: ${data.seatIds.length} seats released`,
+    );
   }
 
   // Public method để emit hold seat từ service khác
@@ -168,11 +175,13 @@ export class MyGateWay implements OnGatewayConnection, OnModuleInit {
     }
 
     if (this.server) {
-      this.server.to(`schedule-${data.schedule_id}`).emit('seat_booked_update', {
-        seatIds: data.seatIds,
-        schedule_id: data.schedule_id,
-        status: StatusSeat.BOOKED,
-      });
+      this.server
+        .to(`schedule-${data.schedule_id}`)
+        .emit('seat_booked_update', {
+          seatIds: data.seatIds,
+          schedule_id: data.schedule_id,
+          status: StatusSeat.BOOKED,
+        });
     }
   }
 
@@ -184,11 +193,13 @@ export class MyGateWay implements OnGatewayConnection, OnModuleInit {
     }
 
     if (this.server) {
-      this.server.to(`schedule-${data.schedule_id}`).emit('seat_cancel_book_update', {
-        seatIds: data.seatIds,
-        schedule_id: data.schedule_id,
-        status: StatusSeat.NOT_YET,
-      });
+      this.server
+        .to(`schedule-${data.schedule_id}`)
+        .emit('seat_cancel_book_update', {
+          seatIds: data.seatIds,
+          schedule_id: data.schedule_id,
+          status: StatusSeat.NOT_YET,
+        });
     }
   }
 }

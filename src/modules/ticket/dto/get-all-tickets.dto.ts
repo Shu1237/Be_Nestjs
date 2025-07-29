@@ -41,5 +41,4 @@ export class GetAllTicketsDto {
   @IsOptional()
   @IsString()
   endDate?: string;
-
 }

@@ -24,5 +24,4 @@ export class Gerne {
   @ManyToMany(() => Movie, (movie) => movie.gernes)
   @JoinTable()
   movies: Movie[];
-  
 }

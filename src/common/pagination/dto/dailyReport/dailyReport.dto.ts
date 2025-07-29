@@ -1,12 +1,5 @@
 import { Type } from 'class-transformer';
-import {
-  IsDate,
-  IsOptional,
-  IsInt,
-  Min,
-  Max,
-  IsNumber,
-} from 'class-validator';
+import { IsDate, IsOptional, IsInt, Min, Max, IsNumber } from 'class-validator';
 import { BasePaginationDto } from '../basePagination.dto';
 
 export class DailyReportDto extends BasePaginationDto {
@@ -14,13 +7,13 @@ export class DailyReportDto extends BasePaginationDto {
   @IsInt()
   @Min(1)
   @Max(6)
-  @Type(() => Number) 
+  @Type(() => Number)
   paymentMethod?: number;
 
   @IsOptional()
   @IsDate()
   @Type(() => Date)
-  reportDate?: Date; 
+  reportDate?: Date;
 
   @IsOptional()
   @IsDate()

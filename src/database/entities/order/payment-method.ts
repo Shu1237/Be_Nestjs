@@ -1,5 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from "typeorm";
-import { Transaction } from "./transaction";
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { Transaction } from './transaction';
 @Entity('payment_method')
 export class PaymentMethod {
   @PrimaryGeneratedColumn({ type: 'int' })

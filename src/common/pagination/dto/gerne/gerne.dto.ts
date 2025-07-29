@@ -1,5 +1,4 @@
-import { extend } from "dayjs"
-import { BasePaginationDto } from "../basePagination.dto"
+import { extend } from 'dayjs';
+import { BasePaginationDto } from '../basePagination.dto';
 
-
-export class GernePaginationDto extends BasePaginationDto{}
+export class GernePaginationDto extends BasePaginationDto {}

@@ -1,4 +1,10 @@
-import { IsOptional, IsInt, IsString, IsBoolean, IsArray } from 'class-validator';
+import {
+  IsOptional,
+  IsInt,
+  IsString,
+  IsBoolean,
+  IsArray,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class UpdateMovieDto {
@@ -26,7 +32,10 @@ export class UpdateMovieDto {
 
   @IsOptional()
   @IsString()
-  @ApiProperty({ description: 'URL của trailer phim', example: 'https://example.com/trailer.mp4' })
+  @ApiProperty({
+    description: 'URL của trailer phim',
+    example: 'https://example.com/trailer.mp4',
+  })
   trailer?: string;
 
   @IsOptional()
@@ -37,7 +46,8 @@ export class UpdateMovieDto {
   @IsArray()
   @IsInt({ each: true })
   @ApiProperty({
-    description: 'Danh sách ID của các phiên bản (versions) liên kết với bộ phim',
+    description:
+      'Danh sách ID của các phiên bản (versions) liên kết với bộ phim',
     example: [2, 3],
   })
   id_Version?: number[];
@@ -49,44 +59,71 @@ export class UpdateMovieDto {
 
   @IsOptional()
   @IsString()
-  @ApiProperty({ description: 'Nội dung tóm tắt của bộ phim', example: 'A mind-bending thriller' })
+  @ApiProperty({
+    description: 'Nội dung tóm tắt của bộ phim',
+    example: 'A mind-bending thriller',
+  })
   content?: string;
 
   @IsOptional()
   @IsString()
-  @ApiProperty({ description: 'Tên đạo diễn của bộ phim', example: 'Christopher Nolan' })
+  @ApiProperty({
+    description: 'Tên đạo diễn của bộ phim',
+    example: 'Christopher Nolan',
+  })
   director?: string;
 
   @IsOptional()
   @IsInt()
-  @ApiProperty({ description: 'Thời lượng của bộ phim (tính bằng phút)', example: 148 })
+  @ApiProperty({
+    description: 'Thời lượng của bộ phim (tính bằng phút)',
+    example: 148,
+  })
   duration?: number;
 
   @IsOptional()
-  @ApiProperty({ description: 'Ngày bắt đầu chiếu bộ phim', example: '2025-06-01' })
+  @ApiProperty({
+    description: 'Ngày bắt đầu chiếu bộ phim',
+    example: '2025-06-01',
+  })
   from_date?: Date;
 
   @IsOptional()
-  @ApiProperty({ description: 'Ngày kết thúc chiếu bộ phim', example: '2025-06-30' })
+  @ApiProperty({
+    description: 'Ngày kết thúc chiếu bộ phim',
+    example: '2025-06-30',
+  })
   to_date?: Date;
 
   @IsOptional()
   @IsString()
-  @ApiProperty({ description: 'Tên công ty sản xuất bộ phim', example: 'Warner Bros.' })
+  @ApiProperty({
+    description: 'Tên công ty sản xuất bộ phim',
+    example: 'Warner Bros.',
+  })
   production_company?: string;
 
   @IsOptional()
   @IsString()
-  @ApiProperty({ description: 'URL của hình ảnh thumbnail của bộ phim', example: 'https://example.com/thumbnail.jpg' })
+  @ApiProperty({
+    description: 'URL của hình ảnh thumbnail của bộ phim',
+    example: 'https://example.com/thumbnail.jpg',
+  })
   thumbnail?: string;
 
   @IsOptional()
   @IsString()
-  @ApiProperty({ description: 'URL của hình ảnh banner của bộ phim', example: 'https://example.com/banner.jpg' })
+  @ApiProperty({
+    description: 'URL của hình ảnh banner của bộ phim',
+    example: 'https://example.com/banner.jpg',
+  })
   banner?: string;
 
   @IsOptional()
   @IsBoolean()
-  @ApiProperty({ description: 'Trạng thái xóa của bộ phim (true nếu đã bị xóa)', example: false })
+  @ApiProperty({
+    description: 'Trạng thái xóa của bộ phim (true nếu đã bị xóa)',
+    example: false,
+  })
   is_deleted?: boolean;
 }

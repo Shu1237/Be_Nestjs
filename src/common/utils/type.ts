@@ -107,7 +107,7 @@ export type IGerne = {
 export enum Gender {
   MALE = 'male',
   FEMALE = 'female',
-  OTHER = 'other'
+  OTHER = 'other',
 }
 export type IMovie = {
   id: number;
@@ -142,7 +142,6 @@ export type ISchedule = {
   is_deleted: boolean;
   version?: { id: number; name: string } | null; // Cho phép giá trị null
 
-
   // Chỉ chứa id và name
 };
 
@@ -151,9 +150,6 @@ export type IMovieBasic = {
   name: string;
   // versions: IVersion[]; // Danh sách các phiên bản của phim
 };
-
-
-
 
 export type TicketSummary = {
   id: string;
@@ -189,7 +185,7 @@ export type LoginAzureType = {
   picture?: string;
   name: string;
   role_id?: number;
-}
+};
 export type ProductType = {
   id: number;
   name: string;
@@ -197,8 +193,7 @@ export type ProductType = {
   category?: string;
   discount?: string;
   type: string;
-}
-
+};
 
 export type ZaloReturnQuery = {
   appid: string;
@@ -209,24 +204,28 @@ export type ZaloReturnQuery = {
   discountamount: string;
   status: string;
   checksum: string;
-}
-
-
-
-
-
-
-
-
-
-
+};
 
 // pagination
-type Operator = '=' | 'LIKE' | 'ILIKE' | 'BETWEEN' | '<>' | '!=' | '>' | '<' | '>=' | '<=' | 'IN' | 'NOT IN' | 'IS NULL' | 'IS NOT NULL';
+type Operator =
+  | '='
+  | 'LIKE'
+  | 'ILIKE'
+  | 'BETWEEN'
+  | '<>'
+  | '!='
+  | '>'
+  | '<'
+  | '>='
+  | '<='
+  | 'IN'
+  | 'NOT IN'
+  | 'IS NULL'
+  | 'IS NOT NULL';
 export type PaginationParams = {
   page: number;
   take: number;
-}
+};
 
 export interface FilterField {
   field?: string;
@@ -246,6 +245,4 @@ export type MetaOptions = {
   [key: string]: any;
   // totalMovieAvailable?: number;
   // totalMovieDeleted?: number;
-}
-
-
+};

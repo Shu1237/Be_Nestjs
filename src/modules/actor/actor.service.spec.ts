@@ -27,7 +27,9 @@ describe('ActorService', () => {
         skip: jest.fn().mockReturnThis(),
         take: jest.fn().mockReturnThis(),
         getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
-        getRawOne: jest.fn().mockResolvedValue({ activeCount: '0', deletedCount: '0' }),
+        getRawOne: jest
+          .fn()
+          .mockResolvedValue({ activeCount: '0', deletedCount: '0' }),
       }),
     };
 
@@ -44,29 +46,38 @@ describe('ActorService', () => {
   describe('1.createActor', () => {
     it('✅ 1.1 should create a new actor', async () => {
       (mockActorRepo.findOneBy as jest.Mock).mockResolvedValue(undefined);
-      (mockActorRepo.create as jest.Mock).mockReturnValue({ name: 'Test Actor' });
-      (mockActorRepo.save as jest.Mock).mockResolvedValue({ name: 'Test Actor' });
+      (mockActorRepo.create as jest.Mock).mockReturnValue({
+        name: 'Test Actor',
+      });
+      (mockActorRepo.save as jest.Mock).mockResolvedValue({
+        name: 'Test Actor',
+      });
       const createActorDto = {
         name: 'Test Actor',
         gender: Gender.MALE,
         date_of_birth: new Date('1990-01-01'),
         nationality: 'American',
         biography: 'Test biography',
-        profile_image: 'test.jpg'
+        profile_image: 'test.jpg',
       };
       const result = await service.createActor(createActorDto);
       expect(result).toEqual({ msg: 'Actor created successfully' });
     });
     it('❌ 1.2 should throw BadRequestException if actor name exists', async () => {
-      (mockActorRepo.findOneBy as jest.Mock).mockResolvedValue({ id: 1, name: 'Test Actor' });
-      await expect(service.createActor({
+      (mockActorRepo.findOneBy as jest.Mock).mockResolvedValue({
+        id: 1,
         name: 'Test Actor',
-        gender: Gender.MALE,
-        date_of_birth: new Date('1990-01-01'),
-        nationality: 'American',
-        biography: 'Test biography',
-        profile_image: 'test.jpg'
-      })).rejects.toThrow(BadRequestException);
+      });
+      await expect(
+        service.createActor({
+          name: 'Test Actor',
+          gender: Gender.MALE,
+          date_of_birth: new Date('1990-01-01'),
+          nationality: 'American',
+          biography: 'Test biography',
+          profile_image: 'test.jpg',
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -74,18 +85,39 @@ describe('ActorService', () => {
     it('❌ 1.1.1 should throw if createActorDto is null', async () => {
       await expect(service.createActor(null as any)).rejects.toThrow();
     });
-    
+
     it('❌ 1.1.3 should throw if repo throws error', async () => {
-      (mockActorRepo.findOneBy as jest.Mock).mockRejectedValue(new Error('DB error'));
-      await expect(service.createActor({ name: 'A', gender: Gender.MALE, date_of_birth: new Date(), nationality: '', biography: '', profile_image: '' } as any)).rejects.toThrow('DB error');
+      (mockActorRepo.findOneBy as jest.Mock).mockRejectedValue(
+        new Error('DB error'),
+      );
+      await expect(
+        service.createActor({
+          name: 'A',
+          gender: Gender.MALE,
+          date_of_birth: new Date(),
+          nationality: '',
+          biography: '',
+          profile_image: '',
+        } as any),
+      ).rejects.toThrow('DB error');
     });
     it('❌ 1.1.4 should throw if save throws error', async () => {
       (mockActorRepo.findOneBy as jest.Mock).mockResolvedValue(undefined);
       (mockActorRepo.create as jest.Mock).mockReturnValue({ name: 'A' });
-      (mockActorRepo.save as jest.Mock).mockRejectedValue(new Error('Save error'));
-      await expect(service.createActor({ name: 'A', gender: Gender.MALE, date_of_birth: new Date(), nationality: '', biography: '', profile_image: '' } as any)).rejects.toThrow('Save error');
+      (mockActorRepo.save as jest.Mock).mockRejectedValue(
+        new Error('Save error'),
+      );
+      await expect(
+        service.createActor({
+          name: 'A',
+          gender: Gender.MALE,
+          date_of_birth: new Date(),
+          nationality: '',
+          biography: '',
+          profile_image: '',
+        } as any),
+      ).rejects.toThrow('Save error');
     });
-    
   });
 
   describe('2.findActorById', () => {
@@ -101,7 +133,9 @@ describe('ActorService', () => {
 
   describe('3.findActorByName', () => {
     it('✅ 3.1 should return actors with matching name', async () => {
-      (mockActorRepo.find as jest.Mock).mockResolvedValue([{ id: 1, name: 'Brad' }]);
+      (mockActorRepo.find as jest.Mock).mockResolvedValue([
+        { id: 1, name: 'Brad' },
+      ]);
       const result = await service.findActorByName('Brad');
       expect(result).toEqual([{ id: 1, name: 'Brad' }]);
       expect(mockActorRepo.find).toHaveBeenCalledWith({
@@ -111,52 +145,88 @@ describe('ActorService', () => {
     });
     it('❌ 3.2 should throw NotFoundException if no actors found', async () => {
       (mockActorRepo.find as jest.Mock).mockResolvedValue(undefined);
-      await expect(service.findActorByName('Unknown')).rejects.toThrow(NotFoundException);
+      await expect(service.findActorByName('Unknown')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
   describe('4.updateActor', () => {
     it('✅ 4.1 should update an actor successfully', async () => {
-      service.findActorById = jest.fn().mockResolvedValue({ id: 2, name: 'Another' });
+      service.findActorById = jest
+        .fn()
+        .mockResolvedValue({ id: 2, name: 'Another' });
       (mockActorRepo.findOneBy as jest.Mock).mockResolvedValue(undefined);
-      (mockActorRepo.save as jest.Mock).mockResolvedValue({ id: 2, name: 'Updated' });
+      (mockActorRepo.save as jest.Mock).mockResolvedValue({
+        id: 2,
+        name: 'Updated',
+      });
       const result = await service.updateActor(2, { name: 'Updated' });
       expect(result).toEqual({ msg: 'Actor updated successfully' });
     });
     it('❌ 4.2 should throw BadRequestException if duplicate name found', async () => {
-      service.findActorById = jest.fn().mockResolvedValue({ id: 2, name: 'Another' });
-      (mockActorRepo.findOneBy as jest.Mock).mockResolvedValue({ id: 3, name: 'Duplicate' });
-      await expect(service.updateActor(2, { name: 'Duplicate' })).rejects.toThrow(BadRequestException);
+      service.findActorById = jest
+        .fn()
+        .mockResolvedValue({ id: 2, name: 'Another' });
+      (mockActorRepo.findOneBy as jest.Mock).mockResolvedValue({
+        id: 3,
+        name: 'Duplicate',
+      });
+      await expect(
+        service.updateActor(2, { name: 'Duplicate' }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
   describe('5.softDeleteActor', () => {
     it('✅ 5.1 should soft delete an actor', async () => {
-      service.findActorById = jest.fn().mockResolvedValue({ id: 1, is_deleted: false });
-      (mockActorRepo.save as jest.Mock).mockResolvedValue({ id: 1, is_deleted: true });
+      service.findActorById = jest
+        .fn()
+        .mockResolvedValue({ id: 1, is_deleted: false });
+      (mockActorRepo.save as jest.Mock).mockResolvedValue({
+        id: 1,
+        is_deleted: true,
+      });
       const result = await service.softDeleteActor(1);
       expect(result).toEqual({ msg: 'Actor soft deleted successfully' });
     });
     it('❌ 5.2 should throw BadRequestException if actor already soft deleted', async () => {
-      service.findActorById = jest.fn().mockResolvedValue({ id: 1, is_deleted: true });
-      await expect(service.softDeleteActor(1)).rejects.toThrow(BadRequestException);
+      service.findActorById = jest
+        .fn()
+        .mockResolvedValue({ id: 1, is_deleted: true });
+      await expect(service.softDeleteActor(1)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
   describe('6.restoreActor', () => {
     it('✅ 6.1 should restore a soft-deleted actor', async () => {
-      (mockActorRepo.findOne as jest.Mock).mockResolvedValue({ id: 1, is_deleted: true });
-      (mockActorRepo.save as jest.Mock).mockResolvedValue({ id: 1, is_deleted: false });
+      (mockActorRepo.findOne as jest.Mock).mockResolvedValue({
+        id: 1,
+        is_deleted: true,
+      });
+      (mockActorRepo.save as jest.Mock).mockResolvedValue({
+        id: 1,
+        is_deleted: false,
+      });
       const result = await service.restoreActor(1);
       expect(result).toEqual({ msg: 'Actor restored successfully' });
     });
     it('❌ 6.2 should throw NotFoundException if actor not found', async () => {
       (mockActorRepo.findOne as jest.Mock).mockResolvedValue(undefined);
-      await expect(service.restoreActor(999)).rejects.toThrow(NotFoundException);
+      await expect(service.restoreActor(999)).rejects.toThrow(
+        NotFoundException,
+      );
     });
     it('❌ 6.3 should throw BadRequestException if actor is not soft deleted', async () => {
-      (mockActorRepo.findOne as jest.Mock).mockResolvedValue({ id: 1, is_deleted: false });
-      await expect(service.restoreActor(1)).rejects.toThrow(BadRequestException);
+      (mockActorRepo.findOne as jest.Mock).mockResolvedValue({
+        id: 1,
+        is_deleted: false,
+      });
+      await expect(service.restoreActor(1)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -179,11 +249,15 @@ describe('ActorService', () => {
       expect(await service.getAllActorsUser()).toEqual([]);
     });
     it('✅ 1.2.2 should return actors if exist', async () => {
-      (mockActorRepo.find as jest.Mock).mockResolvedValue([{ id: 1, name: 'A' }]);
+      (mockActorRepo.find as jest.Mock).mockResolvedValue([
+        { id: 1, name: 'A' },
+      ]);
       expect(await service.getAllActorsUser()).toEqual([{ id: 1, name: 'A' }]);
     });
     it('❌ 1.2.3 should throw if repo throws error', async () => {
-      (mockActorRepo.find as jest.Mock).mockRejectedValue(new Error('DB error'));
+      (mockActorRepo.find as jest.Mock).mockRejectedValue(
+        new Error('DB error'),
+      );
       await expect(service.getAllActorsUser()).rejects.toThrow('DB error');
     });
   });
@@ -198,9 +272,16 @@ describe('ActorService', () => {
         skip: jest.fn().mockReturnThis(),
         take: jest.fn().mockReturnThis(),
         getManyAndCount: jest.fn().mockResolvedValue([[{ id: 1 }], 1]),
-        getRawOne: jest.fn().mockResolvedValue({ activeCount: '1', deletedCount: '0' }),
+        getRawOne: jest
+          .fn()
+          .mockResolvedValue({ activeCount: '1', deletedCount: '0' }),
       });
-      const filters = { page: 1, take: 10, sortBy: 'name', sortOrder: 'ASC' } as any;
+      const filters = {
+        page: 1,
+        take: 10,
+        sortBy: 'name',
+        sortOrder: 'ASC',
+      } as any;
       const result = await service.getAllActors(filters);
       expect(result.data.length).toBe(1);
       expect(result.meta.total).toBe(1);
@@ -229,9 +310,16 @@ describe('ActorService', () => {
         skip: jest.fn().mockReturnThis(),
         take: jest.fn().mockReturnThis(),
         getManyAndCount: jest.fn().mockResolvedValue([[{ id: 1 }], 1]),
-        getRawOne: jest.fn().mockResolvedValue({ activeCount: '1', deletedCount: '0' }),
+        getRawOne: jest
+          .fn()
+          .mockResolvedValue({ activeCount: '1', deletedCount: '0' }),
       });
-      const filters = { page: 1, take: 10, sortBy: 'invalid_field', sortOrder: 'ASC' } as any;
+      const filters = {
+        page: 1,
+        take: 10,
+        sortBy: 'invalid_field',
+        sortOrder: 'ASC',
+      } as any;
       const result = await service.getAllActors(filters);
       expect(result.data.length).toBe(1);
       expect(result.meta.total).toBe(1);
@@ -247,7 +335,12 @@ describe('ActorService', () => {
         getManyAndCount: jest.fn().mockResolvedValue([[{ id: 1 }], 1]),
         getRawOne: jest.fn().mockResolvedValue(null),
       });
-      const filters = { page: 1, take: 10, sortBy: 'name', sortOrder: 'ASC' } as any;
+      const filters = {
+        page: 1,
+        take: 10,
+        sortBy: 'name',
+        sortOrder: 'ASC',
+      } as any;
       const result = await service.getAllActors(filters);
       expect(result.data.length).toBe(1);
       expect(result.meta.total).toBe(1);
@@ -262,11 +355,22 @@ describe('ActorService', () => {
         orderBy: jest.fn().mockReturnThis(),
         skip: jest.fn().mockReturnThis(),
         take: jest.fn().mockReturnThis(),
-        getManyAndCount: jest.fn().mockRejectedValue(new Error('getManyAndCount error')),
-        getRawOne: jest.fn().mockResolvedValue({ activeCount: '1', deletedCount: '0' }),
+        getManyAndCount: jest
+          .fn()
+          .mockRejectedValue(new Error('getManyAndCount error')),
+        getRawOne: jest
+          .fn()
+          .mockResolvedValue({ activeCount: '1', deletedCount: '0' }),
       });
-      const filters = { page: 1, take: 10, sortBy: 'name', sortOrder: 'ASC' } as any;
-      await expect(service.getAllActors(filters)).rejects.toThrow('getManyAndCount error');
+      const filters = {
+        page: 1,
+        take: 10,
+        sortBy: 'name',
+        sortOrder: 'ASC',
+      } as any;
+      await expect(service.getAllActors(filters)).rejects.toThrow(
+        'getManyAndCount error',
+      );
     });
     it('❌ 1.3.8 should handle getRawOne throws error', async () => {
       (mockActorRepo.createQueryBuilder as jest.Mock).mockReturnValue({
@@ -279,8 +383,15 @@ describe('ActorService', () => {
         getManyAndCount: jest.fn().mockResolvedValue([[{ id: 1 }], 1]),
         getRawOne: jest.fn().mockRejectedValue(new Error('getRawOne error')),
       });
-      const filters = { page: 1, take: 10, sortBy: 'name', sortOrder: 'ASC' } as any;
-      await expect(service.getAllActors(filters)).rejects.toThrow('getRawOne error');
+      const filters = {
+        page: 1,
+        take: 10,
+        sortBy: 'name',
+        sortOrder: 'ASC',
+      } as any;
+      await expect(service.getAllActors(filters)).rejects.toThrow(
+        'getRawOne error',
+      );
     });
   });
 });

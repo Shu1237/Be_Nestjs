@@ -50,33 +50,51 @@ describe('PromotionService', () => {
     });
 
     it('❌ 1.2 should throw BadRequestException if code exists', async () => {
-      (mockRepo.findOne as jest.Mock).mockResolvedValue({ id: 1, code: dto.code });
-      await expect(service.createPromotion(dto as any)).rejects.toThrow(BadRequestException);
+      (mockRepo.findOne as jest.Mock).mockResolvedValue({
+        id: 1,
+        code: dto.code,
+      });
+      await expect(service.createPromotion(dto as any)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('❌ 1.3 should throw BadRequestException if end_time <= now', async () => {
       (mockRepo.findOne as jest.Mock).mockResolvedValue(undefined);
       const invalidDto = { ...dto, end_time: '2000-01-01T00:00:00+07:00' };
-      await expect(service.createPromotion(invalidDto as any)).rejects.toThrow(BadRequestException);
+      await expect(service.createPromotion(invalidDto as any)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('❌ 1.4 should throw BadRequestException if start_time >= end_time', async () => {
       (mockRepo.findOne as jest.Mock).mockResolvedValue(undefined);
-      const invalidDto = { ...dto, start_time: '2099-07-10T00:00:00+07:00', end_time: '2099-07-01T00:00:00+07:00' };
-      await expect(service.createPromotion(invalidDto as any)).rejects.toThrow(BadRequestException);
+      const invalidDto = {
+        ...dto,
+        start_time: '2099-07-10T00:00:00+07:00',
+        end_time: '2099-07-01T00:00:00+07:00',
+      };
+      await expect(service.createPromotion(invalidDto as any)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
   describe('2.getPromotionById', () => {
     it('✅ 2.1 should return promotion if found', async () => {
-      (mockRepo.findOne as jest.Mock).mockResolvedValue({ id: 1, is_active: true });
+      (mockRepo.findOne as jest.Mock).mockResolvedValue({
+        id: 1,
+        is_active: true,
+      });
       const result = await service.getPromotionById(1);
       expect(result).toEqual({ id: 1, is_active: true });
     });
 
     it('❌ 2.2 should throw NotFoundException if not found', async () => {
       (mockRepo.findOne as jest.Mock).mockResolvedValue(undefined);
-      await expect(service.getPromotionById(1)).rejects.toThrow(NotFoundException);
+      await expect(service.getPromotionById(1)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -99,35 +117,58 @@ describe('PromotionService', () => {
 
     it('❌ 3.2 should throw BadRequestException if new code already exists', async () => {
       service.getPromotionById = jest.fn().mockResolvedValue({ ...oldPromo });
-      (mockRepo.findOne as jest.Mock).mockResolvedValue({ id: 99, code: 'NEWCODE' });
+      (mockRepo.findOne as jest.Mock).mockResolvedValue({
+        id: 99,
+        code: 'NEWCODE',
+      });
       const dto = { code: 'NEWCODE' };
-      await expect(service.updatePromotion(1, dto as any)).rejects.toThrow(BadRequestException);
+      await expect(service.updatePromotion(1, dto as any)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('❌ 3.3 should throw BadRequestException if start_time >= end_time', async () => {
       service.getPromotionById = jest.fn().mockResolvedValue({ ...oldPromo });
       (mockRepo.findOne as jest.Mock).mockResolvedValue(undefined);
-      const dto = { start_time: '2099-07-10T00:00:00+07:00', end_time: '2099-07-01T00:00:00+07:00' };
-      await expect(service.updatePromotion(1, dto as any)).rejects.toThrow(BadRequestException);
+      const dto = {
+        start_time: '2099-07-10T00:00:00+07:00',
+        end_time: '2099-07-01T00:00:00+07:00',
+      };
+      await expect(service.updatePromotion(1, dto as any)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
   describe('4.deleteSoftPromotion', () => {
     it('✅ 4.1 should soft delete a promotion', async () => {
-      (mockRepo.findOne as jest.Mock).mockResolvedValue({ id: 1, is_active: true });
-      (mockRepo.save as jest.Mock).mockResolvedValue({ id: 1, is_active: false });
+      (mockRepo.findOne as jest.Mock).mockResolvedValue({
+        id: 1,
+        is_active: true,
+      });
+      (mockRepo.save as jest.Mock).mockResolvedValue({
+        id: 1,
+        is_active: false,
+      });
       const result = await service.deleteSoftPromotion(1);
       expect(result).toEqual({ msg: 'Promotion deleted successfully' });
     });
 
     it('❌ 4.2 should throw NotFoundException if not found', async () => {
       (mockRepo.findOne as jest.Mock).mockResolvedValue(undefined);
-      await expect(service.deleteSoftPromotion(1)).rejects.toThrow(NotFoundException);
+      await expect(service.deleteSoftPromotion(1)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('❌ 4.3 should throw BadRequestException if already deleted', async () => {
-      (mockRepo.findOne as jest.Mock).mockResolvedValue({ id: 1, is_active: false });
-      await expect(service.deleteSoftPromotion(1)).rejects.toThrow(BadRequestException);
+      (mockRepo.findOne as jest.Mock).mockResolvedValue({
+        id: 1,
+        is_active: false,
+      });
+      await expect(service.deleteSoftPromotion(1)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 });
