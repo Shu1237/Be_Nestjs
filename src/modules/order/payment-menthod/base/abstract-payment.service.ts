@@ -2,12 +2,9 @@ import { MailerService } from "@nestjs-modules/mailer";
 import { NotFoundException } from "@nestjs/common/exceptions/not-found.exception";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
-import { Method } from "src/common/enums/payment-menthod.enum";
-import { PaymentGateway } from "src/common/enums/payment_gatewat.enum";
 import { Role } from "src/common/enums/roles.enum";
 import { StatusOrder } from "src/common/enums/status-order.enum";
 import { StatusSeat } from "src/common/enums/status_seat.enum";
-import { InternalServerErrorException } from "src/common/exceptions/internal-server-error.exception";
 import { MyGateWay } from "src/common/gateways/seat.gateway";
 import { QrCodeService } from "src/common/qrcode/qrcode.service";
 import { ScheduleSeat } from "src/database/entities/cinema/schedule_seat";
@@ -312,7 +309,7 @@ export abstract class AbstractPaymentService {
         //     seatIds: order.orderDetails.map(detail => detail.ticket.seat.id),
         // });
 
-        return `${this.configService.get<string>('redirectFE.url')}?status=failed`;
+        return `${this.configService.get<string>('redirectFE.url')}?status=failure `;
     }
 
     async sendOrderConfirmationEmail(order: Order, transaction: Transaction) {
