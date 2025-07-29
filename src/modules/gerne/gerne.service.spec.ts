@@ -52,6 +52,9 @@ describe('GerneService', () => {
       (mockGerneRepo.findOne as jest.Mock).mockResolvedValue(undefined);
       await expect(service.findGerneById(1)).rejects.toThrow(NotFoundException);
     });
+    it('❌ 2.3 should throw if id is undefined', async () => {
+      await expect(service.findGerneById(undefined as any)).rejects.toThrow();
+    })
   });
 
   describe('3.updateGerne', () => {
@@ -73,6 +76,20 @@ describe('GerneService', () => {
       const result = await service.updateGerne(1, { genre_name: 'Same' });
       expect(result).toEqual({ msg: 'Gerne updated successfully' });
     });
+    it('❌ 3.4 should throw if updateGerneDto is null', async () => {
+      service.findGerneById = jest.fn().mockResolvedValue({ id: 1, genre_name: 'Test' });
+      await expect(service.updateGerne(1, null as any)).rejects.toThrow();
+    });
+    
+    it('❌ 3.5 should throw if id is NaN', async () => {
+      await expect(service.updateGerne(NaN, { genre_name: 'Any' })).rejects.toThrow();
+    });
+    
+    it('❌ 3.6 should throw if trying to change to existing name (case insensitive)', async () => {
+      service.findGerneById = jest.fn().mockResolvedValue({ id: 1, genre_name: 'Action' });
+      (mockGerneRepo.findOne as jest.Mock).mockResolvedValue({ id: 2, genre_name: 'ACTION' });
+      await expect(service.updateGerne(1, { genre_name: 'ACTION' })).rejects.toThrow();
+    });
   });
 
   describe('4.deleteGerne', () => {
@@ -83,6 +100,14 @@ describe('GerneService', () => {
     it('❌ 4.2 should throw NotFoundException if not found', async () => {
       (mockGerneRepo.delete as jest.Mock).mockResolvedValue({ affected: 0 });
       await expect(service.deleteGerne(1)).rejects.toThrow(NotFoundException);
+    });
+    it('❌ 4.3 should throw if id is not provided', async () => {
+      await expect(service.deleteGerne(undefined as any)).rejects.toThrow();
+    });
+    
+    it('❌ 4.4 should throw if repository.delete throws error', async () => {
+      (mockGerneRepo.delete as jest.Mock).mockRejectedValue(new Error('DB error'));
+      await expect(service.deleteGerne(1)).rejects.toThrow('DB error');
     });
   });
 
@@ -97,6 +122,14 @@ describe('GerneService', () => {
     it('❌ 5.2 should throw NotFoundException if not found', async () => {
       (mockGerneRepo.findOne as jest.Mock).mockResolvedValue(undefined);
       await expect(service.softDeleteGerne(1)).rejects.toThrow(NotFoundException);
+    });
+    it('✅ 5.3 should soft delete even if already soft-deleted (idempotent)', async () => {
+      const gerne = { id: 1, is_deleted: true };
+      (mockGerneRepo.findOne as jest.Mock).mockResolvedValue(gerne);
+      (mockGerneRepo.save as jest.Mock).mockResolvedValue(gerne);
+    
+      const result = await service.softDeleteGerne(1);
+      expect(result.gerne.is_deleted).toBe(true);
     });
   });
 
@@ -116,6 +149,17 @@ describe('GerneService', () => {
       (mockGerneRepo.findOne as jest.Mock).mockResolvedValue({ id: 1, is_deleted: false });
       await expect(service.restoreGerne(1)).rejects.toThrow(BadRequestException);
     });
+    it('❌ 6.4 should throw if id is undefined', async () => {
+  await expect(service.restoreGerne(undefined as any)).rejects.toThrow();
+});
+
+it('❌ 6.5 should throw if repository.save is null', async () => {
+  const gerne = { id: 1, is_deleted: true };
+  (mockGerneRepo.findOne as jest.Mock).mockResolvedValue(gerne);
+  (mockGerneRepo.save as jest.Mock).mockResolvedValue(null);
+  const result = await service.restoreGerne(1);
+  expect(result).toEqual({ msg: 'Gerne restored successfully', gerne });
+});
   });
 
   describe('7.getMoviesOfGerne', () => {
@@ -128,5 +172,34 @@ describe('GerneService', () => {
       (mockGerneRepo.findOne as jest.Mock).mockResolvedValue(undefined);
       await expect(service.getMoviesOfGerne(1)).rejects.toThrow(NotFoundException);
     });
+    it('❌ 7.3 should throw if id is invalid', async () => {
+      await expect(service.getMoviesOfGerne(NaN)).rejects.toThrow();
+    });
+    
+    it('✅ 7.4 should return empty array if movies is empty', async () => {
+      (mockGerneRepo.findOne as jest.Mock).mockResolvedValue({ id: 1, movies: [] });
+      const result = await service.getMoviesOfGerne(1);
+      expect(result).toEqual([]);
+    });
   });
+  
+  
+  
+  it('✅ 9.1 should return paginated gernes', async () => {
+    const mockQB = {
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([[{ id: 1 }], 1]),
+    };
+    (mockGerneRepo.createQueryBuilder as jest.Mock) = jest.fn().mockReturnValue(mockQB);
+  
+    const result = await service.findAllGernes({ page: 1, take: 10 } as any);
+    expect(result.data.length).toBe(1);
+    expect(result.meta.total).toBe(1);
+  });
+  
+  
 });
