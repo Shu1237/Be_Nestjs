@@ -111,7 +111,6 @@ export class CinemaRoomController {
     return await this.cinemaRoomService.softDeleteCinemaRoom(id);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Patch(':id/restore')
   @ApiOperation({
     summary: 'Restore a soft-deleted cinema room (admin, employee only)',
@@ -123,8 +122,6 @@ export class CinemaRoomController {
     );
     return await this.cinemaRoomService.restoreCinemaRoom(id);
   }
-
-  @UseGuards(JwtAuthGuard)
 
   // DELETE - Xóa cinema room theo ID
   @Delete(':id')
