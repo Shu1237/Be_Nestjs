@@ -83,6 +83,17 @@ export class UserService {
     return user;
   }
 
+  async findOneForToggle(id: string): Promise<User> {
+    const user = await this.userRepository.findOne({
+      where: { id },
+      relations: ['role'],
+    });
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+    return user;
+  }
+
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
     const user = await this.findOne(id);
     if (updateUserDto.role_id !== undefined) {
@@ -101,13 +112,7 @@ export class UserService {
   }
 
   async toggleStatus(id: string): Promise<{ msg: string; status: boolean }> {
-    const user = await this.userRepository.findOne({
-      where: { id },
-      relations: ['role'],
-    });
-    if (!user) {
-      throw new NotFoundException(`User with ID ${id} not found`);
-    }
+    const user = await this.findOneForToggle(id);
 
     user.status = !user.status;
     await this.userRepository.save(user);
