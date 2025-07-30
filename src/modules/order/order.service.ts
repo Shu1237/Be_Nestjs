@@ -98,7 +98,7 @@ export class OrderService {
     private readonly jwtService: JwtService,
 
     @Inject('REDIS_CLIENT') private readonly redisClient: Redis,
-  ) {}
+  ) { }
   private async getUserById(userId: string) {
     const user = await this.userRepository.findOne({
       where: { id: userId },
@@ -1443,24 +1443,23 @@ export class OrderService {
 
   async checkAllOrdersStatusByGateway() {
     const now = new Date();
-    const startOfDay = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-      0,
-      0,
-      0,
-    );
-    const endOfDay = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-      23,
-      59,
-      59,
-    );
-    // const startOfDay = new Date(2025, 6, 22, 0, 0, 0);    // ngày 22/7/2025 lúc 00:00:00
-    // const endOfDay = new Date(2025, 6, 22, 23, 59, 59);   // ngày 22/7/2025 lúc 23:59:59
+    now.setUTCDate(now.getUTCDate() - 1); // lùi về hôm qua
+
+    const startOfDay = new Date(Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      0, 0, 0
+    ));
+
+    const endOfDay = new Date(Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      23, 59, 59
+    ));
+    // const startOfDay = new Date(2025, 6, 29, 0, 0, 0);    // ngày 29/7/2025 lúc 00:00:00
+    // const endOfDay = new Date(2025, 6, 29, 23, 59, 59);   // ngày 29/7/2025 lúc 23:59:59
 
     const orders = await this.orderRepository.find({
       where: { order_date: Between(startOfDay, endOfDay) },
@@ -1555,7 +1554,7 @@ export class OrderService {
       paymentMethodMap.set(pm.name.toUpperCase(), pm),
     );
 
-    const reportDate = now.toISOString().slice(0, 10);
+     const reportDate = startOfDay.toISOString().slice(0, 10);
 
     for (const [method, summary] of Object.entries(result)) {
       const methodEntity = paymentMethodMap.get(method);
