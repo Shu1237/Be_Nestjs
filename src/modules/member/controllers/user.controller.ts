@@ -89,19 +89,18 @@ export class UserController {
     return this.userService.update(id, updateUserDto);
   }
   @Patch(':id')
-  @ApiOperation({ summary: 'Soft delete user by ID (admin only)' })
-  async softDelete(@Param('id') id: string, @Req() req) {
-    checkAdminRole(req.user, 'Only admin can soft delete users');
-    await this.userService.softDelete(id);
-    return { msg: 'Delete successfully' };
+  @ApiOperation({ summary: 'Toggle user status by ID (admin only)' })
+  async toggleStatus(@Param('id') id: string, @Req() req) {
+    checkAdminRole(req.user, 'Only admin can toggle user status');
+    return await this.userService.toggleStatus(id);
   }
 
-  @Patch(':id/restore')
-  @ApiOperation({ summary: 'Restore soft-deleted user by ID (admin only)' })
-  async restore(@Param('id') id: string, @Req() req) {
-    checkAdminEmployeeRole(req.user, 'Only admin can restore users');
-    return await this.userService.restore(id);
-  }
+  // @Patch(':id/restore')
+  // @ApiOperation({ summary: 'Restore soft-deleted user by ID (admin only)' })
+  // async restore(@Param('id') id: string, @Req() req) {
+  //   checkAdminEmployeeRole(req.user, 'Only admin can restore users');
+  //   return await this.userService.restore(id);
+  // }
 
   // @Put(':id/status')
   // @ApiOperation({ summary: 'Toggle user status by ID (admin only)' })

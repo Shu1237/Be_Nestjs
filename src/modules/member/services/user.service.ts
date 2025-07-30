@@ -100,19 +100,7 @@ export class UserService {
     return await this.userRepository.save(user);
   }
 
-  // async changeStatus(id: string): Promise<User> {
-  //   const user = await this.findOne(id);
-  //   user.status = !user.status;
-  //   return await this.userRepository.save(user);
-  // }
-
-  async softDelete(id: string): Promise<void> {
-    const user = await this.findOne(id);
-    user.status = false;
-    await this.userRepository.save(user);
-  }
-
-  async restore(id: string): Promise<{ msg: string }> {
+  async toggleStatus(id: string): Promise<{ msg: string; status: boolean }> {
     const user = await this.userRepository.findOne({
       where: { id },
       relations: ['role'],
@@ -120,11 +108,42 @@ export class UserService {
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
-    if (!user.status) {
-      throw new BadRequestException(`User with ID ${id} is not soft-deleted`);
-    }
-    user.status = true;
+
+    user.status = !user.status;
     await this.userRepository.save(user);
-    return { msg: 'User restored successfully' };
+
+    const action = user.status ? 'activated' : 'deactivated';
+    return {
+      msg: `User ${action} successfully`,
+      status: user.status,
+    };
   }
+
+  // async changeStatus(id: string): Promise<User> {
+  //   const user = await this.findOne(id);
+  //   user.status = !user.status;
+  //   return await this.userRepository.save(user);
+  // }
+
+  // async softDelete(id: string): Promise<void> {
+  //   const user = await this.findOne(id);
+  //   user.status = false;
+  //   await this.userRepository.save(user);
+  // }
+
+  // async restore(id: string): Promise<{ msg: string }> {
+  //   const user = await this.userRepository.findOne({
+  //     where: { id },
+  //     relations: ['role'],
+  //   });
+  //   if (!user) {
+  //     throw new NotFoundException(`User with ID ${id} not found`);
+  //   }
+  //   if (!user.status) {
+  //     throw new BadRequestException(`User with ID ${id} is not soft-deleted`);
+  //   }
+  //   user.status = true;
+  //   await this.userRepository.save(user);
+  //   return { msg: 'User restored successfully' };
+  // }
 }
