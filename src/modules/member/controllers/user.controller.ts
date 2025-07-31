@@ -5,7 +5,6 @@ import {
   Param,
   Put,
   UseGuards,
-  Req,
   Patch,
   Query,
 } from '@nestjs/common';
@@ -20,8 +19,8 @@ import { UserService } from '../services/user.service';
 import { UpdateUserDto } from '../dtos/update-user.dto';
 import { UserPaginationDto } from 'src/common/pagination/dto/user/userPagination.dto';
 import { Roles } from 'src/common/decorator/roles.decorator';
-import { Role } from 'src/common/enums/roles.enum';
 import { RolesGuard } from 'src/common/guards/roles.guard';
+import { Role } from 'src/common/enums/roles.enum';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)
@@ -64,12 +63,14 @@ export class UserController {
       ...restFilters,
     });
   }
-
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
   @Get(':id')
-  @ApiOperation({ summary: 'Get user by ID (admin, employee only)' })
+  @ApiOperation({ summary: 'Get user by ID (admin only)' })
   findOne(@Param('id') id: string) {
     return this.userService.findOne(id);
   }
+
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Put(':id')
@@ -77,26 +78,24 @@ export class UserController {
   @ApiBody({ type: UpdateUserDto })
   update(
     @Param('id') id: string,
-    @Body() updateUserDto: UpdateUserDto,
-  ) {
+    @Body() updateUserDto: UpdateUserDto) {
     return this.userService.update(id, updateUserDto);
   }
 
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Patch(':id')
-  @ApiOperation({ summary: 'Soft delete user by ID (admin only)' })
-  async softDelete(@Param('id') id: string) {
-    await this.userService.softDelete(id);
-    return { msg: 'Delete successfully' };
+  @ApiOperation({ summary: 'Toggle user status by ID (admin only)' })
+  async toggleStatus(@Param('id') id: string) {
+    return await this.userService.toggleStatus(id);
   }
-  @UseGuards(RolesGuard)
-  @Roles(Role.ADMIN)
-  @Patch(':id/restore')
-  @ApiOperation({ summary: 'Restore soft-deleted user by ID (admin only)' })
-  async restore(@Param('id') id: string) {
-    return await this.userService.restore(id);
-  }
+
+  // @Patch(':id/restore')
+  // @ApiOperation({ summary: 'Restore soft-deleted user by ID (admin only)' })
+  // async restore(@Param('id') id: string, @Req() req) {
+  //   checkAdminEmployeeRole(req.user, 'Only admin can restore users');
+  //   return await this.userService.restore(id);
+  // }
 
   // @Put(':id/status')
   // @ApiOperation({ summary: 'Toggle user status by ID (admin only)' })
