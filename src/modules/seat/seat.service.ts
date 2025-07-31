@@ -32,7 +32,7 @@ export class SeatService {
     private scheduleSeatRepository: Repository<ScheduleSeat>,
 
     @Inject('REDIS_CLIENT') private readonly redisClient: Redis,
-  ) {}
+  ) { }
 
   private getSeatSummary(seat: Seat) {
     return {
@@ -85,18 +85,16 @@ export class SeatService {
     });
     const [seats, total] = await qb.getManyAndCount();
     const seatSummaries = seats.map((seat) => this.getSeatSummary(seat));
-    const counts = await this.seatRepository
+    const counts: { activeCount: number; deletedCount: number } = await this.seatRepository
       .createQueryBuilder('seat')
       .select([
         `SUM(CASE WHEN seat.is_deleted = false THEN 1 ELSE 0 END) AS activeCount`,
         `SUM(CASE WHEN seat.is_deleted = true THEN 1 ELSE 0 END) AS deletedCount`,
       ])
-      .getRawOne();
+      .getRawOne() || { activeCount: 0, deletedCount: 0 };
 
-    const activeCount =
-      parseInt(counts?.activeCount?.toString() || '0', 10) || 0;
-    const deletedCount =
-      parseInt(counts?.deletedCount?.toString() || '0', 10) || 0;
+    const activeCount = Number(counts?.activeCount?.toString() || '0') || 0;
+    const deletedCount = Number(counts?.deletedCount?.toString() || '0') || 0;
 
     return buildPaginationResponse(seatSummaries, {
       total,

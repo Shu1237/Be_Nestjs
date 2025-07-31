@@ -46,13 +46,13 @@ export class PromotionService {
       take: fillters.take,
     });
     const [promotions, total] = await qb.getManyAndCount();
-    const counts = await this.promotionRepository
+    const counts: { activeCount: number; deletedCount: number } = await this.promotionRepository
       .createQueryBuilder('promotion')
       .select([
         `SUM(CASE WHEN promotion.is_active = false THEN 1 ELSE 0 END) AS activeCount`,
         `SUM(CASE WHEN promotion.is_active = true THEN 1 ELSE 0 END) AS deletedCount`,
       ])
-      .getRawOne();
+      .getRawOne() || { activeCount: 0, deletedCount: 0 };
 
     const activeCount = counts.activeCount || 0;
     const deletedCount = counts.deletedCount || 0;

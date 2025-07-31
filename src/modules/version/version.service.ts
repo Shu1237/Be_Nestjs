@@ -64,9 +64,9 @@ export class VersionService {
         `SUM(CASE WHEN version.is_deleted = false THEN 1 ELSE 0 END) AS activeCount`,
         `SUM(CASE WHEN version.is_deleted = true THEN 1 ELSE 0 END) AS deletedCount`,
       ])
-      .getRawOne();
-    const activeCount = parseInt(counts.activeCount, 10) || 0;
-    const deletedCount = parseInt(counts.deletedCount, 10) || 0;
+      .getRawOne() || { activeCount: 0, deletedCount: 0 };
+    const activeCount =  Number(counts.activeCount) || 0;
+    const deletedCount =  Number(counts.deletedCount) || 0;
     return buildPaginationResponse(versions, {
       total,
       page: fillters.page,

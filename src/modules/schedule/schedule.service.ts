@@ -171,20 +171,20 @@ export class ScheduleService {
       this.getScheduleSummary(schedule),
     );
 
-    const counts = await this.scheduleRepository
+    const counts: { activeCount: number; deletedCount: number } = await this.scheduleRepository
       .createQueryBuilder('schedule')
       .select([
         `SUM(CASE WHEN schedule.is_deleted = false THEN 1 ELSE 0 END) AS activeCount`,
         `SUM(CASE WHEN schedule.is_deleted = true THEN 1 ELSE 0 END) AS deletedCount`,
       ])
-      .getRawOne();
+      .getRawOne() || { activeCount: 0, deletedCount: 0 };
 
-    const activeCount = parseInt(counts.activeCount, 10) || 0;
-    const deletedCount = parseInt(counts.deletedCount, 10) || 0;
+    const activeCount = Number(counts.activeCount) || 0;
+    const deletedCount = Number(counts.deletedCount) || 0;
 
     // Calculate schedule status counts
     const currentTime = new Date();
-    const statusCounts = await this.scheduleRepository
+    const statusCounts: { upcomingCount: number; nowPlayingCount: number; completedCount: number } = await this.scheduleRepository
       .createQueryBuilder('schedule')
       .select([
         `SUM(CASE WHEN schedule.start_movie_time > :currentTime AND schedule.is_deleted = false THEN 1 ELSE 0 END) AS upcomingCount`,
@@ -192,11 +192,11 @@ export class ScheduleService {
         `SUM(CASE WHEN schedule.end_movie_time < :currentTime AND schedule.is_deleted = false THEN 1 ELSE 0 END) AS completedCount`,
       ])
       .setParameters({ currentTime })
-      .getRawOne();
+      .getRawOne() || { upcomingCount: 0, nowPlayingCount: 0, completedCount: 0 };
 
-    const nowPlayingSchedule = parseInt(statusCounts.nowPlayingCount, 10) || 0;
-    const upComingSchedule = parseInt(statusCounts.upcomingCount, 10) || 0;
-    const completedSchedule = parseInt(statusCounts.completedCount, 10) || 0;
+    const nowPlayingSchedule = Number(statusCounts.nowPlayingCount) || 0;
+    const upComingSchedule = Number(statusCounts.upcomingCount) || 0;
+    const completedSchedule = Number(statusCounts.completedCount) || 0;
 
     return buildPaginationResponse(summaries, {
       total,

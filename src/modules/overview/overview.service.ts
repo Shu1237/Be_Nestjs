@@ -134,11 +134,11 @@ export class OverviewService {
 
   //  Total Revenue
   private async getTotalRevenue(): Promise<number> {
-    const result = await this.orderRepository
+    const result: { totalRevenue: string } = await this.orderRepository
       .createQueryBuilder('order')
       .select('SUM(CAST(order.total_prices AS DECIMAL(10,2)))', 'totalRevenue')
       .where('order.status = :status', { status: StatusOrder.SUCCESS })
-      .getRawOne();
+      .getRawOne() || { totalRevenue: '0' };
 
     return parseFloat(result?.totalRevenue || '0');
   }
@@ -412,11 +412,11 @@ export class OverviewService {
 
   // 📊 Average Order Value
   async getAverageOrderValue(): Promise<number> {
-    const result = await this.orderRepository
+    const result: { avgOrderValue: string } = await this.orderRepository
       .createQueryBuilder('order')
       .select('AVG(CAST(order.total_prices AS DECIMAL(10,2)))', 'avgOrderValue')
       .where('order.status = :status', { status: StatusOrder.SUCCESS })
-      .getRawOne();
+      .getRawOne() || { avgOrderValue: '0' };
 
     return parseFloat(result?.avgOrderValue || '0');
   }
@@ -487,13 +487,13 @@ export class OverviewService {
     startDate: Date,
     endDate: Date,
   ): Promise<number> {
-    const result = await this.orderRepository
+    const result: { totalRevenue: string } = await this.orderRepository
       .createQueryBuilder('order')
       .select('SUM(CAST(order.total_prices AS DECIMAL(10,2)))', 'totalRevenue')
       .where('order.status = :status', { status: StatusOrder.SUCCESS })
       .andWhere('order.order_date >= :startDate', { startDate })
       .andWhere('order.order_date <= :endDate', { endDate })
-      .getRawOne();
+      .getRawOne() || { totalRevenue: '0' };
 
     return parseFloat(result?.totalRevenue || '0');
   }

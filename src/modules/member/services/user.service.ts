@@ -22,7 +22,7 @@ export class UserService {
     private userRepository: Repository<User>,
     @InjectRepository(RoleEntity)
     private roleRepository: Repository<RoleEntity>,
-  ) {}
+  ) { }
 
   async findAll(filters: UserPaginationDto) {
     const qb = this.userRepository
@@ -52,13 +52,13 @@ export class UserService {
     });
 
     const [users, total] = await qb.getManyAndCount();
-    const counts = await this.userRepository
+    const counts: { activeCount: number; inactiveCount: number } = await this.userRepository
       .createQueryBuilder('user')
       .select([
         `SUM(CASE WHEN user.status = true THEN 1 ELSE 0 END) AS activeCount`,
         `SUM(CASE WHEN user.status = false THEN 1 ELSE 0 END) AS inactiveCount`,
       ])
-      .getRawOne();
+      .getRawOne() || { activeCount: 0, inactiveCount: 0 };
     const accountActivity = Number(counts.activeCount) || 0;
     const accountInactivity = Number(counts.inactiveCount) || 0;
     return buildPaginationResponse(users, {
@@ -126,7 +126,7 @@ export class UserService {
     };
   }
 
- 
+
 
   // async changeStatus(id: string): Promise<User> {
   //   const user = await this.findOne(id);

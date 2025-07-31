@@ -738,7 +738,7 @@ export class OrderService {
         .getRawOne<{ revenue: string }>(),
     ]);
 
-    const countByStatus = Object.fromEntries(
+    const countByStatus: Record<string, number> = Object.fromEntries(
       statusCounts.map((row) => [row.status, Number(row.count)]),
     );
 
