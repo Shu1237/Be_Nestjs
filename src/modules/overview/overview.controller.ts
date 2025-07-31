@@ -1,18 +1,22 @@
 import { Controller, Get, Req, UseGuards, Query } from '@nestjs/common';
 import { OverviewService } from './overview.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
-import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
-import { JWTUserType } from 'src/common/utils/type';
 import { ApiBearerAuth } from '@nestjs/swagger/dist/decorators/api-bearer.decorator';
 import { ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { DailyReportDto } from 'src/common/pagination/dto/dailyReport/dailyReport.dto';
+import { Roles } from 'src/common/decorator/roles.decorator';
+import { Role } from 'src/common/enums/roles.enum';
+import { RolesGuard } from 'src/common/guards/roles.guard';
 
-@UseGuards(JwtAuthGuard)
+
 @Controller('overview')
 @ApiBearerAuth()
 export class OverviewController {
-  constructor(private readonly overviewService: OverviewService) {}
+  constructor(private readonly overviewService: OverviewService) { }
 
+
+  @UseGuards(JwtAuthGuard,RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Get('reports/daily-orders')
   @ApiOperation({ summary: 'Get all daily order reports for admin' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
@@ -54,12 +58,7 @@ export class OverviewController {
     type: Number,
     example: 1,
   })
-  getDailyOrderReports(@Query() query: DailyReportDto, @Req() req) {
-    const user = req.user as JWTUserType;
-    checkAdminEmployeeRole(
-      user,
-      'Only admin and employee can access daily order reports',
-    );
+  getDailyOrderReports(@Query() query: DailyReportDto) {
     const { page = 1, take = 10, ...restFilters } = query;
     return this.overviewService.getDailyOrderReports({
       page,
@@ -67,65 +66,47 @@ export class OverviewController {
       ...restFilters,
     });
   }
-
+  
+  @UseGuards(JwtAuthGuard,RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Get()
-  getOverview(@Req() req) {
-    const user = req.user as JWTUserType;
-    checkAdminEmployeeRole(user, 'Only admin and employee can access overview');
+  getOverview() {
     return this.overviewService.getOverview();
   }
 
   @Get('top-movies')
-  getTopMovies(@Req() req) {
-    const user = req.user as JWTUserType;
-    // checkAdminEmployeeRole(user, 'Only admin and employee can access revenue growth data');
+  getTopMovies() {
     return this.overviewService.getTopMoviesByRevenue();
   }
 
   @Get('now-showing')
-  getNowShowing(@Req() req) {
-    const user = req.user as JWTUserType;
-    // checkAdminEmployeeRole(user, 'Only admin and employee can access revenue growth data');
+  getNowShowing() {
     return this.overviewService.getNowShowing();
   }
-
+  @UseGuards(JwtAuthGuard,RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Get('average-order-value')
-  getAverageOrderValue(@Req() req) {
-    const user = req.user as JWTUserType;
-    checkAdminEmployeeRole(
-      user,
-      'Only admin and employee can access average order value',
-    );
+  getAverageOrderValue() {
+
     return this.overviewService.getAverageOrderValue();
   }
 
+  @UseGuards(JwtAuthGuard,RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Get('customer-retention')
-  getCustomerRetentionRate(@Req() req) {
-    const user = req.user as JWTUserType;
-    checkAdminEmployeeRole(
-      user,
-      'Only admin and employee can access customer retention data',
-    );
+  getCustomerRetentionRate() {
     return this.overviewService.getCustomerRetentionRate();
   }
-
+  @UseGuards(JwtAuthGuard,RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Get('peak-hours-analysis')
-  getPeakHoursAnalysis(@Req() req) {
-    const user = req.user as JWTUserType;
-    checkAdminEmployeeRole(
-      user,
-      'Only admin and employee can access peak hours analysis',
-    );
+  getPeakHoursAnalysis() {
     return this.overviewService.getPeakHoursAnalysis();
   }
-
+  @UseGuards(JwtAuthGuard,RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Get('movie-performance')
-  getMoviePerformanceAnalysis(@Req() req) {
-    const user = req.user as JWTUserType;
-    checkAdminEmployeeRole(
-      user,
-      'Only admin and employee can access movie performance analysis',
-    );
+  getMoviePerformanceAnalysis() {
     return this.overviewService.getMoviePerformanceAnalysis();
   }
 }

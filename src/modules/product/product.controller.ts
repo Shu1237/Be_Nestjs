@@ -8,7 +8,6 @@ import {
   Post,
   Put,
   Query,
-  Req,
   UseGuards,
   Patch,
 } from '@nestjs/common';
@@ -17,14 +16,16 @@ import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { CreateProductDto } from './dto/createProdcut.dto';
 import { UpdateProductDto } from './dto/updateProduct.dto';
-import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 import { ProductPaginationDto } from 'src/common/pagination/dto/product/productPagination.dto';
+import { RolesGuard } from 'src/common/guards/roles.guard';
+import { Roles } from 'src/common/decorator/roles.decorator';
+import { Role } from 'src/common/enums/roles.enum';
 
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 @Controller('products')
 export class ProductController {
-  constructor(private readonly productService: ProductService) {}
+  constructor(private readonly productService: ProductService) { }
 
   // GET - Lấy danh sách products cho user
   @Get('user')
@@ -34,6 +35,8 @@ export class ProductController {
   }
 
   // GET - Lấy danh sách products cho admin (với phân trang và filter)
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Get('admin')
   @ApiOperation({ summary: 'Get all products for admin' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
@@ -64,11 +67,7 @@ export class ProductController {
     type: Boolean,
     example: false,
   })
-  getAllProducts(@Query() query: ProductPaginationDto, @Req() req) {
-    checkAdminEmployeeRole(
-      req.user,
-      'Unauthorized: Only admin or employee can access this endpoint.',
-    );
+  getAllProducts(@Query() query: ProductPaginationDto) {
     const { page = 1, take = 10, ...restFilters } = query;
     return this.productService.getAllProducts({
       page,
@@ -85,65 +84,55 @@ export class ProductController {
   }
 
   // POST - Tạo product mới
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Post()
   @ApiOperation({ summary: 'Create a new product' })
-  async createProduct(@Body() dto: CreateProductDto, @Req() req) {
-    checkAdminEmployeeRole(
-      req.user,
-      'Unauthorized: Only admin or employee can create a product.',
-    );
+  async createProduct(@Body() dto: CreateProductDto) {
     return this.productService.createProduct(dto);
   }
 
   // PUT - Cập nhật product theo ID
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Put(':id')
   @ApiOperation({ summary: 'Update product by ID (admin, employee only)' })
   async updateProduct(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateProductDto,
-    @Req() req,
   ) {
-    checkAdminEmployeeRole(
-      req.user,
-      'Unauthorized: Only admin or employee can update a product.',
-    );
+
     return this.productService.updateProduct(id, dto);
   }
 
   // DELETE - Xóa product theo ID
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Delete(':id')
   @ApiOperation({
     summary: 'Hard delete a product by ID (admin, employee only)',
   })
-  async deleteProduct(@Param('id', ParseIntPipe) id: number, @Req() req) {
-    checkAdminEmployeeRole(
-      req.user,
-      'Unauthorized: Only admin or employee can delete a product.',
-    );
+  async deleteProduct(@Param('id', ParseIntPipe) id: number) {
     return this.productService.deleteProduct(id);
   }
 
+
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Patch(':id/soft-delete')
   @ApiOperation({
     summary: 'Soft delete a product by ID (admin, employee only)',
   })
-  async softDeleteProduct(@Param('id', ParseIntPipe) id: number, @Req() req) {
-    checkAdminEmployeeRole(
-      req.user,
-      'Unauthorized: Only admin or employee can soft delete a product.',
-    );
+  async softDeleteProduct(@Param('id', ParseIntPipe) id: number) {
     return this.productService.softDeleteProduct(id);
   }
-
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Patch(':id/restore')
   @ApiOperation({
     summary: 'Restore a soft-deleted product by ID (admin, employee only)',
   })
-  async restoreProduct(@Param('id', ParseIntPipe) id: number, @Req() req) {
-    checkAdminEmployeeRole(
-      req.user,
-      'Unauthorized: Only admin or employee can restore a product.',
-    );
+  async restoreProduct(@Param('id', ParseIntPipe) id: number) {
     return this.productService.restoreProduct(id);
   }
 }

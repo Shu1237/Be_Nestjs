@@ -9,7 +9,6 @@ import {
   ParseIntPipe,
   UseGuards,
   Patch,
-  Req,
   Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
@@ -17,13 +16,15 @@ import { MovieService } from './movie.service';
 import { CreateMovieDto } from './dtos/createMovie.dto';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { UpdateMovieDto } from './dtos/updateMovie.dto';
-import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 import { MoviePaginationDto } from 'src/common/pagination/dto/movie/moviePagination.dto';
+import { Roles } from 'src/common/decorator/roles.decorator';
+import { Role } from 'src/common/enums/roles.enum';
+import { RolesGuard } from 'src/common/guards/roles.guard';
 
 @ApiBearerAuth()
 @Controller('movies')
 export class MovieController {
-  constructor(private readonly movieService: MovieService) {}
+  constructor(private readonly movieService: MovieService) { }
 
   // GET - Lấy danh sách movies cho user
   @Get('user')
@@ -33,7 +34,8 @@ export class MovieController {
   }
 
   // GET - Lấy danh sách movies cho admin (với phân trang và filter)
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Get('admin')
   @ApiOperation({ summary: 'Get all movies for admin' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
@@ -84,11 +86,7 @@ export class MovieController {
   @ApiQuery({ name: 'actor_id', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'gerne_id', required: false, type: Number, example: 2 })
   @ApiQuery({ name: 'version_id', required: false, type: Number, example: 3 })
-  getAllMovies(@Query() query: MoviePaginationDto, @Req() req) {
-    checkAdminEmployeeRole(
-      req.user,
-      'Unauthorized: Only admin or employee can view all movies.',
-    );
+  getAllMovies(@Query() query: MoviePaginationDto) {
     const { page = 1, take = 10, ...restFilters } = query;
     return this.movieService.getAllMovies({
       page,
@@ -105,7 +103,8 @@ export class MovieController {
   }
 
   // GET - Lấy genres của movie
-  @UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Get(':movieId/gernes')
   @ApiOperation({ summary: 'Get all genres of a movie' })
   getGernesOfMovie(
@@ -115,68 +114,52 @@ export class MovieController {
   }
 
   // POST - Tạo movie mới
-  @UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Post()
   @ApiOperation({ summary: 'Create a new movie' })
-  async createMovie(@Body() movieDto: CreateMovieDto, @Req() req) {
-    checkAdminEmployeeRole(
-      req.user,
-      'Unauthorized: Only admin or employee can create a movie.',
-    );
+  async createMovie(@Body() movieDto: CreateMovieDto) {
     return this.movieService.createMovie(movieDto);
   }
 
   // PUT - Cập nhật movie theo ID
-  @UseGuards(JwtAuthGuard)
+ @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Put(':id')
   @ApiOperation({ summary: 'Update movie by ID (admin, employee only)' })
   async updateMovie(
     @Param('id', ParseIntPipe) id: number,
     @Body() movieDTO: UpdateMovieDto,
-    @Req() req,
   ): Promise<any> {
-    checkAdminEmployeeRole(
-      req.user,
-      'Unauthorized: Only admin or employee can update a movie.',
-    );
     return this.movieService.updateMovie(id, movieDTO);
   }
 
   // PATCH - Soft delete movie
-  @UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Patch(':id')
   @ApiOperation({ summary: 'Soft delete a movie by ID (admin, employee only)' })
-  async softDeleteMovie(@Param('id', ParseIntPipe) id: number, @Req() req) {
-    checkAdminEmployeeRole(
-      req.user,
-      'Unauthorized: Only admin or employee can soft delete a movie.',
-    );
+  async softDeleteMovie(@Param('id', ParseIntPipe) id: number) {
     await this.movieService.softDeleteMovie(id);
     return { message: 'Movie soft deleted successfully' };
   }
 
-  @UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Patch(':id/restore')
   @ApiOperation({
     summary: 'Restore a soft-deleted movie by ID (admin, employee only)',
   })
-  async restoreMovie(@Param('id', ParseIntPipe) id: number, @Req() req) {
-    checkAdminEmployeeRole(
-      req.user,
-      'Unauthorized: Only admin or employee can restore a movie.',
-    );
+  async restoreMovie(@Param('id', ParseIntPipe) id: number) {
     return await this.movieService.restoreMovie(id);
   }
 
   // DELETE - Xóa movie vĩnh viễn
-  @UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Delete(':id')
   @ApiOperation({ summary: 'Hard delete a movie by ID (admin, employee only)' })
-  async deleteMovie(@Param('id', ParseIntPipe) id: number, @Req() req) {
-    checkAdminEmployeeRole(
-      req.user,
-      'Unauthorized: Only admin or employee can delete a movie.',
-    );
+  async deleteMovie(@Param('id', ParseIntPipe) id: number) {
     return this.movieService.deleteMovie(id);
   }
 }

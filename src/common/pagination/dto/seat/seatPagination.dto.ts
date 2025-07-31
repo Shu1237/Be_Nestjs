@@ -1,15 +1,15 @@
 import { BasePaginationDto } from '../basePagination.dto';
-import { IsOptional, IsString, IsBoolean } from 'class-validator';
+import { IsOptional, IsString, IsBoolean, IsNumber } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class SeatPaginationDto extends BasePaginationDto {
   @IsOptional()
-  @IsString()
-  cinema_room_id?: string;
+  @IsNumber()
+  cinema_room_id?: number;
 
   @IsOptional()
-  @IsString()
-  seat_type_id?: string;
+  @IsNumber()
+  seat_type_id?: number;
 
   @IsOptional()
   @IsString()
