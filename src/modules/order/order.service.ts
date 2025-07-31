@@ -1,6 +1,6 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, IsNull, Not, Between } from 'typeorm';
+import { Repository, In, Between } from 'typeorm';
 import { Order } from 'src/database/entities/order/order';
 import { OrderDetail } from 'src/database/entities/order/order-detail';
 import { PaymentMethod } from 'src/database/entities/order/payment-method';
@@ -41,7 +41,6 @@ import { NotFoundException } from 'src/common/exceptions/not-found.exception';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
 import { ConflictException } from 'src/common/exceptions/conflict.exception';
 import { ForbiddenException } from 'src/common/exceptions/forbidden.exception';
-import { InternalServerErrorException } from 'src/common/exceptions/internal-server-error.exception';
 import { ConfigService } from '@nestjs/config';
 import { TicketService } from '../ticket/ticket.service';
 import { Role } from 'src/common/enums/roles.enum';
@@ -98,7 +97,7 @@ export class OrderService {
     private readonly jwtService: JwtService,
 
     @Inject('REDIS_CLIENT') private readonly redisClient: Redis,
-  ) {}
+  ) { }
   private async getUserById(userId: string) {
     const user = await this.userRepository.findOne({
       where: { id: userId },
@@ -708,7 +707,17 @@ export class OrderService {
     });
 
     const [orders, total] = await qb.getManyAndCount();
-
+    if (total === 0) {
+      return buildPaginationResponse([], {
+        total: 0,
+        page: 1,
+        take: filters.take,
+        totalSuccess: 0,
+        totalFailed: 0,
+        totalPending: 0,
+        revenue: '0',
+      });
+    }
     //  Map to summary DTO
     const summaries = orders.map((order) =>
       this.mapToBookingSummaryLite(order),
@@ -792,14 +801,12 @@ export class OrderService {
       .leftJoinAndSelect('order.orderExtras', 'orderExtra')
       .leftJoinAndSelect('orderExtra.product', 'product')
       .where('user.id = :userId', { userId: filters.userId });
-
     applyCommonFilters(qb, filters, orderFieldMapping);
 
     const allowedSortFields = [
       'order.id',
       'order.order_date',
       'movie.name',
-      'user.username',
       'paymentMethod.name',
       'order.status',
       'order.total_prices',
@@ -818,7 +825,17 @@ export class OrderService {
     });
 
     const [orders, total] = await qb.getManyAndCount();
-
+    if (total === 0) {
+      return buildPaginationResponse([], {
+        total: 0,
+        page: 1,
+        take: filters.take,
+        totalSuccess: 0,
+        totalFailed: 0,
+        totalPending: 0,
+        revenue: '0',
+      });
+    }
     const summaries = orders.map((order) =>
       this.mapToBookingSummaryLite(order),
     );
@@ -1402,65 +1419,27 @@ export class OrderService {
       message: 'Order cancelled successfully',
     };
   }
-  async checkQueryOrderByGateway(orderId: number) {
-    const order = await this.orderRepository.findOne({
-      where: { id: orderId },
-      relations: ['transaction', 'transaction.paymentMethod'],
-    });
-    if (!order || !order.transaction || !order.transaction.paymentMethod) {
-      throw new NotFoundException(
-        `Order with ID ${orderId} not found or has no transaction`,
-      );
-    }
-    switch (order.transaction.paymentMethod.id) {
-      case Method.MOMO:
-        return this.momoService.queryOrderStatusMomo(
-          order.transaction.transaction_code,
-        );
-      case Method.PAYPAL:
-        return this.paypalService.queryOrderStatusPaypal(
-          order.transaction.transaction_code,
-        );
-      case Method.VISA:
-        return this.visaService.queryOrderStatusVisa(
-          order.transaction.transaction_code,
-        );
-      case Method.VNPAY:
-        return this.vnpayService.queryOrderStatusVnpay(
-          order.transaction.transaction_code,
-          formatDate(order.order_date),
-        );
-      case Method.ZALOPAY:
-        return this.zalopayService.queryOrderStatusZaloPay(
-          order.transaction.transaction_code,
-        );
-      default:
-        throw new BadRequestException(
-          `Unsupported payment method for query: ${order.transaction.paymentMethod.name}`,
-        );
-    }
-  }
+
 
   async checkAllOrdersStatusByGateway() {
     const now = new Date();
-    const startOfDay = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-      0,
-      0,
-      0,
-    );
-    const endOfDay = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-      23,
-      59,
-      59,
-    );
-    // const startOfDay = new Date(2025, 6, 22, 0, 0, 0);    // ngày 22/7/2025 lúc 00:00:00
-    // const endOfDay = new Date(2025, 6, 22, 23, 59, 59);   // ngày 22/7/2025 lúc 23:59:59
+    now.setUTCDate(now.getUTCDate() - 1); // lùi về hôm qua
+
+    const startOfDay = new Date(Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      0, 0, 0
+    ));
+
+    const endOfDay = new Date(Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      23, 59, 59
+    ));
+    // const startOfDay = new Date(2025, 6, 29, 0, 0, 0);    // ngày 29/7/2025 lúc 00:00:00
+    // const endOfDay = new Date(2025, 6, 29, 23, 59, 59);   // ngày 29/7/2025 lúc 23:59:59
 
     const orders = await this.orderRepository.find({
       where: { order_date: Between(startOfDay, endOfDay) },
@@ -1555,7 +1534,7 @@ export class OrderService {
       paymentMethodMap.set(pm.name.toUpperCase(), pm),
     );
 
-    const reportDate = now.toISOString().slice(0, 10);
+    const reportDate = startOfDay.toISOString().slice(0, 10);
 
     for (const [method, summary] of Object.entries(result)) {
       const methodEntity = paymentMethodMap.get(method);
@@ -1581,6 +1560,44 @@ export class OrderService {
 
     return result;
   }
+  //   async checkQueryOrderByGateway(orderId: number) {
+  //   const order = await this.orderRepository.findOne({
+  //     where: { id: orderId },
+  //     relations: ['transaction', 'transaction.paymentMethod'],
+  //   });
+  //   if (!order || !order.transaction || !order.transaction.paymentMethod) {
+  //     throw new NotFoundException(
+  //       `Order with ID ${orderId} not found or has no transaction`,
+  //     );
+  //   }
+  //   switch (order.transaction.paymentMethod.id) {
+  //     case Method.MOMO:
+  //       return this.momoService.queryOrderStatusMomo(
+  //         order.transaction.transaction_code,
+  //       );
+  //     case Method.PAYPAL:
+  //       return this.paypalService.queryOrderStatusPaypal(
+  //         order.transaction.transaction_code,
+  //       );
+  //     case Method.VISA:
+  //       return this.visaService.queryOrderStatusVisa(
+  //         order.transaction.transaction_code,
+  //       );
+  //     case Method.VNPAY:
+  //       return this.vnpayService.queryOrderStatusVnpay(
+  //         order.transaction.transaction_code,
+  //         formatDate(order.order_date),
+  //       );
+  //     case Method.ZALOPAY:
+  //       return this.zalopayService.queryOrderStatusZaloPay(
+  //         order.transaction.transaction_code,
+  //       );
+  //     default:
+  //       throw new BadRequestException(
+  //         `Unsupported payment method for query: ${order.transaction.paymentMethod.name}`,
+  //       );
+  //   }
+  // }
 
   // refund order
   // async refundOrder(orderId: number) {

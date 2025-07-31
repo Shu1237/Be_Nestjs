@@ -106,16 +106,11 @@ export class VisaService extends AbstractPaymentService {
     if (transaction.status !== StatusOrder.PENDING) {
       throw new NotFoundException('Transaction is not in pending state');
     }
-
-    if (transaction.paymentMethod.id === Method.VISA) {
-      const session = await this.retrieveSession(sessionId);
-      if (session.payment_status !== 'paid') {
-        throw new InternalServerErrorException(
-          'Payment not completed on Stripe',
-        );
-      }
-      // Pass the session as rawResponse to create refund record properly
-      return this.handleReturnSuccess(transaction, session);
+    const session = await this.retrieveSession(sessionId);
+    if (session.payment_status !== 'paid') {
+      throw new InternalServerErrorException(
+        'Payment not completed on Stripe',
+      );
     }
     return this.handleReturnSuccess(transaction);
   }

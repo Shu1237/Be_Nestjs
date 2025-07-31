@@ -81,7 +81,7 @@ export class OverviewService {
       page: filters.page,
     });
     const [data, total] = await qb.getManyAndCount();
-    const summary = data.map(this.mapReportData);
+    const summary = data.map((item) => this.mapReportData(item));
 
     return buildPaginationResponse(summary, {
       total,

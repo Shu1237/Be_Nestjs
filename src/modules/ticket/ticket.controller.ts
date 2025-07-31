@@ -3,31 +3,28 @@ import { TicketService } from './ticket.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { JWTUserType } from 'src/common/utils/type';
 import { ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
-import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 import { TicketPaginationDto } from 'src/common/pagination/dto/ticket/ticket-pagination.dto';
+import { Roles } from 'src/common/decorator/roles.decorator';
+import { Role } from 'src/common/enums/roles.enum';
+import { RolesGuard } from 'src/common/guards/roles.guard';
 
 @UseGuards(JwtAuthGuard)
 @Controller('ticket')
 export class TicketController {
-  constructor(private readonly ticketService: TicketService) {}
+  constructor(private readonly ticketService: TicketService) { }
 
-  // @Get('overview-ticket')
-  // @ApiOperation({ summary: 'Get overview of tickets' })
-  // async getOverviewTicket() {
-  //   return this.ticketService.getTicketOverview();
-  // }
+
   // GET - Lấy danh sách tickets cho user
   @Get('user')
   @ApiOperation({ summary: 'Get all tickets for users' })
-  async getAllTicketsUser(@Req() req) {
-    checkAdminEmployeeRole(
-      req.user,
-      'You do not have permission to view all tickets',
-    );
+  @ApiBearerAuth()
+  async getAllTicketsUser() {
     return await this.ticketService.getAllTicketsUser();
   }
 
   // GET - Lấy danh sách tickets cho admin (với phân trang)
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Get('admin')
   @ApiOperation({ summary: 'Get all tickets for admin' })
   @ApiBearerAuth()
@@ -65,14 +62,8 @@ export class TicketController {
     enum: ['ASC', 'DESC'],
     example: 'ASC',
   })
-  async getAllTickets(@Req() req, @Query() query: TicketPaginationDto) {
-    checkAdminEmployeeRole(
-      req.user,
-      'You do not have permission to view all tickets',
-    );
-
+  async getAllTickets(@Query() query: TicketPaginationDto) {
     const { page = 1, take = 10, ...restFilters } = query;
-
     return this.ticketService.getAllTickets({
       page,
       take: Math.min(take, 100),

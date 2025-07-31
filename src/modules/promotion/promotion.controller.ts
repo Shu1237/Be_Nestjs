@@ -8,7 +8,6 @@ import {
   Patch,
   Put,
   UseGuards,
-  Req,
   Query,
 } from '@nestjs/common';
 import { PromotionService } from './promotion.service';
@@ -21,14 +20,16 @@ import {
   ApiBody,
   ApiQuery,
 } from '@nestjs/swagger';
-import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 import { PromotionPaginationDto } from 'src/common/pagination/dto/promotion/promotionPagination.dto';
+import { RolesGuard } from 'src/common/guards/roles.guard';
+import { Roles } from 'src/common/decorator/roles.decorator';
+import { Role } from 'src/common/enums/roles.enum';
 
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 @Controller('promotion')
 export class PromotionController {
-  constructor(private readonly promotionService: PromotionService) {}
+  constructor(private readonly promotionService: PromotionService) { }
 
   @Get('user')
   @ApiOperation({ summary: 'Get all promotions for users' })
@@ -37,6 +38,8 @@ export class PromotionController {
   }
 
   // GET - Lấy danh sách promotions cho admin (với phân trang)
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Get('admin')
   @ApiOperation({ summary: 'Get all promotions for admin' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
@@ -96,11 +99,7 @@ export class PromotionController {
     enum: ['ASC', 'DESC'],
     example: 'DESC',
   })
-  getAllPromotions(@Query() query: PromotionPaginationDto, @Req() req) {
-    checkAdminEmployeeRole(
-      req.user,
-      'Unauthorized: Only admin or employee can access this endpoint.',
-    );
+  getAllPromotions(@Query() query: PromotionPaginationDto) {
     const { page = 1, take = 10, ...restFilters } = query;
     return this.promotionService.getAllPromotions({
       page,
@@ -109,53 +108,34 @@ export class PromotionController {
     });
   }
 
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Post()
   @ApiOperation({ summary: 'Create new promotion (admin only)' })
   @ApiBody({ type: CreatePromotionDto })
-  createPromotion(@Body() createPromotionDto: CreatePromotionDto, @Req() req) {
-    checkAdminEmployeeRole(req.user, 'Only admin can create promotions');
+  createPromotion(@Body() createPromotionDto: CreatePromotionDto) {
     return this.promotionService.createPromotion(createPromotionDto);
   }
 
   // PUT - Cập nhật promotion theo ID
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Put(':id')
   @ApiOperation({ summary: 'Update promotion by ID (admin only)' })
   @ApiBody({ type: UpdatePromotionDto })
   updatePromotion(
     @Param('id', ParseIntPipe) id: number,
     @Body() updatePromotionDto: UpdatePromotionDto,
-    @Req() req,
+
   ) {
-    checkAdminEmployeeRole(req.user, 'Only admin can update promotions');
     return this.promotionService.updatePromotion(id, updatePromotionDto);
   }
 
-  // PATCH - Soft delete promotion
-  // @Patch(':id')
-  // @ApiOperation({ summary: 'Soft delete promotion by ID (admin only)' })
-  // async deleteSoftPromotion(@Param('id', ParseIntPipe) id: number, @Req() req) {
-  //   checkAdminEmployeeRole(req.user, 'Only admin can delete promotions');
-  //   return this.promotionService.deleteSoftPromotion(id);
-  // }
-
-  // @DELETE - Hard delete promotion (commented out)
-  // @Delete(':id')
-  // @ApiOperation({ summary: 'Delete promotion by ID (admin only)' })
-  // async deletePromotion(
-  //   @Param('id', ParseIntPipe) id: number,
-  //   @Req() req: Request,
-  // ) {
-  //   const user = req.user as JWTUserType;
-  //   if (user.role_id === Role.ADMIN) {
-  //     return this.promotionService.deletePromotion(id);
-  //   }
-  //   throw new ForbiddenException('Only admin can delete promotions');
-  // }
-
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Patch(':id')
   @ApiOperation({ summary: 'Soft delete promotion by ID (admin only)' })
-  async deleteSoftPromotion(@Param('id', ParseIntPipe) id: number, @Req() req) {
-    checkAdminEmployeeRole(req.user, 'Only admin can delete promotions');
+  async deleteSoftPromotion(@Param('id', ParseIntPipe) id: number) {
     return this.promotionService.deleteSoftPromotion(id);
   }
   @Patch(':id/restore')

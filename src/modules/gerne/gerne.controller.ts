@@ -8,7 +8,6 @@ import {
   Body,
   ParseIntPipe,
   UseGuards,
-  Req,
   Put,
   Query,
 } from '@nestjs/common';
@@ -19,13 +18,15 @@ import { UpdateGerneDto } from './dtos/updateGerne';
 import { ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { Movie } from 'src/database/entities/cinema/movie';
-import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 import { GernePaginationDto } from 'src/common/pagination/dto/gerne/gerne.dto';
+import { Roles } from 'src/common/decorator/roles.decorator';
+import { Role } from 'src/common/enums/roles.enum';
+import { RolesGuard } from 'src/common/guards/roles.guard';
 
-@ApiBearerAuth()
+
 @Controller('gernes')
 export class GerneController {
-  constructor(private readonly gerneService: GerneService) {}
+  constructor(private readonly gerneService: GerneService) { }
 
   // GET - Lấy danh sách genres cho user
   @Get('user')
@@ -35,7 +36,8 @@ export class GerneController {
   }
 
   // GET - Lấy danh sách genres cho admin (với phân trang)
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Get('admin')
   @ApiOperation({ summary: 'Get all genres for admin' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
@@ -52,11 +54,14 @@ export class GerneController {
     enum: ['ASC', 'DESC'],
     example: 'ASC',
   })
-  async findAllGernes(@Query() query: GernePaginationDto, @Req() req) {
-    checkAdminEmployeeRole(
-      req.user,
-      'Unauthorized: Only admin or employee can access this endpoint.',
-    );
+  @ApiQuery({
+    name: 'is_deleted',
+    required: false,
+    type: Boolean,
+    example: false,
+  })
+  @ApiBearerAuth()
+  async findAllGernes(@Query() query: GernePaginationDto) {
     const { page = 1, take = 10, ...restFilters } = query;
 
     return await this.gerneService.findAllGernes({
@@ -83,70 +88,56 @@ export class GerneController {
   }
 
   // POST - Tạo genre mới
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Post()
   @ApiOperation({ summary: 'Create a new genre (admin, employee only)' })
-  createGerne(@Body() createGerneDto: CreateGerneDto, @Req() req) {
-    checkAdminEmployeeRole(
-      req.user,
-      'Unauthorized: Only admin or employee can create a genre.',
-    );
+  @ApiBearerAuth()
+  createGerne(@Body() createGerneDto: CreateGerneDto) {
     return this.gerneService.createGerne(createGerneDto);
   }
 
   // PUT - Cập nhật genre theo ID
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Put(':id')
   @ApiOperation({ summary: 'Update genre by ID (admin, employee only)' })
+  @ApiBearerAuth()
   updateGerne(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateGerneDto: UpdateGerneDto,
-    @Req() req,
   ) {
-    checkAdminEmployeeRole(
-      req.user,
-      'Unauthorized: Only admin or employee can update a genre.',
-    );
     return this.gerneService.updateGerne(id, updateGerneDto);
   }
 
   // PATCH - Soft delete genre
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Patch(':id/soft-delete')
   @ApiOperation({ summary: 'Soft delete a genre (admin, employee only)' })
-  softDeleteGerne(@Param('id', ParseIntPipe) id: number, @Req() req) {
-    checkAdminEmployeeRole(
-      req.user,
-      'Unauthorized: Only admin or employee can soft delete a genre.',
-    );
+  @ApiBearerAuth()
+  softDeleteGerne(@Param('id', ParseIntPipe) id: number) {
     return this.gerneService.softDeleteGerne(id);
   }
 
   // DELETE - Xóa genre vĩnh viễn
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Patch(':id/restore')
   @ApiOperation({
     summary: 'Restore a soft-deleted genre (admin, employee only)',
   })
-  async restoreGerne(@Param('id', ParseIntPipe) id: number, @Req() req) {
-    checkAdminEmployeeRole(
-      req.user,
-      'Unauthorized: Only admin or employee can restore a genre.',
-    );
+  async restoreGerne(@Param('id', ParseIntPipe) id: number) {
     return await this.gerneService.restoreGerne(id);
   }
 
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete genre by ID (admin only)' })
+  @ApiBearerAuth()
   async deleteGerne(
     @Param('id', ParseIntPipe) id: number,
-    @Req() req,
   ): Promise<void> {
-    checkAdminEmployeeRole(
-      req.user,
-      'Unauthorized: Only admin can delete a genre.',
-    );
     return await this.gerneService.deleteGerne(id);
   }
 }

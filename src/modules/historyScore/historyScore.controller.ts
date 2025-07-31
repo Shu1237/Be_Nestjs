@@ -17,13 +17,17 @@ import {
 } from '@nestjs/swagger';
 import { HistoryScorePaginationDto } from 'src/common/pagination/dto/historyScore/historyScorePagination.dto';
 import { JWTUserType } from 'src/common/utils/type';
-import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
+import { Roles } from 'src/common/decorator/roles.decorator';
+import { Role } from 'src/common/enums/roles.enum';
+import { RolesGuard } from 'src/common/guards/roles.guard';
 
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 @Controller('history-score')
 export class HistoryScoreController {
-  constructor(private readonly historyScoreService: HistoryScoreService) {}
+  constructor(private readonly historyScoreService: HistoryScoreService) { }
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Get('admin')
   @ApiOperation({ summary: 'Get all history scores for admin' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
@@ -53,12 +57,7 @@ export class HistoryScoreController {
     enum: ['ASC', 'DESC'],
     example: 'DESC',
   })
-  getHistoryScore(@Query() query: HistoryScorePaginationDto, @Req() req) {
-    const user = req.user as JWTUserType;
-    checkAdminEmployeeRole(
-      user,
-      'You do not have permission to access this resource',
-    );
+  getHistoryScore(@Query() query: HistoryScorePaginationDto) {
     const { page = 1, take = 10, ...restFilters } = query;
     return this.historyScoreService.getAllHistoryScore({
       page,

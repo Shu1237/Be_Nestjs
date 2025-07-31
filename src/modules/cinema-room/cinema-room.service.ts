@@ -13,6 +13,7 @@ import { applySorting } from 'src/common/pagination/apply_sort';
 import { applyPagination } from 'src/common/pagination/applyPagination';
 import { buildPaginationResponse } from 'src/common/pagination/pagination-response';
 
+
 @Injectable()
 export class CinemaRoomService {
   constructor(
@@ -150,18 +151,6 @@ export class CinemaRoomService {
   }
 
   async remove(id: number): Promise<{ msg: string }> {
-    const cinemaRoom = await this.findOne(id);
-    try {
-      await this.cinemaRoomRepository.remove(cinemaRoom);
-      return { msg: 'Cinema Room deleted successfully' };
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async softDeleteCinemaRoom(
-    id: number,
-  ): Promise<{ msg: string; cinemaRoom: CinemaRoom }> {
     if (
       id === null ||
       id === undefined ||
@@ -173,15 +162,54 @@ export class CinemaRoomService {
 
     const cinemaRoom = await this.cinemaRoomRepository.findOne({
       where: { id },
+      relations: ['schedules', 'schedules.tickets'],
+    });
+    if (!cinemaRoom) {
+      throw new NotFoundException(`Cinema room with ID ${id} not found`);
+    }
+    // check tất cả schedule đc mua trong tương lai
+    const hasFutureTickets = cinemaRoom.schedules.some(schedule =>
+      schedule.tickets.some(ticket => ticket.status && schedule.start_movie_time > new Date()),
+    );
+    if (hasFutureTickets) {
+      throw new BadRequestException('Cannot delete cinema room with future tickets');
+    }
+
+    await this.cinemaRoomRepository.remove(cinemaRoom);
+    return { msg: 'Cinema room deleted successfully' };
+  }
+
+  async softDeleteCinemaRoom(
+    id: number,
+  ) : Promise<{ msg: string}>{
+    if (
+      id === null ||
+      id === undefined ||
+      isNaN(id) ||
+      typeof id !== 'number'
+    ) {
+      throw new BadRequestException('Valid ID is required');
+    }
+
+    const cinemaRoom = await this.cinemaRoomRepository.findOne({
+      where: { id },
+      relations: ['schedules', 'schedules.tickets'],
     });
     if (!cinemaRoom) {
       throw new NotFoundException(`Cinema Room with ID ${id} not found`);
+    }
+    // check tất cả schedule đc mua trong tương lai
+    const hasFutureTickets = cinemaRoom.schedules.some(schedule =>
+      schedule.tickets.some(ticket => ticket.status && schedule.start_movie_time > new Date()),
+    );
+    if (hasFutureTickets) {
+      throw new BadRequestException('Cannot delete cinema room with future tickets');
     }
 
     cinemaRoom.is_deleted = true;
     await this.cinemaRoomRepository.save(cinemaRoom);
 
-    return { msg: 'Cinema Room soft-deleted successfully', cinemaRoom };
+    return  { msg: 'Cinema Room soft-deleted successfully' };
   }
 
   async restoreCinemaRoom(

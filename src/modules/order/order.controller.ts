@@ -13,11 +13,12 @@ import { ScanQrCodeDto } from './dto/qrcode.dto';
 import { InternalServerErrorException } from 'src/common/exceptions/internal-server-error.exception';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
 import { StatusOrder } from 'src/common/enums/status-order.enum';
-import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 import { OrderPaginationDto } from 'src/common/pagination/dto/order/orderPagination.dto';
 import { VisaService } from './payment-menthod/visa/visa.service';
 import { ConfigService } from '@nestjs/config';
-import { checkUserRole } from 'src/common/role/user';
+import { Roles } from 'src/common/decorator/roles.decorator';
+import { Role } from 'src/common/enums/roles.enum';
+import { RolesGuard } from 'src/common/guards/roles.guard';
 
 @ApiBearerAuth()
 @Controller('order')
@@ -33,7 +34,7 @@ export class OrderController {
   ) { }
 
 
-  
+
 
   // POST /order - Create new order
   @UseGuards(JwtAuthGuard)
@@ -50,13 +51,13 @@ export class OrderController {
   }
 
   // POST /order/scan-qr - Scan QR code
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @ApiOperation({ summary: 'Get order by Order ID' })
   @ApiBody({ type: ScanQrCodeDto })
   @ApiBearerAuth()
   @Post('scan-qr')
-  scanQrCode(@Body() data: ScanQrCodeDto, @Req() req) {
-    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can scan QR code.');
+  scanQrCode(@Body() data: ScanQrCodeDto) {
     return this.orderService.scanQrCode(data.qrCode);
   }
 
@@ -85,31 +86,9 @@ export class OrderController {
   }
 
 
-  // @Post('refund/:id')
-  // async refundOrder(@Param('id', ParseIntPipe) id: number) {
-  //   return this.orderService.refundOrder(id);
-  // }
-  // @Post('refundbySchedule/:scheduleId')
-  // async refundOrderBySchedule(@Param('scheduleId', ParseIntPipe) scheduleId: number, @Req() req) {
-  //   checkAdminEmployeeRole(req.user, 'Only admin or employee can refund orders');
-  //   return this.orderService.refundOrderBySchedule(scheduleId);
-  // }
-
-  @Get('checkStatus/:orderId')
-  @ApiOperation({ summary: 'Check order status by Order ID' })
-  @ApiResponse({ status: 200, description: 'Order status checked successfully' })
-  async checkOrderStatus(@Param('orderId', ParseIntPipe) orderId: number) {
-    return this.orderService.checkQueryOrderByGateway(orderId);
-  }
-  // @UseGuards(JwtAuthGuard)
-  // @Get('admin/check-all-gateway-status')
-  // checkAllGateways(@Req() req) {
-  //   // checkAdminEmployeeRole(req.user, 'Only admin or employee can check all gateways status');
-  //   return this.orderService.checkAllOrdersStatusByGateway();
-  // }
-
   // POST /order/admin/update-order/:orderId - Admin/Employee update pending order
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Post('admin/update-order/:orderId')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Admin/Employee update pending order', })
@@ -118,9 +97,7 @@ export class OrderController {
     @Body() updateData: CreateOrderBillDto,
     @Req() req,
   ) {
-    const user = req.user as JWTUserType;
-    checkAdminEmployeeRole(user, 'Only admin or employee can update orders');
-
+    const user = req.user as JWTUserType
     const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     if (!clientIp) {
       throw new InternalServerErrorException('Client IP address not found');
@@ -136,21 +113,20 @@ export class OrderController {
 
 
 
-  @UseGuards(JwtAuthGuard)
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Patch('admin/cancel-order/:orderId')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Admin/Employee cancel order', })
   async adminCancelOrder(
     @Param('orderId', ParseIntPipe) orderId: number,
-    @Req() req,
   ) {
-    const user = req.user as JWTUserType;
-    checkAdminEmployeeRole(user, 'Only admin or employee can cancel orders');
-
     return this.orderService.adminCancelOrder(orderId);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Get('admin')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'View all orders for admin' })
@@ -176,12 +152,9 @@ export class OrderController {
   @ApiQuery({ name: 'paymentMethod', required: false, type: String, example: 'momo' })
   @ApiResponse({ status: 200, description: 'List of all orders' })
   async getAllOrders(
-    @Req() req,
+
     @Query() query: OrderPaginationDto,
   ) {
-    const user = req.user;
-    checkAdminEmployeeRole(user, 'You do not have permission to view all orders');
-
     const {
       page = 1,
       take = 10,
@@ -250,7 +223,8 @@ export class OrderController {
       const result = await this.momoService.handleReturn(query);
       return res.redirect(result);
     } catch (error) {
-      const failureUrl = `${this.configService.get<string>('redirectFE.url')}?status=failed` || 'http://localhost:3000/booking/result?status=failed';
+      const failureUrl = `${this.configService.get<string>('redirectFE.url')}?status=failure ` || 'http://localhost:3000/booking/result?status=failure ';
+      console.error('PayPal payment error:', error);
       return res.redirect(failureUrl);
     }
   }
@@ -269,7 +243,7 @@ export class OrderController {
       }
       return res.redirect(result);
     } catch (error) {
-      const failureUrl = `${this.configService.get<string>('redirectFE.url')}?status=failed` || 'http://localhost:3000/booking/result?status=failed';
+      const failureUrl = `${this.configService.get<string>('redirectFE.url')}?status=failure ` || 'http://localhost:3000/booking/result?status=failure ';
       return res.redirect(failureUrl);
     }
   }
@@ -282,7 +256,7 @@ export class OrderController {
       const result = await this.payPalService.handleReturnCancelPaypal(orderId);
       return res.redirect(result);
     } catch (error) {
-      const failureUrl = `${this.configService.get<string>('redirectFE.url')}?status=failed` || 'http://localhost:3000/booking/result?status=failed';
+      const failureUrl = `${this.configService.get<string>('redirectFE.url')}?status=failure ` || 'http://localhost:3000/booking/result?status=failure ';
       return res.redirect(failureUrl);
     }
   }
@@ -302,7 +276,7 @@ export class OrderController {
       return res.redirect(result);
     } catch (error) {
       console.error('Visa payment error:', error);
-      const failureUrl = `${this.configService.get<string>('redirectFE.url')}?status=failed` || 'http://localhost:3000/booking/result?status=failed';
+      const failureUrl = `${this.configService.get<string>('redirectFE.url')}?status=failure ` || 'http://localhost:3000/booking/result?status=failure ';
       return res.redirect(failureUrl);
     }
   }
@@ -319,7 +293,7 @@ export class OrderController {
       return res.redirect(result);
     } catch (error) {
       console.error('Visa payment error:', error);
-      const failureUrl = `${this.configService.get<string>('redirectFE.url')}?status=failed` || 'http://localhost:3000/booking/result?status=failed';
+      const failureUrl = `${this.configService.get<string>('redirectFE.url')}?status=failure ` || 'http://localhost:3000/booking/result?status=failure ';
       return res.redirect(failureUrl);
     }
   }
@@ -332,7 +306,7 @@ export class OrderController {
       const result = await this.vnpayService.handleReturnVnPay(query);
       return res.redirect(result);
     } catch (error) {
-      const failureUrl = `${this.configService.get<string>('redirectFE.url')}?status=failed` || 'http://localhost:3000/booking/result?status=failed';
+      const failureUrl = `${this.configService.get<string>('redirectFE.url')}?status=failure ` || 'http://localhost:3000/booking/result?status=failure ';
       return res.redirect(failureUrl);
     }
   }
@@ -345,7 +319,7 @@ export class OrderController {
       const result = await this.zalopayService.handleReturnZaloPay(query);
       return res.redirect(result);
     } catch (error) {
-      const failureUrl = `${this.configService.get<string>('redirectFE.url')}?status=failed` || 'http://localhost:3000/booking/result?status=failed';
+      const failureUrl = `${this.configService.get<string>('redirectFE.url')}?status=failure ` || 'http://localhost:3000/booking/result?status=failure ';
       return res.redirect(failureUrl);
     }
   }

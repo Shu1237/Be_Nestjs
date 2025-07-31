@@ -192,13 +192,6 @@ describe('ScheduleSeatService', () => {
   });
 
 });
-import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { ScheduleSeatService } from './scheduleseat.service';
-import { ScheduleSeat } from 'src/database/entities/cinema/schedule_seat';
-import { Repository } from 'typeorm';
-import { NotFoundException } from 'src/common/exceptions/not-found.exception';
-import { StatusSeat } from 'src/common/enums/status_seat.enum';
 
 describe('ScheduleSeatService', () => {
   let service: ScheduleSeatService;
@@ -360,6 +353,7 @@ describe('ScheduleSeatService', () => {
 
       expect(result).toBe(0);
     
+  });
   });
   });
 

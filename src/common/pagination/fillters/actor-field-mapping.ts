@@ -2,6 +2,10 @@ import { FilterField } from 'src/common/utils/type';
 import { SelectQueryBuilder } from 'typeorm';
 
 export const actorFieldMapping: Record<string, FilterField> = {
+  is_deleted: {
+    field: 'actor.is_deleted',
+    operator: '=',
+  },
   search: {
     customWhere: (qb: SelectQueryBuilder<any>, value: string) => {
       qb.andWhere(
