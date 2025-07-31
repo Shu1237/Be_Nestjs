@@ -22,7 +22,7 @@ import { Role } from 'src/common/enums/roles.enum';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 
 
-@UseGuards(JwtAuthGuard)
+
 @ApiBearerAuth()
 @Controller('versions')
 export class VersionController {
@@ -36,6 +36,7 @@ export class VersionController {
   }
 
   // GET - Lấy danh sách versions cho admin (với phân trang)
+
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Get('admin')
@@ -79,8 +80,10 @@ export class VersionController {
   }
 
   // POST - Tạo version mới
+
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
+
   @Post()
   @ApiOperation({ summary: 'Create a new version (admin only)' })
   async create(@Body() createVersionDto: CreateVersionDto) {
@@ -88,8 +91,10 @@ export class VersionController {
   }
 
   // PUT - Cập nhật version theo ID
+
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
+
   @Put(':id')
   @ApiOperation({ summary: 'Update a version by ID (admin only)' })
   async update(
@@ -99,6 +104,7 @@ export class VersionController {
   }
 
   // PATCH - Soft delete version
+
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Patch(':id/soft-delete')
@@ -117,11 +123,13 @@ export class VersionController {
     return await this.versionService.restoreVersion(id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  
 
   // DELETE - Xóa version vĩnh viễn
+
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
+
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a version by ID (admin only)' })
   async remove(@Param('id') id: number) {
