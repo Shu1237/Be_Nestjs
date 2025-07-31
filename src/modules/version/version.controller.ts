@@ -24,7 +24,7 @@ import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 import { VersionPaginationDto } from 'src/common/pagination/dto/version/versionPagination.dto';
 
-@UseGuards(JwtAuthGuard)
+
 @ApiBearerAuth()
 @Controller('versions')
 export class VersionController {
@@ -40,6 +40,7 @@ export class VersionController {
   }
 
   // GET - Lấy danh sách versions cho admin (với phân trang)
+  @UseGuards(JwtAuthGuard)
   @Get('admin')
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
@@ -73,6 +74,7 @@ export class VersionController {
 
 
   // POST - Tạo version mới
+  @UseGuards(JwtAuthGuard)
   @Post()
   @ApiOperation({ summary: 'Create a new version (admin only)' })
   async create(@Body() createVersionDto: CreateVersionDto, @Req() req) {
@@ -83,6 +85,7 @@ export class VersionController {
  
 
   // PUT - Cập nhật version theo ID
+  @UseGuards(JwtAuthGuard)
   @Put(':id')
   @ApiOperation({ summary: 'Update a version by ID (admin only)' })
   async update(
@@ -97,6 +100,7 @@ export class VersionController {
 
 
   // PATCH - Soft delete version
+  @UseGuards(JwtAuthGuard)
   @Patch(':id/soft-delete')
   @ApiOperation({ summary: 'Soft delete a version (admin, employee only)' })
   async softDeleteVersion(@Param('id', ParseIntPipe) id: number, @Req() req) {
@@ -113,11 +117,10 @@ export class VersionController {
     return await this.versionService.restoreVersion(id);
   }
 
-  @UseGuards(JwtAuthGuard)
-
   
 
   // DELETE - Xóa version vĩnh viễn
+  @UseGuards(JwtAuthGuard)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a version by ID (admin only)' })
   async remove(@Param('id') id: number, @Req() req) {

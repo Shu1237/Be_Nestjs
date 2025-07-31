@@ -158,4 +158,10 @@ export class PromotionController {
     checkAdminEmployeeRole(req.user, 'Only admin can delete promotions');
     return this.promotionService.deleteSoftPromotion(id);
   }
+  @Patch(':id/restore')
+  @ApiOperation({ summary: 'Restore soft-deleted promotion by ID (admin only)' })
+  async restorePromotion(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    checkAdminEmployeeRole(req.user, 'Only admin can restore promotions');
+    return this.promotionService.restorePromotion(id);
+  }
 }

@@ -146,6 +146,16 @@ export class PromotionService {
 
     return { msg: 'Promotion deleted successfully' };
   }
+  async restorePromotion(id: number) {
+    const promotion = await this.promotionRepository.findOne({ where: { id } });
+    if (!promotion) throw new NotFoundException('Promotion not found');
+    if (!promotion.is_active) {
+      throw new BadRequestException('Promotion is not soft-deleted');
+    }
+    promotion.is_active = false;
+    await this.promotionRepository.save(promotion);
+    return { msg: 'Promotion restored successfully' };
+  }
 
   private validateDates(
     start_time?: string,
