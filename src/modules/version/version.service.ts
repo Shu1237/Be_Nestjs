@@ -18,7 +18,7 @@ export class VersionService {
   constructor(
     @InjectRepository(Version)
     private readonly versionRepository: Repository<Version>,
-  ) { }
+  ) {}
   async getAllVersionsUser(): Promise<Version[]> {
     return await this.versionRepository.find({
       where: { is_deleted: false },
@@ -45,15 +45,18 @@ export class VersionService {
     const qb = this.versionRepository.createQueryBuilder('version');
 
     applyCommonFilters(qb, fillters, versionFieldMapping);
-    const allowedFields = [
+    const allowedFields = ['version.name', 'version.is_deleted'];
+    applySorting(
+      qb,
+      fillters.sortBy,
+      fillters.sortOrder,
+      allowedFields,
       'version.name',
-      'version.is_deleted',
-    ];
-    applySorting(qb, fillters.sortBy, fillters.sortOrder, allowedFields, 'version.name');
+    );
     applyPagination(qb, {
       page: fillters.page,
       take: fillters.take,
-    })
+    });
     const [versions, total] = await qb.getManyAndCount();
     const counts = await this.versionRepository
       .createQueryBuilder('version')
@@ -62,16 +65,15 @@ export class VersionService {
         `SUM(CASE WHEN version.is_deleted = true THEN 1 ELSE 0 END) AS deletedCount`,
       ])
       .getRawOne();
-      const activeCount = parseInt(counts.activeCount, 10) || 0;
-      const deletedCount = parseInt(counts.deletedCount, 10) || 0;
-      return buildPaginationResponse(versions, {
-        total,
-        page: fillters.page,
-        take: fillters.take,
-        activeCount,
-        deletedCount,
-      });
-
+    const activeCount = parseInt(counts.activeCount, 10) || 0;
+    const deletedCount = parseInt(counts.deletedCount, 10) || 0;
+    return buildPaginationResponse(versions, {
+      total,
+      page: fillters.page,
+      take: fillters.take,
+      activeCount,
+      deletedCount,
+    });
   }
 
   async findOne(id: number): Promise<Version> {
@@ -80,7 +82,6 @@ export class VersionService {
       throw new NotFoundException(`Version with ID ${id} not found`);
     }
     return version;
-
   }
 
   async update(
@@ -119,9 +120,7 @@ export class VersionService {
     return { msg: 'Version soft-deleted successfully', version };
   }
 
-  async restoreVersion(
-    id: number,
-  ): Promise<{ msg: string; version: Version }> {
+  async restoreVersion(id: number): Promise<{ msg: string; version: Version }> {
     const version = await this.versionRepository.findOne({ where: { id } });
     if (!version) {
       throw new NotFoundException(`Version with ID ${id} not found`);

@@ -4,6 +4,9 @@ import { ApiProperty } from '@nestjs/swagger';
 export class UpdatePaymentMethodDto {
   @IsOptional()
   @IsString()
-  @ApiProperty({ example: 'Credit Card', description: 'Tên phương thức thanh toán' })
+  @ApiProperty({
+    example: 'Credit Card',
+    description: 'Tên phương thức thanh toán',
+  })
   name?: string;
 }

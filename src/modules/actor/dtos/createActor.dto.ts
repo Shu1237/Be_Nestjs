@@ -26,16 +26,15 @@ export class CreateActorDto {
   @IsOptional()
   stage_name?: string;
 
-   @ApiProperty({ 
+  @ApiProperty({
     description: 'The gender of the actor',
     enum: Gender,
     example: Gender.MALE,
-    examples: [Gender.MALE, Gender.FEMALE, Gender.OTHER]
+    examples: [Gender.MALE, Gender.FEMALE, Gender.OTHER],
   })
   @IsEnum(Gender)
   @IsNotEmpty()
   gender: Gender;
-
 
   @ApiProperty({
     description: 'The date of birth of the actor',

@@ -1,8 +1,16 @@
-import { Entity, Column, PrimaryGeneratedColumn, OneToMany, CreateDateColumn, UpdateDateColumn, ManyToMany, JoinTable } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  OneToMany,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToMany,
+  JoinTable,
+} from 'typeorm';
 // import { ActorMovie } from './actor-movie';
 import { Movie } from './movie';
 import { Gender } from 'src/common/utils/type';
-
 
 @Entity('actor')
 export class Actor {
@@ -18,7 +26,7 @@ export class Actor {
   @Column({
     type: 'enum',
     enum: Gender,
-    default: Gender.OTHER
+    default: Gender.OTHER,
   })
   gender: Gender;
 
@@ -40,7 +48,7 @@ export class Actor {
   @UpdateDateColumn({ type: 'datetime' })
   updated_at: Date;
 
-  @Column({ type: 'boolean', default: false }) 
+  @Column({ type: 'boolean', default: false })
   is_deleted: boolean;
 
   @ManyToMany(() => Movie, (movie) => movie.actors)

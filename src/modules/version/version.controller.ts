@@ -15,11 +15,7 @@ import {
 import { VersionService } from './version.service';
 import { CreateVersionDto } from './dto/create-version.dto';
 import { UpdateVersionDto } from './dto/update-version.dto';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiQuery,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 import { VersionPaginationDto } from 'src/common/pagination/dto/version/versionPagination.dto';
@@ -28,9 +24,7 @@ import { VersionPaginationDto } from 'src/common/pagination/dto/version/versionP
 @ApiBearerAuth()
 @Controller('versions')
 export class VersionController {
-  constructor(private readonly versionService: VersionService) { }
-
-
+  constructor(private readonly versionService: VersionService) {}
 
   // GET - Lấy danh sách versions cho user
   @Get('user')
@@ -45,17 +39,28 @@ export class VersionController {
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
   @ApiQuery({ name: 'search', required: false, type: String, example: '2D' })
-  @ApiQuery({ name: 'sortBy', required: false, type: String, example: 'version.name' })
-  @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], example: 'ASC' })
-  @ApiQuery({ name: 'is_deleted', required: false, type: Boolean, example: false })
+  @ApiQuery({
+    name: 'sortBy',
+    required: false,
+    type: String,
+    example: 'version.name',
+  })
+  @ApiQuery({
+    name: 'sortOrder',
+    required: false,
+    enum: ['ASC', 'DESC'],
+    example: 'ASC',
+  })
+  @ApiQuery({
+    name: 'is_deleted',
+    required: false,
+    type: Boolean,
+    example: false,
+  })
   @ApiOperation({ summary: 'Get all versions for admin' })
   async findAll(@Query() query: VersionPaginationDto, @Req() req) {
     checkAdminEmployeeRole(req.user, 'Only admin can view all versions');
-    const {
-      page = 1,
-      take = 10,
-      ...filters
-    } = query;
+    const { page = 1, take = 10, ...filters } = query;
 
     return this.versionService.findAll({
       page,
@@ -71,8 +76,6 @@ export class VersionController {
     return await this.versionService.findOne(id);
   }
 
-
-
   // POST - Tạo version mới
   @UseGuards(JwtAuthGuard)
   @Post()
@@ -81,8 +84,6 @@ export class VersionController {
     checkAdminEmployeeRole(req.user, 'Only admin can create a version');
     return await this.versionService.create(createVersionDto);
   }
-
- 
 
   // PUT - Cập nhật version theo ID
   @UseGuards(JwtAuthGuard)
@@ -97,23 +98,28 @@ export class VersionController {
     return await this.versionService.update(id, updateVersionDto);
   }
 
-
-
   // PATCH - Soft delete version
   @UseGuards(JwtAuthGuard)
   @Patch(':id/soft-delete')
   @ApiOperation({ summary: 'Soft delete a version (admin, employee only)' })
   async softDeleteVersion(@Param('id', ParseIntPipe) id: number, @Req() req) {
-    checkAdminEmployeeRole(req.user, 'Only admin or employee can soft delete a version.');
+    checkAdminEmployeeRole(
+      req.user,
+      'Only admin or employee can soft delete a version.',
+    );
     return await this.versionService.softDeleteVersion(id);
   }
 
-
   @UseGuards(JwtAuthGuard)
   @Patch(':id/restore')
-  @ApiOperation({ summary: 'Restore a soft-deleted version (admin, employee only)' })
+  @ApiOperation({
+    summary: 'Restore a soft-deleted version (admin, employee only)',
+  })
   async restoreVersion(@Param('id', ParseIntPipe) id: number, @Req() req) {
-    checkAdminEmployeeRole(req.user, 'Only admin or employee can restore a version.');
+    checkAdminEmployeeRole(
+      req.user,
+      'Only admin or employee can restore a version.',
+    );
     return await this.versionService.restoreVersion(id);
   }
 

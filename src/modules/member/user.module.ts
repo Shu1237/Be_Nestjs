@@ -9,7 +9,6 @@ import { UserController } from './controllers/user.controller';
 import { ProfileController } from './controllers/profile.controller';
 import { ProfileService } from './services/profile.service';
 
-
 @Module({
   imports: [TypeOrmModule.forFeature([User, Role])],
   providers: [UserService, ProfileService],

@@ -1,9 +1,16 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn } from "typeorm";
-import { Schedule } from "../cinema/schedule";
-import { Seat } from "../cinema/seat";
-import { OrderDetail } from "./order-detail";
-import { TicketType } from "./ticket-type";
-
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+  OneToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
+import { Schedule } from '../cinema/schedule';
+import { Seat } from '../cinema/seat';
+import { OrderDetail } from './order-detail';
+import { TicketType } from './ticket-type';
 
 @Entity('ticket')
 export class Ticket {
@@ -23,7 +30,6 @@ export class Ticket {
   @ManyToOne(() => Seat, (seat) => seat.tickets)
   @JoinColumn({ name: 'seat_id' })
   seat: Seat;
-  
 
   @ManyToOne(() => TicketType, (ticketType) => ticketType.tickets)
   @JoinColumn({ name: 'ticket_type_id' })
@@ -31,6 +37,4 @@ export class Ticket {
 
   @OneToOne(() => OrderDetail, (orderDetail) => orderDetail.ticket)
   orderDetail: OrderDetail;
-
-
 }

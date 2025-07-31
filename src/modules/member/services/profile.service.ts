@@ -13,7 +13,7 @@ export class ProfileService {
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
-  ) { }
+  ) {}
 
   async getProfile(userId: string, userRole: Role): Promise<Partial<User>> {
     const user = await this.userRepository.findOne({
@@ -24,17 +24,17 @@ export class ProfileService {
         username: true,
         email: true,
         avatar: true,
-        qr_code:true,
+        qr_code: true,
         ...(userRole === Role.USER
           ? {
-            score: true,
-          }
+              score: true,
+            }
           : {
-            role: {
-              role_id: true,
-              role_name: true,
-            },
-          }),
+              role: {
+                role_id: true,
+                role_name: true,
+              },
+            }),
       },
     });
 
@@ -63,13 +63,12 @@ export class ProfileService {
     return await this.userRepository.save(user);
   }
 
-
   async getQrCode(userId: string): Promise<JWTUserType> {
     const user = await this.userRepository.findOne({
       where: { id: userId, status: true },
       relations: ['role'],
-    })
-    // type 
+    });
+    // type
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -77,8 +76,7 @@ export class ProfileService {
       account_id: user.id,
       role_id: user.role.role_id,
       username: user.username,
-    }
+    };
     return payload;
-
   }
 }

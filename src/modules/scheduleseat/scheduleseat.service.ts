@@ -5,7 +5,7 @@ import { ScheduleSeat } from 'src/database/entities/cinema/schedule_seat';
 import { Repository } from 'typeorm/repository/Repository';
 import { In } from 'typeorm';
 import { StatusSeat } from 'src/common/enums/status_seat.enum';
- // Adjust the import path as needed
+// Adjust the import path as needed
 
 @Injectable()
 export class ScheduleSeatService {

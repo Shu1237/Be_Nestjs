@@ -1,16 +1,5 @@
-import {
-  Body,
-  Controller,
-  Post,
-  UseGuards,
-  Request,
-} from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiBody,
-  ApiOperation,
-  ApiTags,
-} from '@nestjs/swagger';
+import { Body, Controller, Post, UseGuards, Request } from '@nestjs/common';
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { LogoutDto } from './dtos/Logout.dto';
@@ -21,13 +10,13 @@ import { LoginAzureDto } from './dtos/loginazure.dto';
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) { }
+  constructor(private authService: AuthService) {}
 
   // POST - Login
   @ApiOperation({ summary: 'Login with username and password' })
   @ApiBody({ type: LoginAzureDto })
   @Post('login')
-  loginAzure(@Body() body: LoginAzureDto) {   
+  loginAzure(@Body() body: LoginAzureDto) {
     return this.authService.loginAzureAndGoogle(body);
   }
 

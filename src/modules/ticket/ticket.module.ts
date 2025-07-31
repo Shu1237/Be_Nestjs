@@ -6,9 +6,9 @@ import { Ticket } from 'src/database/entities/order/ticket';
 import { User } from 'src/database/entities/user/user';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Ticket,User])],
+  imports: [TypeOrmModule.forFeature([Ticket, User])],
   controllers: [TicketController],
   providers: [TicketService],
-  exports:[TicketService]
+  exports: [TicketService],
 })
 export class TicketModule {}

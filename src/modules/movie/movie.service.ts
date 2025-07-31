@@ -30,8 +30,7 @@ export class MovieService {
     private readonly gerneRepository: Repository<Gerne>,
     @InjectRepository(Version)
     private readonly versionRepository: Repository<Version>,
-
-  ) { }
+  ) {}
   private getMovieSummary(movie: IMovie) {
     return {
       id: movie.id,
@@ -68,9 +67,10 @@ export class MovieService {
       relations: ['gernes', 'actors', 'versions'],
     });
     return movies.map((movie) => this.getMovieSummary(movie));
-  } 
+  }
   async getAllMovies(fillters: MoviePaginationDto) {
-    const qb = this.movieRepository.createQueryBuilder('movie')
+    const qb = this.movieRepository
+      .createQueryBuilder('movie')
       .leftJoinAndSelect('movie.actors', 'actor')
       .leftJoinAndSelect('movie.gernes', 'gerne')
       .leftJoinAndSelect('movie.versions', 'version');
@@ -83,11 +83,17 @@ export class MovieService {
       'movie.director',
       'movie.nation',
     ];
-    applySorting(qb, fillters.sortBy, fillters.sortOrder, allowedFields, 'movie.name');
+    applySorting(
+      qb,
+      fillters.sortBy,
+      fillters.sortOrder,
+      allowedFields,
+      'movie.name',
+    );
     applyPagination(qb, {
       page: fillters.page,
       take: fillters.take,
-    })
+    });
     const [movies, total] = await qb.getManyAndCount();
     const summaries = movies.map((movie) => this.getMovieSummary(movie));
     const counts = await this.movieRepository
@@ -106,7 +112,7 @@ export class MovieService {
       take: fillters.take,
       activeCount,
       deletedCount,
-    })
+    });
   }
 
   async getMovieById(id: number): Promise<IMovie> {
@@ -274,9 +280,7 @@ export class MovieService {
       throw new NotFoundException(`Movie with ID ${id} not found`);
     }
     if (!movie.is_deleted) {
-      throw new BadRequestException(
-        `Movie with ID ${id} is not soft-deleted`,
-      );
+      throw new BadRequestException(`Movie with ID ${id} is not soft-deleted`);
     }
     movie.is_deleted = false;
     await this.movieRepository.save(movie);
@@ -384,7 +388,6 @@ export class MovieService {
 
     return movie.versions;
   }
-
 
   async getMoviesPaginated(
     page = 1,

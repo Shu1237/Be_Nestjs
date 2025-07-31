@@ -1,6 +1,6 @@
-import { Injectable } from "@nestjs/common";
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { ConfigService } from "@nestjs/config";
+import { Injectable } from '@nestjs/common';
+import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class S3Service {
@@ -16,7 +16,11 @@ export class S3Service {
     });
   }
 
-  async uploadFile(file: Buffer, fileName: string, folder: string): Promise<string> {
+  async uploadFile(
+    file: Buffer,
+    fileName: string,
+    folder: string,
+  ): Promise<string> {
     const bucketName = this.configService.get<string>('aws.bucketName')!;
     const region = this.configService.get<string>('aws.region')!;
 

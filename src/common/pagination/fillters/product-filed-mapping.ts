@@ -1,5 +1,3 @@
-
-
 import { FilterField } from 'src/common/utils/type';
 import { SelectQueryBuilder } from 'typeorm';
 
@@ -20,7 +18,7 @@ export const productFieldMapping: Record<string, FilterField> = {
     customWhere: (qb: SelectQueryBuilder<any>, value: string) => {
       qb.andWhere(
         `(product.name LIKE :search OR product.description LIKE :search)`,
-        { search: `%${value}%` }
+        { search: `%${value}%` },
       );
     },
   },

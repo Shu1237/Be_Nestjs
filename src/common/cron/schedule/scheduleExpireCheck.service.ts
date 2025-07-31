@@ -3,7 +3,7 @@ import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { StatusSeat } from 'src/common/enums/status_seat.enum';
 import { Schedule } from 'src/database/entities/cinema/schedule';
-import { ScheduleSeat} from 'src/database/entities/cinema/schedule_seat';
+import { ScheduleSeat } from 'src/database/entities/cinema/schedule_seat';
 import { Repository, LessThan } from 'typeorm';
 
 @Injectable()
@@ -15,7 +15,7 @@ export class ScheduleExpireCheckService {
     private readonly scheduleRepository: Repository<Schedule>,
     @InjectRepository(ScheduleSeat)
     private readonly scheduleSeatRepository: Repository<ScheduleSeat>,
-  ) { }
+  ) {}
 
   // Chạy 12h tối
   @Cron('0 0 * * *', { name: 'expire-schedules' })
@@ -33,12 +33,15 @@ export class ScheduleExpireCheckService {
 
       if (expiredSchedules.length > 0) {
         let seatsToRemove: ScheduleSeat[] = [];
-        
+
         for (const schedule of expiredSchedules) {
           schedule.is_deleted = true;
           // Tìm các ghế chưa được đặt của schedule này
           const availableSeats = await this.scheduleSeatRepository.find({
-            where: { schedule: { id: schedule.id }, status: StatusSeat.NOT_YET }
+            where: {
+              schedule: { id: schedule.id },
+              status: StatusSeat.NOT_YET,
+            },
           });
 
           if (availableSeats.length > 0) {
@@ -46,16 +49,16 @@ export class ScheduleExpireCheckService {
             seatsToRemove.push(...availableSeats);
           }
         }
-        
-       
+
         await this.scheduleRepository.save(expiredSchedules);
-        
-       
+
         if (seatsToRemove.length > 0) {
           await this.scheduleSeatRepository.remove(seatsToRemove);
         }
-        
-        this.logger.log(`Successfully expired ${expiredSchedules.length} schedules and removed ${seatsToRemove.length} available seats`);
+
+        this.logger.log(
+          `Successfully expired ${expiredSchedules.length} schedules and removed ${seatsToRemove.length} available seats`,
+        );
       } else {
         this.logger.log('No schedules expired today');
       }

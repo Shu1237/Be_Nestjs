@@ -9,7 +9,9 @@ export const promotionFieldMapping: Record<string, FilterField> = {
   },
   exchangeFrom: {
     customWhere: (qb: SelectQueryBuilder<any>, value: number) => {
-      qb.andWhere('promotion.exchange >= :exchangeFrom', { exchangeFrom: value });
+      qb.andWhere('promotion.exchange >= :exchangeFrom', {
+        exchangeFrom: value,
+      });
     },
   },
   exchangeTo: {
@@ -43,8 +45,8 @@ export const promotionFieldMapping: Record<string, FilterField> = {
     customWhere(qb: SelectQueryBuilder<any>, value: string) {
       qb.andWhere(
         `(promotion.title LIKE :search OR promotion.detail LIKE :search)`,
-        { search: `%${value}%` }
+        { search: `%${value}%` },
       );
-     },
-  }
+    },
+  },
 };

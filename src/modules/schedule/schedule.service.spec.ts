@@ -44,7 +44,10 @@ describe('ScheduleService', () => {
         ScheduleService,
         { provide: getRepositoryToken(Schedule), useValue: mockScheduleRepo },
         { provide: getRepositoryToken(Movie), useValue: mockMovieRepo },
-        { provide: getRepositoryToken(CinemaRoom), useValue: mockCinemaRoomRepo },
+        {
+          provide: getRepositoryToken(CinemaRoom),
+          useValue: mockCinemaRoomRepo,
+        },
         { provide: getRepositoryToken(Version), useValue: mockVersionRepo },
       ],
     }).compile();
@@ -67,7 +70,10 @@ describe('ScheduleService', () => {
         versions: [{ id: 3 }],
         name: 'Movie',
       });
-      mockCinemaRoomRepo.findOne.mockResolvedValue({ id: 2, cinema_room_name: 'Room A' });
+      mockCinemaRoomRepo.findOne.mockResolvedValue({
+        id: 2,
+        cinema_room_name: 'Room A',
+      });
       mockVersionRepo.findOne.mockResolvedValue({ id: 3, name: '2D' });
       mockScheduleRepo.createQueryBuilder().getOne.mockResolvedValue(undefined);
       mockScheduleRepo.create.mockReturnValue({});
@@ -80,35 +86,59 @@ describe('ScheduleService', () => {
 
     it(' ❌ 1.2 should throw NotFoundException if movie not found', async () => {
       mockMovieRepo.findOne.mockResolvedValue(undefined);
-      await expect(service.create(dto as any)).rejects.toThrow(NotFoundException);
+      await expect(service.create(dto as any)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it(' ❌ 1.3 should throw NotFoundException if cinema room not found', async () => {
       mockMovieRepo.findOne.mockResolvedValue({ id: 1, versions: [{ id: 3 }] });
       mockCinemaRoomRepo.findOne.mockResolvedValue(undefined);
-      await expect(service.create(dto as any)).rejects.toThrow(NotFoundException);
+      await expect(service.create(dto as any)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it(' ❌ 1.4 should throw NotFoundException if version not found', async () => {
       mockMovieRepo.findOne.mockResolvedValue({ id: 1, versions: [{ id: 3 }] });
-      mockCinemaRoomRepo.findOne.mockResolvedValue({ id: 2, cinema_room_name: 'Room A' });
+      mockCinemaRoomRepo.findOne.mockResolvedValue({
+        id: 2,
+        cinema_room_name: 'Room A',
+      });
       mockVersionRepo.findOne.mockResolvedValue(undefined);
-      await expect(service.create(dto as any)).rejects.toThrow(NotFoundException);
+      await expect(service.create(dto as any)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it(' ❌ 1.5 should throw BadRequestException if version does not belong to movie', async () => {
-      mockMovieRepo.findOne.mockResolvedValue({ id: 1, versions: [{ id: 99 }] });
-      mockCinemaRoomRepo.findOne.mockResolvedValue({ id: 2, cinema_room_name: 'Room A' });
+      mockMovieRepo.findOne.mockResolvedValue({
+        id: 1,
+        versions: [{ id: 99 }],
+      });
+      mockCinemaRoomRepo.findOne.mockResolvedValue({
+        id: 2,
+        cinema_room_name: 'Room A',
+      });
       mockVersionRepo.findOne.mockResolvedValue({ id: 3 });
-      await expect(service.create(dto as any)).rejects.toThrow(BadRequestException);
+      await expect(service.create(dto as any)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it(' ❌ 1.6 should throw BadRequestException if overlapping schedule exists', async () => {
       mockMovieRepo.findOne.mockResolvedValue({ id: 1, versions: [{ id: 3 }] });
-      mockCinemaRoomRepo.findOne.mockResolvedValue({ id: 2, cinema_room_name: 'Room A' });
+      mockCinemaRoomRepo.findOne.mockResolvedValue({
+        id: 2,
+        cinema_room_name: 'Room A',
+      });
       mockVersionRepo.findOne.mockResolvedValue({ id: 3 });
-      mockScheduleRepo.createQueryBuilder().getOne.mockResolvedValue({ id: 10 });
-      await expect(service.create(dto as any)).rejects.toThrow(BadRequestException);
+      mockScheduleRepo
+        .createQueryBuilder()
+        .getOne.mockResolvedValue({ id: 10 });
+      await expect(service.create(dto as any)).rejects.toThrow(
+        BadRequestException,
+      );
     });
     
     it('❌ 1.11 should throw BadRequestException if movie does not have the requested version', async () => {
@@ -133,15 +163,17 @@ describe('ScheduleService', () => {
 
   describe('2.find', () => {
     it('✅ 2.2 should return summarized schedules', async () => {
-      const data = [{
-        id: 1,
-        is_deleted: false,
-        cinemaRoom: { id: 2, cinema_room_name: 'Room' },
-        movie: { id: 3, name: 'Movie' },
-        version: { id: 4, name: '2D' },
-        start_movie_time: '2025-06-10 14:00',
-        end_movie_time: '2025-06-10 16:00',
-      }];
+      const data = [
+        {
+          id: 1,
+          is_deleted: false,
+          cinemaRoom: { id: 2, cinema_room_name: 'Room' },
+          movie: { id: 3, name: 'Movie' },
+          version: { id: 4, name: '2D' },
+          start_movie_time: '2025-06-10 14:00',
+          end_movie_time: '2025-06-10 16:00',
+        },
+      ];
       mockScheduleRepo.find.mockResolvedValue(data);
       const result = await service.find();
       expect(result[0]).toMatchObject({
@@ -214,7 +246,10 @@ describe('ScheduleService', () => {
     it('✅ 4.1 should update schedule times', async () => {
       mockScheduleRepo.findOne.mockResolvedValue({ ...schedule });
       mockScheduleRepo.save.mockResolvedValue({});
-      const dto = { start_movie_time: '2025-07-10 15:00', end_movie_time: '2025-07-10 17:00' };
+      const dto = {
+        start_movie_time: '2025-07-10 15:00',
+        end_movie_time: '2025-07-10 17:00',
+      };
       const result = await service.update(1, dto as any);
       expect(result).toEqual({ message: 'update successfully schedule' });
     });
@@ -222,7 +257,10 @@ describe('ScheduleService', () => {
     it('✅ 4.2 should update movie and cinemaRoom if ids provided', async () => {
       mockScheduleRepo.findOne.mockResolvedValue({ ...schedule });
       mockMovieRepo.findOne.mockResolvedValue({ id: 10, name: 'NewMovie' });
-      mockCinemaRoomRepo.findOne.mockResolvedValue({ id: 8, cinema_room_name: 'NewRoom' });
+      mockCinemaRoomRepo.findOne.mockResolvedValue({
+        id: 8,
+        cinema_room_name: 'NewRoom',
+      });
       mockScheduleRepo.save.mockResolvedValue({});
       const dto = { movie_id: 10, cinema_room_id: 8 };
       const result = await service.update(1, dto as any);
@@ -231,14 +269,18 @@ describe('ScheduleService', () => {
 
     it(' ❌ 4.3 should throw NotFoundException if schedule not found', async () => {
       mockScheduleRepo.findOne.mockResolvedValue(undefined);
-      await expect(service.update(1, {} as any)).rejects.toThrow(NotFoundException);
+      await expect(service.update(1, {} as any)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it(' ❌ 4.4 should throw NotFoundException if movie not found', async () => {
       mockScheduleRepo.findOne.mockResolvedValue({ ...schedule });
       mockMovieRepo.findOne.mockResolvedValue(undefined);
       const dto = { movie_id: 99 };
-      await expect(service.update(1, dto as any)).rejects.toThrow(NotFoundException);
+      await expect(service.update(1, dto as any)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it(' ❌ 4.5 should throw NotFoundException if cinema room not found', async () => {
@@ -246,7 +288,9 @@ describe('ScheduleService', () => {
       mockMovieRepo.findOne.mockResolvedValue({ id: 10, name: 'Movie' });
       mockCinemaRoomRepo.findOne.mockResolvedValue(undefined);
       const dto = { movie_id: 10, cinema_room_id: 88 };
-      await expect(service.update(1, dto as any)).rejects.toThrow(NotFoundException);
+      await expect(service.update(1, dto as any)).rejects.toThrow(
+        NotFoundException,
+      );
     });
     it('✅ 4.6 should update nothing and still succeed', async () => {
       mockScheduleRepo.findOne.mockResolvedValue({
@@ -309,7 +353,9 @@ describe('ScheduleService', () => {
     });
     it('❌ 6.2 should throw NotFoundException if not found', async () => {
       mockScheduleRepo.findOne.mockResolvedValue(undefined);
-      await expect(service.softDeleteSchedule(1)).rejects.toThrow(NotFoundException);
+      await expect(service.softDeleteSchedule(1)).rejects.toThrow(
+        NotFoundException,
+      );
     });
     it('✅ 6.3 should not fail if already deleted', async () => {
       mockScheduleRepo.findOne.mockResolvedValue({ id: 1, is_deleted: true });
@@ -325,15 +371,22 @@ describe('ScheduleService', () => {
       mockScheduleRepo.findOne.mockResolvedValue({ id: 1, is_deleted: true });
       mockScheduleRepo.save.mockResolvedValue({ id: 1, is_deleted: false });
       const result = await service.restoreSchedule(1);
-      expect(result).toEqual({ msg: 'Schedule restored successfully', schedule: { id: 1, is_deleted: false } });
+      expect(result).toEqual({
+        msg: 'Schedule restored successfully',
+        schedule: { id: 1, is_deleted: false },
+      });
     });
     it('❌ 7.2 should throw NotFoundException if not found', async () => {
       mockScheduleRepo.findOne.mockResolvedValue(undefined);
-      await expect(service.restoreSchedule(1)).rejects.toThrow(NotFoundException);
+      await expect(service.restoreSchedule(1)).rejects.toThrow(
+        NotFoundException,
+      );
     });
     it('❌ 7.3 should throw BadRequestException if not soft-deleted', async () => {
       mockScheduleRepo.findOne.mockResolvedValue({ id: 1, is_deleted: false });
-      await expect(service.restoreSchedule(1)).rejects.toThrow(BadRequestException);
+      await expect(service.restoreSchedule(1)).rejects.toThrow(
+        BadRequestException,
+      );
     });
     it('❌ 7.4 should throw BadRequestException if is_deleted field is missing', async () => {
       mockScheduleRepo.findOne.mockResolvedValue({ id: 1 });
@@ -354,6 +407,7 @@ describe('ScheduleService', () => {
     mockScheduleRepo.findOne.mockResolvedValue(undefined);
     await expect(service.findOut(99)).rejects.toThrow(NotFoundException);
   });
+
 
 
   it('should handle schedule with null version in getScheduleSummary', async () => {
@@ -500,5 +554,6 @@ it('update should not change anything if dto empty but schedule found', async ()
 });
 
       
-  
+
 });
+

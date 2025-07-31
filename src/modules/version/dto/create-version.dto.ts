@@ -9,5 +9,4 @@ export class CreateVersionDto {
     example: 'Version 1',
   })
   name: string;
-
 }

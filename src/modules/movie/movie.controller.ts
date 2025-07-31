@@ -12,11 +12,7 @@ import {
   Req,
   Query,
 } from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiQuery,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { MovieService } from './movie.service';
 import { CreateMovieDto } from './dtos/createMovie.dto';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
@@ -27,8 +23,8 @@ import { MoviePaginationDto } from 'src/common/pagination/dto/movie/moviePaginat
 @ApiBearerAuth()
 @Controller('movies')
 export class MovieController {
-  constructor(private readonly movieService: MovieService) { }
-   
+  constructor(private readonly movieService: MovieService) {}
+
   // GET - Lấy danh sách movies cho user
   @Get('user')
   @ApiOperation({ summary: 'Get all movies for user' })
@@ -42,24 +38,58 @@ export class MovieController {
   @ApiOperation({ summary: 'Get all movies for admin' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
-  @ApiQuery({ name: 'search', required: false, type: String, example: 'Avengers' })
-  @ApiQuery({ name: 'sortBy', required: false, type: String, example: 'movie.name' })
-  @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], example: 'DESC' })
-  @ApiQuery({ name: 'fromDate', required: false, type: String, example: '2025-07-01' })
-  @ApiQuery({ name: 'toDate', required: false, type: String, example: '2025-07-31' })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    example: 'Avengers',
+  })
+  @ApiQuery({
+    name: 'sortBy',
+    required: false,
+    type: String,
+    example: 'movie.name',
+  })
+  @ApiQuery({
+    name: 'sortOrder',
+    required: false,
+    enum: ['ASC', 'DESC'],
+    example: 'DESC',
+  })
+  @ApiQuery({
+    name: 'fromDate',
+    required: false,
+    type: String,
+    example: '2025-07-01',
+  })
+  @ApiQuery({
+    name: 'toDate',
+    required: false,
+    type: String,
+    example: '2025-07-31',
+  })
   @ApiQuery({ name: 'nation', required: false, type: String, example: 'USA' })
-  @ApiQuery({ name: 'director', required: false, type: String, example: 'Christopher Nolan' })
-  @ApiQuery({ name: 'is_deleted', required: false, type: Boolean, example: false })
+  @ApiQuery({
+    name: 'director',
+    required: false,
+    type: String,
+    example: 'Christopher Nolan',
+  })
+  @ApiQuery({
+    name: 'is_deleted',
+    required: false,
+    type: Boolean,
+    example: false,
+  })
   @ApiQuery({ name: 'actor_id', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'gerne_id', required: false, type: Number, example: 2 })
   @ApiQuery({ name: 'version_id', required: false, type: Number, example: 3 })
   getAllMovies(@Query() query: MoviePaginationDto, @Req() req) {
-    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can view all movies.');
-    const {
-      page = 1,
-      take = 10,
-      ...restFilters
-    } = query;
+    checkAdminEmployeeRole(
+      req.user,
+      'Unauthorized: Only admin or employee can view all movies.',
+    );
+    const { page = 1, take = 10, ...restFilters } = query;
     return this.movieService.getAllMovies({
       page,
       take: Math.min(take, 100),
@@ -74,7 +104,6 @@ export class MovieController {
     return this.movieService.getMovieById(id);
   }
 
-
   // GET - Lấy genres của movie
   @UseGuards(JwtAuthGuard)
   @Get(':movieId/gernes')
@@ -85,13 +114,15 @@ export class MovieController {
     return this.movieService.getGernesOfMovie(movieId);
   }
 
-
   // POST - Tạo movie mới
   @UseGuards(JwtAuthGuard)
   @Post()
   @ApiOperation({ summary: 'Create a new movie' })
   async createMovie(@Body() movieDto: CreateMovieDto, @Req() req) {
-    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can create a movie.');
+    checkAdminEmployeeRole(
+      req.user,
+      'Unauthorized: Only admin or employee can create a movie.',
+    );
     return this.movieService.createMovie(movieDto);
   }
 
@@ -104,7 +135,10 @@ export class MovieController {
     @Body() movieDTO: UpdateMovieDto,
     @Req() req,
   ): Promise<any> {
-    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can update a movie.');
+    checkAdminEmployeeRole(
+      req.user,
+      'Unauthorized: Only admin or employee can update a movie.',
+    );
     return this.movieService.updateMovie(id, movieDTO);
   }
 
@@ -113,27 +147,36 @@ export class MovieController {
   @Patch(':id')
   @ApiOperation({ summary: 'Soft delete a movie by ID (admin, employee only)' })
   async softDeleteMovie(@Param('id', ParseIntPipe) id: number, @Req() req) {
-    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can soft delete a movie.');
+    checkAdminEmployeeRole(
+      req.user,
+      'Unauthorized: Only admin or employee can soft delete a movie.',
+    );
     await this.movieService.softDeleteMovie(id);
     return { message: 'Movie soft deleted successfully' };
   }
 
-
   @UseGuards(JwtAuthGuard)
   @Patch(':id/restore')
-  @ApiOperation({ summary: 'Restore a soft-deleted movie by ID (admin, employee only)' })
+  @ApiOperation({
+    summary: 'Restore a soft-deleted movie by ID (admin, employee only)',
+  })
   async restoreMovie(@Param('id', ParseIntPipe) id: number, @Req() req) {
-    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can restore a movie.');
+    checkAdminEmployeeRole(
+      req.user,
+      'Unauthorized: Only admin or employee can restore a movie.',
+    );
     return await this.movieService.restoreMovie(id);
   }
-
 
   // DELETE - Xóa movie vĩnh viễn
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
   @ApiOperation({ summary: 'Hard delete a movie by ID (admin, employee only)' })
   async deleteMovie(@Param('id', ParseIntPipe) id: number, @Req() req) {
-    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can delete a movie.');
+    checkAdminEmployeeRole(
+      req.user,
+      'Unauthorized: Only admin or employee can delete a movie.',
+    );
     return this.movieService.deleteMovie(id);
   }
 }

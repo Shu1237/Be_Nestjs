@@ -1,5 +1,5 @@
-import { FilterField } from "src/common/utils/type";
-import { SelectQueryBuilder } from "typeorm";
+import { FilterField } from 'src/common/utils/type';
+import { SelectQueryBuilder } from 'typeorm';
 
 export const dailyReportFieldMapping: Record<string, FilterField> = {
   paymentMethod: {
@@ -8,17 +8,23 @@ export const dailyReportFieldMapping: Record<string, FilterField> = {
   },
   reportDate: {
     customWhere: (qb: SelectQueryBuilder<any>, value: string) => {
-      qb.andWhere('DATE(dailyReport.reportDate) = DATE(:reportDate)', { reportDate: value });
+      qb.andWhere('DATE(dailyReport.reportDate) = DATE(:reportDate)', {
+        reportDate: value,
+      });
     },
   },
   fromDate: {
     customWhere: (qb: SelectQueryBuilder<any>, value: string) => {
-      qb.andWhere('DATE(dailyReport.reportDate) >= DATE(:fromDate)', { fromDate: value });
+      qb.andWhere('DATE(dailyReport.reportDate) >= DATE(:fromDate)', {
+        fromDate: value,
+      });
     },
   },
   toDate: {
     customWhere: (qb: SelectQueryBuilder<any>, value: string) => {
-      qb.andWhere('DATE(dailyReport.reportDate) <= DATE(:toDate)', { toDate: value });
+      qb.andWhere('DATE(dailyReport.reportDate) <= DATE(:toDate)', {
+        toDate: value,
+      });
     },
   },
   totalAmount: {

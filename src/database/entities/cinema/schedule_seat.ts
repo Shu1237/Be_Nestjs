@@ -9,7 +9,6 @@ import { Schedule } from './schedule';
 import { Seat } from './seat';
 import { StatusSeat } from 'src/common/enums/status_seat.enum';
 
-
 @Entity('schedule_seat')
 export class ScheduleSeat {
   @PrimaryGeneratedColumn()

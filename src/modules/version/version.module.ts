@@ -6,7 +6,7 @@ import { Version } from 'src/database/entities/cinema/version';
 import { Movie } from 'src/database/entities/cinema/movie';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Version,Movie])],
+  imports: [TypeOrmModule.forFeature([Version, Movie])],
   controllers: [VersionController],
   providers: [VersionService],
 })

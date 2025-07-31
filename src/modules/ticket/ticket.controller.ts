@@ -9,8 +9,7 @@ import { TicketPaginationDto } from 'src/common/pagination/dto/ticket/ticket-pag
 @UseGuards(JwtAuthGuard)
 @Controller('ticket')
 export class TicketController {
-  constructor(private readonly ticketService: TicketService) { }
-
+  constructor(private readonly ticketService: TicketService) {}
 
   // @Get('overview-ticket')
   // @ApiOperation({ summary: 'Get overview of tickets' })
@@ -21,7 +20,10 @@ export class TicketController {
   @Get('user')
   @ApiOperation({ summary: 'Get all tickets for users' })
   async getAllTicketsUser(@Req() req) {
-    checkAdminEmployeeRole(req.user, 'You do not have permission to view all tickets');
+    checkAdminEmployeeRole(
+      req.user,
+      'You do not have permission to view all tickets',
+    );
     return await this.ticketService.getAllTicketsUser();
   }
 
@@ -33,19 +35,43 @@ export class TicketController {
   @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
   @ApiQuery({ name: 'is_used', required: false, type: Boolean, example: false })
   @ApiQuery({ name: 'active', required: false, type: Boolean, example: true })
-  @ApiQuery({ name: 'search', required: false, type: String, example: 'Avengers' })
-  @ApiQuery({ name: 'startDate', required: false, type: String, example: '2025-07-01' })
-  @ApiQuery({ name: 'endDate', required: false, type: String, example: '2025-07-03' })
-  @ApiQuery({ name: 'sortBy', required: false, type: String, example: 'schedule.id | ticketType | ticket.is_used | ticket.status' })
-  @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], example: 'ASC' })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    example: 'Avengers',
+  })
+  @ApiQuery({
+    name: 'startDate',
+    required: false,
+    type: String,
+    example: '2025-07-01',
+  })
+  @ApiQuery({
+    name: 'endDate',
+    required: false,
+    type: String,
+    example: '2025-07-03',
+  })
+  @ApiQuery({
+    name: 'sortBy',
+    required: false,
+    type: String,
+    example: 'schedule.id | ticketType | ticket.is_used | ticket.status',
+  })
+  @ApiQuery({
+    name: 'sortOrder',
+    required: false,
+    enum: ['ASC', 'DESC'],
+    example: 'ASC',
+  })
   async getAllTickets(@Req() req, @Query() query: TicketPaginationDto) {
-    checkAdminEmployeeRole(req.user, 'You do not have permission to view all tickets');
+    checkAdminEmployeeRole(
+      req.user,
+      'You do not have permission to view all tickets',
+    );
 
-    const {
-      page = 1,
-      take = 10,
-      ...restFilters
-    } = query;
+    const { page = 1, take = 10, ...restFilters } = query;
 
     return this.ticketService.getAllTickets({
       page,
@@ -56,28 +82,48 @@ export class TicketController {
 
   // GET - Lấy tickets theo user ID
   @Get('tickets-by-user-id')
-  @ApiOperation({ summary: 'Get tickets by user ID with filters, search, sort' })
+  @ApiOperation({
+    summary: 'Get tickets by user ID with filters, search, sort',
+  })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'take', required: false, type: Number, example: 10 })
   @ApiQuery({ name: 'is_used', required: false, type: Boolean, example: false })
   @ApiQuery({ name: 'active', required: false, type: Boolean, example: true })
-  @ApiQuery({ name: 'search', required: false, type: String, example: 'Avengers' })
-  @ApiQuery({ name: 'startDate', required: false, type: String, example: '2025-07-01' })
-  @ApiQuery({ name: 'endDate', required: false, type: String, example: '2025-07-03' })
-  @ApiQuery({ name: 'sortBy', required: false, type: String, example: 'schedule.id | ticketType' })
-  @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], example: 'ASC' })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    example: 'Avengers',
+  })
+  @ApiQuery({
+    name: 'startDate',
+    required: false,
+    type: String,
+    example: '2025-07-01',
+  })
+  @ApiQuery({
+    name: 'endDate',
+    required: false,
+    type: String,
+    example: '2025-07-03',
+  })
+  @ApiQuery({
+    name: 'sortBy',
+    required: false,
+    type: String,
+    example: 'schedule.id | ticketType',
+  })
+  @ApiQuery({
+    name: 'sortOrder',
+    required: false,
+    enum: ['ASC', 'DESC'],
+    example: 'ASC',
+  })
   @ApiBearerAuth()
-  async getTicketsByUserId(
-    @Req() req,
-    @Query() query: TicketPaginationDto,
-  ) {
+  async getTicketsByUserId(@Req() req, @Query() query: TicketPaginationDto) {
     const user = req.user as JWTUserType;
     // Trích xuất các giá trị từ query
-    const {
-      page = 1,
-      take = 10,
-      ...restFilters
-    } = query;
+    const { page = 1, take = 10, ...restFilters } = query;
 
     return this.ticketService.getTicketsByUserId({
       page,

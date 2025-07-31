@@ -22,7 +22,7 @@ import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 @ApiBearerAuth()
 @Controller('payment-methods')
 export class PaymentMethodController {
-  constructor(private readonly paymentMethodService: PaymentMethodService) { }
+  constructor(private readonly paymentMethodService: PaymentMethodService) {}
 
   @Get()
   @ApiOperation({ summary: 'Lấy tất cả phương thức thanh toán' })
@@ -34,7 +34,6 @@ export class PaymentMethodController {
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.paymentMethodService.findOne(id);
   }
-
 
   @UseGuards(JwtAuthGuard)
   @Post()
@@ -48,7 +47,6 @@ export class PaymentMethodController {
     );
     return this.paymentMethodService.create(createDto);
   }
-
 
   @UseGuards(JwtAuthGuard)
   @Put(':id')
@@ -91,11 +89,11 @@ export class PaymentMethodController {
     return this.paymentMethodService.remove(id);
   }
 
-
   @UseGuards(JwtAuthGuard)
   @Patch(':id/restore')
   @ApiOperation({
-    summary: 'Khôi phục phương thức thanh toán đã xóa mềm (admin, employee only)',
+    summary:
+      'Khôi phục phương thức thanh toán đã xóa mềm (admin, employee only)',
   })
   async restore(@Param('id', ParseIntPipe) id: number, @Req() req) {
     checkAdminEmployeeRole(
@@ -104,6 +102,4 @@ export class PaymentMethodController {
     );
     return this.paymentMethodService.restore(id);
   }
-
-
 }

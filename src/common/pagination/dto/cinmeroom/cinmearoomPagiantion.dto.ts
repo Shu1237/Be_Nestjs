@@ -1,4 +1,3 @@
-import { BasePaginationDto } from "../basePagination.dto";
-
+import { BasePaginationDto } from '../basePagination.dto';
 
 export class CinemaRoomPaginationDto extends BasePaginationDto {}

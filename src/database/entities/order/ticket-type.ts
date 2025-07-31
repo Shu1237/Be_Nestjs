@@ -1,7 +1,6 @@
 import { Entity, Column, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
 import { Ticket } from './ticket';
 
-
 @Entity('ticket_type')
 export class TicketType {
   @PrimaryGeneratedColumn({ type: 'int' })
@@ -14,7 +13,7 @@ export class TicketType {
   discount: string;
 
   @Column({ type: 'varchar', nullable: false })
-  audience_type: string; 
+  audience_type: string;
 
   @Column({ type: 'varchar', nullable: true })
   ticket_description?: string;

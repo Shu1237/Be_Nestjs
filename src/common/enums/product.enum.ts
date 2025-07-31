@@ -1,7 +1,5 @@
-
 export enum ProductTypeEnum {
-    FOOD = 'food',
-    DRINK = 'drink',
-    COMBO = 'combo'
-
+  FOOD = 'food',
+  DRINK = 'drink',
+  COMBO = 'combo',
 }
