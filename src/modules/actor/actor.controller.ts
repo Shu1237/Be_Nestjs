@@ -19,14 +19,13 @@ import {
   ApiBearerAuth,
   ApiOperation,
   ApiQuery,
-  ApiTags,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { JWTUserType } from 'src/common/utils/type';
 import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 import { ActorPaginationDto } from 'src/common/pagination/dto/actor/actor-pagination.dto';
 
-@ApiBearerAuth()
+
 @Controller('actor')
 export class ActorController {
   constructor(private readonly actorService: ActorService) {}
@@ -92,6 +91,7 @@ export class ActorController {
     type: String,
     example: '1990-01-01',
   })
+  @ApiBearerAuth()
   async getAllActors(@Query() query: ActorPaginationDto, @Req() req) {
     checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can access this endpoint.');
     const { page = 1, take = 10, ...restFilters } = query;
@@ -113,6 +113,7 @@ export class ActorController {
   @UseGuards(JwtAuthGuard)
   @Post()
   @ApiOperation({ summary: 'Create a new actor' })
+  @ApiBearerAuth()
   async createActor(@Req() req, @Body() createActorDto: CreateActorDto) {
     checkAdminEmployeeRole(
       req.user,
@@ -124,6 +125,7 @@ export class ActorController {
   // PUT - Cập nhật actor theo ID
   @UseGuards(JwtAuthGuard)
   @Put(':id')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Update actor details' })
   async updateActor(
     @Req() req,
@@ -140,6 +142,7 @@ export class ActorController {
   // PATCH - Soft delete actor
   @UseGuards(JwtAuthGuard)
   @Patch(':id/soft-delete')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Soft delete an actor (admin, employee only)' })
   async softDeleteActor(@Param('id', ParseIntPipe) id: number, @Req() req) {
     const user = req.user as JWTUserType;
@@ -153,6 +156,7 @@ export class ActorController {
   // DELETE - Xóa actor vĩnh viễn
   @UseGuards(JwtAuthGuard)
   @Patch(':id/restore')
+  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Restore a soft-deleted actor (admin, employee only)',
   })
@@ -167,6 +171,7 @@ export class ActorController {
 
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Permanently delete an actor' })
   async removeActor(@Req() req, @Param('id') id: string) {
     checkAdminEmployeeRole(
