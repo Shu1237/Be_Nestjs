@@ -181,7 +181,7 @@ export class CinemaRoomService {
 
   async softDeleteCinemaRoom(
     id: number,
-  ) : Promise<{ msg: string; cinemaRoom: CinemaRoom }>{
+  ) : Promise<{ msg: string}>{
     if (
       id === null ||
       id === undefined ||
@@ -209,7 +209,7 @@ export class CinemaRoomService {
     cinemaRoom.is_deleted = true;
     await this.cinemaRoomRepository.save(cinemaRoom);
 
-    return  { msg: 'Cinema Room soft-deleted successfully', cinemaRoom };
+    return  { msg: 'Cinema Room soft-deleted successfully' };
   }
 
   async restoreCinemaRoom(

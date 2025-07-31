@@ -19,6 +19,7 @@ export class TicketController {
   // GET - Lấy danh sách tickets cho user
   @Get('user')
   @ApiOperation({ summary: 'Get all tickets for users' })
+  @ApiBearerAuth()
   async getAllTicketsUser(@Req() req) {
     checkAdminEmployeeRole(
       req.user,
