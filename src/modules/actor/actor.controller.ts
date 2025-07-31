@@ -93,7 +93,7 @@ export class ActorController {
     example: '1990-01-01',
   })
   async getAllActors(@Query() query: ActorPaginationDto, @Req() req) {
-    // checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can access this endpoint.');
+    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can access this endpoint.');
     const { page = 1, take = 10, ...restFilters } = query;
     return await this.actorService.getAllActors({
       page,
