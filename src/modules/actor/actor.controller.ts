@@ -38,7 +38,7 @@ export class ActorController {
   }
 
   // GET - Lấy danh sách actors cho admin (với phân trang và filter)
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard)
   @Get('admin')
   @ApiOperation({ summary: 'Get all actors for admin' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
@@ -91,9 +91,9 @@ export class ActorController {
     type: String,
     example: '1990-01-01',
   })
-  @ApiBearerAuth()
+  // @ApiBearerAuth()
   async getAllActors(@Query() query: ActorPaginationDto, @Req() req) {
-    checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can access this endpoint.');
+    // checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can access this endpoint.');
     const { page = 1, take = 10, ...restFilters } = query;
     return await this.actorService.getAllActors({
       page,
