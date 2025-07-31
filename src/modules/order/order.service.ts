@@ -708,7 +708,17 @@ export class OrderService {
     });
 
     const [orders, total] = await qb.getManyAndCount();
-
+    if (total === 0) {
+      return buildPaginationResponse([], {
+        total: 0,
+        page: 1,
+        take: filters.take,
+        totalSuccess: 0,
+        totalFailed: 0,
+        totalPending: 0,
+        revenue: '0',
+      });
+    }
     //  Map to summary DTO
     const summaries = orders.map((order) =>
       this.mapToBookingSummaryLite(order),
@@ -792,14 +802,12 @@ export class OrderService {
       .leftJoinAndSelect('order.orderExtras', 'orderExtra')
       .leftJoinAndSelect('orderExtra.product', 'product')
       .where('user.id = :userId', { userId: filters.userId });
-
     applyCommonFilters(qb, filters, orderFieldMapping);
 
     const allowedSortFields = [
       'order.id',
       'order.order_date',
       'movie.name',
-      'user.username',
       'paymentMethod.name',
       'order.status',
       'order.total_prices',
@@ -818,7 +826,17 @@ export class OrderService {
     });
 
     const [orders, total] = await qb.getManyAndCount();
-
+    if (total === 0) {
+      return buildPaginationResponse([], {
+        total: 0,
+        page: 1,
+        take: filters.take,
+        totalSuccess: 0,
+        totalFailed: 0,
+        totalPending: 0,
+        revenue: '0',
+      });
+    }
     const summaries = orders.map((order) =>
       this.mapToBookingSummaryLite(order),
     );
@@ -1554,7 +1572,7 @@ export class OrderService {
       paymentMethodMap.set(pm.name.toUpperCase(), pm),
     );
 
-     const reportDate = startOfDay.toISOString().slice(0, 10);
+    const reportDate = startOfDay.toISOString().slice(0, 10);
 
     for (const [method, summary] of Object.entries(result)) {
       const methodEntity = paymentMethodMap.get(method);
