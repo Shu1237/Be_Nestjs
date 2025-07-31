@@ -37,7 +37,7 @@ export class VersionController {
 
   // GET - Lấy danh sách versions cho admin (với phân trang)
 
-  @UseGuards(RolesGuard)
+  @UseGuards(JwtAuthGuard,RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Get('admin')
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
@@ -81,7 +81,7 @@ export class VersionController {
 
   // POST - Tạo version mới
 
-  @UseGuards(RolesGuard)
+  @UseGuards(JwtAuthGuard,RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
 
   @Post()
@@ -92,7 +92,7 @@ export class VersionController {
 
   // PUT - Cập nhật version theo ID
 
-  @UseGuards(RolesGuard)
+  @UseGuards(JwtAuthGuard,RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
 
   @Put(':id')
@@ -105,7 +105,7 @@ export class VersionController {
 
   // PATCH - Soft delete version
 
-  @UseGuards(RolesGuard)
+  @UseGuards(JwtAuthGuard,RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Patch(':id/soft-delete')
   @ApiOperation({ summary: 'Soft delete a version (admin, employee only)' })
@@ -113,7 +113,7 @@ export class VersionController {
     return await this.versionService.softDeleteVersion(id);
   }
   // PATCH - Restore soft-deleted version
-  @UseGuards(RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Patch(':id/restore')
   @ApiOperation({
@@ -127,7 +127,7 @@ export class VersionController {
 
   // DELETE - Xóa version vĩnh viễn
 
-  @UseGuards(RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
 
   @Delete(':id')
