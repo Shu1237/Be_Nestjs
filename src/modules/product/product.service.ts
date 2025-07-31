@@ -24,7 +24,7 @@ export class ProductService {
   constructor(
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
-  ) {}
+  ) { }
 
   async getAllProductsUser(): Promise<Product[]> {
     return await this.productRepository.find({
@@ -106,7 +106,11 @@ export class ProductService {
     const product = await this.productRepository.findOne({ where: { id } });
     if (!product) throw new NotFoundException('Product not found');
     Object.assign(product, dto);
-    await this.productRepository.save(product);
+    try {
+      await this.productRepository.update(id, product);
+    } catch (error) {
+      throw new BadRequestException('Failed to update product');
+    }
     return { msg: 'Product updated successfully' };
   }
 
