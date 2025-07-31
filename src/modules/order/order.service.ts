@@ -711,7 +711,7 @@ export class OrderService {
     if (total === 0) {
       return buildPaginationResponse([], {
         total: 0,
-        page: filters.page,
+        page: 1,
         take: filters.take,
         totalSuccess: 0,
         totalFailed: 0,
@@ -829,7 +829,7 @@ export class OrderService {
     if (total === 0) {
       return buildPaginationResponse([], {
         total: 0,
-        page: filters.page,
+        page: 1,
         take: filters.take,
         totalSuccess: 0,
         totalFailed: 0,
