@@ -1,6 +1,6 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, IsNull, Not, Between } from 'typeorm';
+import { Repository, In, Between } from 'typeorm';
 import { Order } from 'src/database/entities/order/order';
 import { OrderDetail } from 'src/database/entities/order/order-detail';
 import { PaymentMethod } from 'src/database/entities/order/payment-method';
@@ -41,7 +41,6 @@ import { NotFoundException } from 'src/common/exceptions/not-found.exception';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
 import { ConflictException } from 'src/common/exceptions/conflict.exception';
 import { ForbiddenException } from 'src/common/exceptions/forbidden.exception';
-import { InternalServerErrorException } from 'src/common/exceptions/internal-server-error.exception';
 import { ConfigService } from '@nestjs/config';
 import { TicketService } from '../ticket/ticket.service';
 import { Role } from 'src/common/enums/roles.enum';

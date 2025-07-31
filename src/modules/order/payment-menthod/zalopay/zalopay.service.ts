@@ -164,7 +164,7 @@ export class ZalopayService extends AbstractPaymentService {
     }
 
     if (status === '1') {
-      return this.handleReturnSuccess(transaction, query);
+      return this.handleReturnSuccess(transaction);
     } else {
       return this.handleReturnFailed(transaction);
     }

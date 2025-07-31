@@ -3,7 +3,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { OverviewService } from './overview.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { StatusOrder } from 'src/common/enums/status-order.enum';
 import { Order } from 'src/database/entities/order/order';
 import { Movie } from 'src/database/entities/cinema/movie';
 import { Ticket } from 'src/database/entities/order/ticket';

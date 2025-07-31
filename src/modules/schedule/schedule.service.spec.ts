@@ -7,7 +7,6 @@ import { CinemaRoom } from 'src/database/entities/cinema/cinema-room';
 import { Version } from 'src/database/entities/cinema/version';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
 import { NotFoundException } from 'src/common/exceptions/not-found.exception';
-import { ConflictException } from '@nestjs/common';
 
 describe('ScheduleService', () => {
   let service: ScheduleService;

@@ -10,7 +10,6 @@ import {
   Put,
   ParseIntPipe,
   Query,
-  Req,
 } from '@nestjs/common';
 import { VersionService } from './version.service';
 import { CreateVersionDto } from './dto/create-version.dto';

@@ -20,7 +20,6 @@ import { User } from 'src/database/entities/user/user';
 import { Repository } from 'typeorm';
 import { Transaction } from 'src/database/entities/order/transaction';
 import axios from 'axios';
-import { PaymentGateway } from 'src/common/enums/payment_gatewat.enum';
 import { formatDate } from 'src/common/utils/helper';
 
 @Injectable()
@@ -146,8 +145,8 @@ export class VnpayService extends AbstractPaymentService {
         throw new NotFoundException('Transaction is not in pending state');
       }
       if (responseCode === '00') {
-        // Giao dịch thành công - truyền receivedParams làm rawResponse
-        return this.handleReturnSuccess(transaction, receivedParams);
+        // Giao dịch thành công 
+        return this.handleReturnSuccess(transaction);
       } else {
         // Giao dịch thất bại
         return this.handleReturnFailed(transaction);
@@ -341,7 +340,7 @@ export class VnpayService extends AbstractPaymentService {
         currency: data.vnp_CurrCode || 'VND',
       };
     } catch (error) {
-      throw new InternalServerErrorException('Failed to query VNPAY order');
+      throw new InternalServerErrorException('Failed to query VNPAY order status: ' + error.message);
     }
   }
 }

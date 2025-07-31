@@ -109,7 +109,7 @@ export class ProductService {
     try {
       await this.productRepository.update(id, product);
     } catch (error) {
-      throw new BadRequestException('Failed to update product');
+      throw new BadRequestException('Failed to update product - ' + error.message);
     }
     return { msg: 'Product updated successfully' };
   }

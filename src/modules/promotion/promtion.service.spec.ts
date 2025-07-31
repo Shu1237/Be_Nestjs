@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { PromotionService } from './promotion.service';
 import { Promotion } from 'src/database/entities/promotion/promotion';
-import { PromotionType } from 'src/database/entities/promotion/promtion_type';
 import { Repository } from 'typeorm';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
 import { NotFoundException } from 'src/common/exceptions/not-found.exception';

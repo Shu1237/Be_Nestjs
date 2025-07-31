@@ -7,7 +7,6 @@ import {
   Param,
   Body,
   UseGuards,
-  Req,
   Put,
   ParseIntPipe,
   Query,

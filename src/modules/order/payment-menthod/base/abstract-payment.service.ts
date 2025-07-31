@@ -174,7 +174,7 @@ export abstract class AbstractPaymentService {
     //     throw new Error('Unsupported gateway for refund record');
     // }
 
-    async handleReturnSuccess(transaction: Transaction, rawResponse?: any): Promise<string> {
+    async handleReturnSuccess(transaction: Transaction): Promise<string> {
         const order = transaction.order;
         transaction.status = StatusOrder.SUCCESS;
         order.status = StatusOrder.SUCCESS;
