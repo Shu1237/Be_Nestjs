@@ -91,6 +91,12 @@ export class ActorController {
     type: String,
     example: '1990-01-01',
   })
+  @ApiQuery({
+    name: 'is_deleted',
+    required: false,
+    type: Boolean,
+    example: false,
+  })
   // @ApiBearerAuth()
   async getAllActors(@Query() query: ActorPaginationDto, @Req() req) {
     // checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can access this endpoint.');

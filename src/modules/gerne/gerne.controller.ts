@@ -22,10 +22,10 @@ import { Movie } from 'src/database/entities/cinema/movie';
 import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 import { GernePaginationDto } from 'src/common/pagination/dto/gerne/gerne.dto';
 
-@ApiBearerAuth()
+
 @Controller('gernes')
 export class GerneController {
-  constructor(private readonly gerneService: GerneService) {}
+  constructor(private readonly gerneService: GerneService) { }
 
   // GET - Lấy danh sách genres cho user
   @Get('user')
@@ -52,6 +52,13 @@ export class GerneController {
     enum: ['ASC', 'DESC'],
     example: 'ASC',
   })
+  @ApiQuery({
+    name: 'is_deleted',
+    required: false,
+    type: Boolean,
+    example: false,
+  })
+  @ApiBearerAuth()
   async findAllGernes(@Query() query: GernePaginationDto, @Req() req) {
     checkAdminEmployeeRole(
       req.user,
@@ -86,6 +93,7 @@ export class GerneController {
   @UseGuards(JwtAuthGuard)
   @Post()
   @ApiOperation({ summary: 'Create a new genre (admin, employee only)' })
+  @ApiBearerAuth()
   createGerne(@Body() createGerneDto: CreateGerneDto, @Req() req) {
     checkAdminEmployeeRole(
       req.user,
@@ -98,6 +106,7 @@ export class GerneController {
   @UseGuards(JwtAuthGuard)
   @Put(':id')
   @ApiOperation({ summary: 'Update genre by ID (admin, employee only)' })
+  @ApiBearerAuth()
   updateGerne(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateGerneDto: UpdateGerneDto,
@@ -114,6 +123,7 @@ export class GerneController {
   @UseGuards(JwtAuthGuard)
   @Patch(':id/soft-delete')
   @ApiOperation({ summary: 'Soft delete a genre (admin, employee only)' })
+  @ApiBearerAuth()
   softDeleteGerne(@Param('id', ParseIntPipe) id: number, @Req() req) {
     checkAdminEmployeeRole(
       req.user,
@@ -139,6 +149,7 @@ export class GerneController {
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete genre by ID (admin only)' })
+  @ApiBearerAuth()
   async deleteGerne(
     @Param('id', ParseIntPipe) id: number,
     @Req() req,

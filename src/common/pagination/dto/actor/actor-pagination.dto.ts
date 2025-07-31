@@ -1,5 +1,6 @@
+import { Transform } from 'class-transformer';
 import { BasePaginationDto } from '../basePagination.dto';
-import { IsIn, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsIn, IsOptional, IsString } from 'class-validator';
 
 export class ActorPaginationDto extends BasePaginationDto {
   @IsOptional()
@@ -23,4 +24,10 @@ export class ActorPaginationDto extends BasePaginationDto {
     message: 'Gender must be male or female',
   })
   gender?: string;
+
+
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsOptional()
+  @IsBoolean()
+  is_deleted?: boolean;
 }
