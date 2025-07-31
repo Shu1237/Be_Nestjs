@@ -51,6 +51,7 @@ export class CinemaRoomController {
     enum: ['ASC', 'DESC'],
     example: 'ASC',
   })
+  @ApiQuery({ name:'is_deleted', required: false, type: Boolean, example: false })
   async findAll(@Query() query: CinemaRoomPaginationDto, @Req() req) {
     checkAdminEmployeeRole(
       req.user,
