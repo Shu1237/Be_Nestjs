@@ -17,7 +17,7 @@ export const productFieldMapping: Record<string, FilterField> = {
   search: {
     customWhere: (qb: SelectQueryBuilder<any>, value: string) => {
       qb.andWhere(
-        `(product.name LIKE :search OR product.description LIKE :search)`,
+        `(LOWER(product.name) LIKE :search )`,
         { search: `%${value}%` },
       );
     },
