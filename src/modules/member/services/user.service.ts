@@ -83,16 +83,7 @@ export class UserService {
     return user;
   }
 
-  async findOneForToggle(id: string): Promise<User> {
-    const user = await this.userRepository.findOne({
-      where: { id },
-      relations: ['role'],
-    });
-    if (!user) {
-      throw new NotFoundException(`User with ID ${id} not found`);
-    }
-    return user;
-  }
+
 
   async findOneForToggle(id: string): Promise<User> {
     const user = await this.userRepository.findOne({
@@ -135,18 +126,7 @@ export class UserService {
     };
   }
 
-  async toggleStatus(id: string): Promise<{ msg: string; status: boolean }> {
-    const user = await this.findOneForToggle(id);
-
-    user.status = !user.status;
-    await this.userRepository.save(user);
-
-    const action = user.status ? 'activated' : 'deactivated';
-    return {
-      msg: `User ${action} successfully`,
-      status: user.status,
-    };
-  }
+ 
 
   // async changeStatus(id: string): Promise<User> {
   //   const user = await this.findOne(id);
