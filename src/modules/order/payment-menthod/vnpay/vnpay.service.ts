@@ -62,7 +62,7 @@ export class VnpayService extends AbstractPaymentService {
     );
   }
 
-  async createOrderVnPay(totalPrice: string, clientIp: string) {
+   createOrderVnPay(totalPrice: string, clientIp: string) {
     const date = new Date();
     const createDate = moment(date).format('YYYYMMDDHHmmss');
     const orderId = moment(date).format('DDHHmmss');

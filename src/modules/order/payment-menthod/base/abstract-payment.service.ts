@@ -284,7 +284,7 @@ export abstract class AbstractPaymentService {
 
         return `${this.configService.get<string>('redirectFE.url')}?status=success&orderId=${savedOrder.id}&total=${savedOrder.total_prices}&paymentMethod=${transaction.paymentMethod.name}`;
     }
-    async handleReturnFailed(transaction: Transaction): Promise<string> {
+     handleReturnFailed(transaction: Transaction){
         // const order = transaction.order;
 
         // // Change seat status from HELD to NOT_YET when payment fails
