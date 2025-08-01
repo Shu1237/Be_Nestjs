@@ -140,7 +140,7 @@ export class SeatService {
     const action = seat.is_deleted ? 'deleted' : 'restored';
     return { 
       success: true, 
-      msg: `Seat ${action} successfully`,
+      message: `Seat ${action} successfully`,
       seat: this.getSeatSummary(seat)
     };
   }

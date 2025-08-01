@@ -145,7 +145,7 @@ export class SeatController {
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Patch(':id/toggle-status')
-  @ApiOperation({ summary: 'Toggle seat status (delete/restore) by ID (admin only)' })
+  @ApiOperation({ summary: 'Toggle seat status (delete/restore) by ID (Admin only)' })
   toggleSeatStatus(@Param('id') id: string) {
     return this.seatService.toggleSeatStatus(id);
   }
