@@ -256,8 +256,9 @@ export class OrderService {
       ) {
         throw new BadRequestException('Promotion is not valid at this time.');
       }
-      // check score
-      if (promotion.exchange > user.score) {
+      // check score với tk user , admin thì bỏ qua
+      if (
+        promotion.exchange > user.score && user.role.role_id as Role === Role.USER) {
         throw new ConflictException(
           'You do not have enough score to use this promotion.',
         );
@@ -1147,7 +1148,7 @@ export class OrderService {
       }
 
       const checkUser = await this.getUserById(user.account_id);
-      if (newPromotion.exchange > checkUser.score) {
+      if (newPromotion.exchange > checkUser.score && user.role_id as Role === Role.USER) {
         throw new ConflictException('Not enough points to use this promotion');
       }
     }
