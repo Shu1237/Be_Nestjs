@@ -128,6 +128,16 @@ export class SeatController {
     @Body(new ValidationPipe({ whitelist: true })) dto: BulkSeatIdsDto) {
     return this.seatService.bulkDeleteSeats(dto);
   }
+
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
+  @Patch('bulk-restore')
+  @ApiOperation({ summary: 'Bulk restore multiple soft deleted seats (admin only)' })
+  @ApiBody({ type: BulkSeatIdsDto })
+  async bulkRestoreSeats(
+    @Body(new ValidationPipe({ whitelist: true })) dto: BulkSeatIdsDto) {
+    return this.seatService.bulkRestoreSeats(dto);
+  }
   // Commented out endpoints
   // @Patch('hold')
   // @ApiOperation({ summary: 'Hold seats' })
