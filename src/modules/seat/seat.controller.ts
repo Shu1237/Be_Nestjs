@@ -101,6 +101,8 @@ export class SeatController {
     return this.seatService.getSeatsByRoom(roomId);
   }
   // POST - Tạo seats theo bulk
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
   @Post('bulk')
   @ApiOperation({ summary: 'Create Seat By Row & Col' })
   createSeatsBulk(@Body() dto: BulkCreateSeatDto) {
