@@ -55,7 +55,8 @@ export class SeatTypeController {
     @Body() updateSeatTypeDto: UpdateSeatTypeDto) {
     return this.seatTypeService.updateSeatType(id, updateSeatTypeDto);
   }
-   @UseGuards(RolesGuard)
+
+  @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete seat type by ID (admin only)' })
