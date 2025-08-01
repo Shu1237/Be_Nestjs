@@ -30,6 +30,7 @@ describe('UserService', () => {
     mockUserRepo = {
       find: jest.fn(),
       findOne: jest.fn(),
+      findOneBy: jest.fn(),
       create: jest.fn(),
       save: jest.fn(),
       remove: jest.fn(),
@@ -41,6 +42,7 @@ describe('UserService', () => {
     mockRoleRepo = {
       find: jest.fn(),
       findOne: jest.fn(),
+      findOneBy: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -61,13 +63,13 @@ describe('UserService', () => {
           id: '1',
           username: 'user1',
           email: 'user1@test.com',
-          is_deleted: false,
+          status: true,
         },
         {
           id: '2',
           username: 'user2',
           email: 'user2@test.com',
-          is_deleted: false,
+          status: true,
         },
       ];
 
@@ -83,7 +85,7 @@ describe('UserService', () => {
       mockQueryBuilder.getManyAndCount.mockResolvedValue([mockUsers, 2]);
       mockQueryBuilder.getRawOne.mockResolvedValue({
         activeCount: 2,
-        deletedCount: 0,
+        inactiveCount: 0,
       });
 
       const result = await service.findAll(filters);
@@ -99,7 +101,7 @@ describe('UserService', () => {
       mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
       mockQueryBuilder.getRawOne.mockResolvedValue({
         activeCount: 0,
-        deletedCount: 0,
+        inactiveCount: 0,
       });
 
       const result = await service.findAll(filters);
@@ -132,7 +134,6 @@ describe('UserService', () => {
 
       await service.findAll(filters);
 
-      // Updated to match implementation which passes roleId as string
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         'user.role_id = :roleId',
         { roleId: '2' },
@@ -145,7 +146,6 @@ describe('UserService', () => {
 
       await service.findAll(filters);
 
-      // Updated to match implementation which uses status, not is_deleted
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         'user.status = :status',
         { status: true },
@@ -172,7 +172,6 @@ describe('UserService', () => {
 
       await service.findAll(filters);
 
-      // Directly testing the call to applySorting is difficult, just verify orderBy was called
       expect(mockQueryBuilder.orderBy).toHaveBeenCalled();
     });
 
@@ -192,7 +191,6 @@ describe('UserService', () => {
 
       await service.findAll(filters);
 
-      // If the service doesn't enforce a maximum, update the test expectation
       expect(mockQueryBuilder.take).toHaveBeenCalledWith(150);
     });
   });
@@ -203,7 +201,7 @@ describe('UserService', () => {
         id: '1',
         username: 'testuser',
         email: 'test@example.com',
-        is_deleted: false,
+        status: true,
       };
 
       (mockUserRepo.findOne as jest.Mock).mockResolvedValue(mockUser);
@@ -211,7 +209,6 @@ describe('UserService', () => {
       const result = await service.findOne('1');
 
       expect(result).toEqual(mockUser);
-      // Updated to match the implementation which includes status: true
       expect(mockUserRepo.findOne).toHaveBeenCalledWith({
         where: { id: '1', status: true },
         relations: ['role'],
@@ -250,8 +247,37 @@ describe('UserService', () => {
     });
   });
 
-  describe('3.update', () => {
-    it('✅ 3.1 should update user successfully', async () => {
+  describe('3.findOneForToggle', () => {
+    it('✅ 3.1 should return user when found (regardless of status)', async () => {
+      const mockUser = {
+        id: '1',
+        username: 'testuser',
+        email: 'test@example.com',
+        status: false,
+      };
+
+      (mockUserRepo.findOne as jest.Mock).mockResolvedValue(mockUser);
+
+      const result = await service.findOneForToggle('1');
+
+      expect(result).toEqual(mockUser);
+      expect(mockUserRepo.findOne).toHaveBeenCalledWith({
+        where: { id: '1' },
+        relations: ['role'],
+      });
+    });
+
+    it('❌ 3.2 should throw NotFoundException when user not found', async () => {
+      (mockUserRepo.findOne as jest.Mock).mockResolvedValue(undefined);
+
+      await expect(service.findOneForToggle('nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('4.update', () => {
+    it('✅ 4.1 should update user successfully', async () => {
       const mockUser = {
         id: '1',
         username: 'olduser',
@@ -275,7 +301,7 @@ describe('UserService', () => {
       expect(result.email).toBe('new@example.com');
     });
 
-    it('❌ 3.2 should throw NotFoundException when user not found', async () => {
+    it('❌ 4.2 should throw NotFoundException when user not found', async () => {
       (mockUserRepo.findOne as jest.Mock).mockResolvedValue(undefined);
 
       await expect(
@@ -283,7 +309,7 @@ describe('UserService', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('✅ 3.3 should update only provided fields', async () => {
+    it('✅ 4.3 should update only provided fields', async () => {
       const mockUser = {
         id: '1',
         username: 'olduser',
@@ -304,7 +330,7 @@ describe('UserService', () => {
       expect(result.email).toBe('old@example.com');
     });
 
-    it('❌ 3.4 should handle database error during update', async () => {
+    it('❌ 4.4 should handle database error during update', async () => {
       (mockUserRepo.findOne as jest.Mock).mockResolvedValue({ id: '1' });
       (mockUserRepo.save as jest.Mock).mockRejectedValue(
         new Error('Save failed'),
@@ -315,13 +341,12 @@ describe('UserService', () => {
       );
     });
 
-    it('✅ 3.5 should validate role_id if provided', async () => {
+    it('✅ 4.5 should validate role_id if provided', async () => {
       const mockUser = { id: '1', username: 'user' };
       const mockRole = { id: 2, role_name: 'Admin' };
 
       (mockUserRepo.findOne as jest.Mock).mockResolvedValue(mockUser);
-      // Add findOneBy method to mockRoleRepo
-      mockRoleRepo.findOneBy = jest.fn().mockResolvedValue(mockRole);
+      (mockRoleRepo.findOneBy as jest.Mock).mockResolvedValue(mockRole);
       (mockUserRepo.save as jest.Mock).mockResolvedValue({
         ...mockUser,
         role: mockRole,
@@ -332,13 +357,76 @@ describe('UserService', () => {
       expect(result.role).toEqual(mockRole);
     });
 
-    it('❌ 3.6 should throw error if role_id is invalid', async () => {
+    it('❌ 4.6 should throw error if role_id is invalid', async () => {
       const mockUser = { id: '1', username: 'user' };
 
       (mockUserRepo.findOne as jest.Mock).mockResolvedValue(mockUser);
-      (mockRoleRepo.findOne as jest.Mock).mockResolvedValue(undefined);
+      (mockRoleRepo.findOneBy as jest.Mock).mockResolvedValue(undefined);
 
       await expect(service.update('1', { role_id: 999 })).rejects.toThrow();
+    });
+  });
+
+  describe('5.toggleStatus', () => {
+    it('✅ 5.1 should activate user when currently inactive', async () => {
+      const mockUser = {
+        id: '1',
+        username: 'testuser',
+        status: false,
+      };
+
+      (mockUserRepo.findOne as jest.Mock).mockResolvedValue(mockUser);
+      (mockUserRepo.save as jest.Mock).mockResolvedValue({
+        ...mockUser,
+        status: true,
+      });
+
+      const result = await service.toggleStatus('1');
+
+      expect(result.msg).toBe('User activated successfully');
+      expect(result.status).toBe(true);
+      expect(mockUserRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: true }),
+      );
+    });
+
+    it('✅ 5.2 should deactivate user when currently active', async () => {
+      const mockUser = {
+        id: '1',
+        username: 'testuser',
+        status: true,
+      };
+
+      (mockUserRepo.findOne as jest.Mock).mockResolvedValue(mockUser);
+      (mockUserRepo.save as jest.Mock).mockResolvedValue({
+        ...mockUser,
+        status: false,
+      });
+
+      const result = await service.toggleStatus('1');
+
+      expect(result.msg).toBe('User deactivated successfully');
+      expect(result.status).toBe(false);
+      expect(mockUserRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: false }),
+      );
+    });
+
+    it('❌ 5.3 should throw NotFoundException when user not found', async () => {
+      (mockUserRepo.findOne as jest.Mock).mockResolvedValue(undefined);
+
+      await expect(service.toggleStatus('nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('❌ 5.4 should handle database error during toggle', async () => {
+      (mockUserRepo.findOne as jest.Mock).mockResolvedValue({ id: '1', status: true });
+      (mockUserRepo.save as jest.Mock).mockRejectedValue(
+        new Error('Save failed'),
+      );
+
+      await expect(service.toggleStatus('1')).rejects.toThrow('Save failed');
     });
   });
 });
