@@ -90,6 +90,9 @@ export class VisaService extends AbstractPaymentService {
         total_prices: orderBill.total_prices,
       },
     });
+    if(!session || !session.id || !session.url) {
+      throw new InternalServerErrorException('Failed to create Stripe session');
+    }
     const url = {
       payUrl: session.url,
       orderId: session.id,

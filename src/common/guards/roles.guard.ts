@@ -1,4 +1,4 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Role } from '../enums/roles.enum';
 import { ForbiddenException } from '../exceptions/forbidden.exception';
@@ -14,11 +14,12 @@ export class RolesGuard implements CanActivate {
       return true;
     }
     const request = context.switchToHttp().getRequest();
-    const user = request.user as JWTUserType;
-    if (!user || !user.role_id) {
+    const user = request.user as JWTUserType // luông có do jwtGuard đã bắt lõi authentication;
+    const hasRole= requiredRoles.includes(user.role_id);
+    if( !hasRole ) {
       throw new ForbiddenException(`Access denied. Required roles: ${requiredRoles.map(role => this.getRoleName(role)).join(', ')}`);
     }
-    return requiredRoles.includes(user.role_id);
+    return true;
   }
 
   private getRoleName(role: Role): string {
