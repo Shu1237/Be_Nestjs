@@ -12,7 +12,7 @@ export const orderFieldMapping: Record<string, FilterField> = {
   },
   search: {
     customWhere: (qb: SelectQueryBuilder<any>, value: string) => {
-      qb.andWhere('(user.username LIKE :search OR movie.name LIKE :search)', {
+      qb.andWhere('(user.username LIKE :search OR movie.name LIKE :search OR order.id LIKE :search)', {
         search: `%${value}%`,
       });
     },
