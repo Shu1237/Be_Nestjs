@@ -139,34 +139,74 @@ describe('PromotionService', () => {
     });
   });
 
-  describe('4.deleteSoftPromotion', () => {
-    it('✅ 4.1 should soft delete a promotion', async () => {
-      (mockRepo.findOne as jest.Mock).mockResolvedValue({
+  describe('4.togglePromotionStatus', () => {
+    it('✅ 4.1 should activate promotion when currently inactive', async () => {
+      const mockPromotion = {
         id: 1,
+        title: 'Test Promotion',
+        is_active: false,
+        promotionType: { id: 1, name: 'Discount' },
+      };
+
+      (mockRepo.findOne as jest.Mock).mockResolvedValue(mockPromotion);
+      (mockRepo.save as jest.Mock).mockResolvedValue({
+        ...mockPromotion,
         is_active: true,
       });
-      (mockRepo.save as jest.Mock).mockResolvedValue({
-        id: 1,
-        is_active: false,
-      });
-      const result = await service.deleteSoftPromotion(1);
-      expect(result).toEqual({ msg: 'Promotion deleted successfully' });
+
+      const result = await service.togglePromotionStatus(1);
+
+      expect(result.msg).toBe('Promotion activated successfully');
+      expect(mockRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ is_active: true }),
+      );
     });
 
-    it('❌ 4.2 should throw NotFoundException if not found', async () => {
+    it('✅ 4.2 should deactivate promotion when currently active', async () => {
+      const mockPromotion = {
+        id: 1,
+        title: 'Test Promotion',
+        is_active: true,
+        promotionType: { id: 1, name: 'Discount' },
+      };
+
+      (mockRepo.findOne as jest.Mock).mockResolvedValue(mockPromotion);
+      (mockRepo.save as jest.Mock).mockResolvedValue({
+        ...mockPromotion,
+        is_active: false,
+      });
+
+      const result = await service.togglePromotionStatus(1);
+
+      expect(result.msg).toBe('Promotion deactivated successfully');
+      expect(mockRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ is_active: false }),
+      );
+    });
+
+    it('❌ 4.3 should throw NotFoundException if promotion not found', async () => {
       (mockRepo.findOne as jest.Mock).mockResolvedValue(undefined);
-      await expect(service.deleteSoftPromotion(1)).rejects.toThrow(
+
+      await expect(service.togglePromotionStatus(999)).rejects.toThrow(
         NotFoundException,
       );
     });
 
-    it('❌ 4.3 should throw BadRequestException if already deleted', async () => {
-      (mockRepo.findOne as jest.Mock).mockResolvedValue({
+    it('❌ 4.4 should handle database error during toggle', async () => {
+      const mockPromotion = {
         id: 1,
-        is_active: false,
-      });
-      await expect(service.deleteSoftPromotion(1)).rejects.toThrow(
-        BadRequestException,
+        title: 'Test Promotion',
+        is_active: true,
+        promotionType: { id: 1, name: 'Discount' },
+      };
+
+      (mockRepo.findOne as jest.Mock).mockResolvedValue(mockPromotion);
+      (mockRepo.save as jest.Mock).mockRejectedValue(
+        new Error('Database error'),
+      );
+
+      await expect(service.togglePromotionStatus(1)).rejects.toThrow(
+        'Database error',
       );
     });
   });
