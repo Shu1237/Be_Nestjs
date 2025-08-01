@@ -14,10 +14,10 @@ export class PromotionCronService {
     private readonly promotionRepository: Repository<Promotion>,
   ) {}
 
-  @Cron('0 */2 * * *', {
+  @Cron('*/20 * * * *', {
     name: 'promotion-check',
-    // timeZone: 'Asia/Ho_Chi_Minh',
   })
+  
   async processPromotions(): Promise<void> {
     if (this.isRunning) return;
 

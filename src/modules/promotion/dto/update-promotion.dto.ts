@@ -18,12 +18,12 @@ export class UpdatePromotionDto {
   title?: string;
 
   @ApiProperty({ required: false, example: 'Up to 50% off' })
-  // @IsOptional()
+  @IsOptional()
   @IsString()
   detail?: string;
 
   @ApiProperty({ required: false, example: '50%' })
-  // @IsOptional()
+  @IsOptional()
   @IsString()
   discount?: string;
 
