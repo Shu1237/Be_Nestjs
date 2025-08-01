@@ -144,9 +144,9 @@ export class SeatController {
   // }
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
-  @Patch(':id/restore')
-  @ApiOperation({ summary: 'Restore soft-deleted seat by ID (admin only)' })
-  restoreSeat(@Param('id') id: string) {
-    return this.seatService.restoreSeat(id);
+  @Patch(':id/toggle-status')
+  @ApiOperation({ summary: 'Toggle seat status (delete/restore) by ID (Admin only)' })
+  toggleSeatStatus(@Param('id') id: string) {
+    return this.seatService.toggleSeatStatus(id);
   }
 }
