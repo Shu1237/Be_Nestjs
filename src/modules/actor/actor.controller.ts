@@ -21,14 +21,15 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
-import { JWTUserType } from 'src/common/utils/type';
-import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 import { ActorPaginationDto } from 'src/common/pagination/dto/actor/actor-pagination.dto';
+import { RolesGuard } from 'src/common/guards/roles.guard';
+import { Roles } from 'src/common/decorator/roles.decorator';
+import { Role } from 'src/common/enums/roles.enum';
 
 
 @Controller('actor')
 export class ActorController {
-  constructor(private readonly actorService: ActorService) {}
+  constructor(private readonly actorService: ActorService) { }
 
   // GET - Lấy danh sách actors cho user
   @Get('user')
@@ -97,9 +98,7 @@ export class ActorController {
     type: Boolean,
     example: false,
   })
-  // @ApiBearerAuth()
   async getAllActors(@Query() query: ActorPaginationDto, @Req() req) {
-    // checkAdminEmployeeRole(req.user, 'Unauthorized: Only admin or employee can access this endpoint.');
     const { page = 1, take = 10, ...restFilters } = query;
     return await this.actorService.getAllActors({
       page,
@@ -116,74 +115,56 @@ export class ActorController {
   }
 
   // POST - Tạo actor mới
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Post()
   @ApiOperation({ summary: 'Create a new actor' })
   @ApiBearerAuth()
-  async createActor(@Req() req, @Body() createActorDto: CreateActorDto) {
-    checkAdminEmployeeRole(
-      req.user,
-      'Unauthorized: Only admin or employee can create an actor.',
-    );
+  async createActor(@Body() createActorDto: CreateActorDto) {
     return await this.actorService.createActor(createActorDto);
   }
 
   // PUT - Cập nhật actor theo ID
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Put(':id')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update actor details' })
   async updateActor(
-    @Req() req,
     @Param('id') id: string,
     @Body() updateActorDto: UpdateActorDto,
   ) {
-    checkAdminEmployeeRole(
-      req.user,
-      'Unauthorized: Only admin or employee can update an actor.',
-    );
     return await this.actorService.updateActor(+id, updateActorDto);
   }
 
   // PATCH - Soft delete actor
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Patch(':id/soft-delete')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Soft delete an actor (admin, employee only)' })
-  async softDeleteActor(@Param('id', ParseIntPipe) id: number, @Req() req) {
-    const user = req.user as JWTUserType;
-    checkAdminEmployeeRole(
-      user,
-      'Unauthorized: Only admin or employee can soft delete an actor.',
-    );
+  async softDeleteActor(@Param('id', ParseIntPipe) id: number) {
     return await this.actorService.softDeleteActor(id);
   }
 
   // DELETE - Xóa actor vĩnh viễn
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Patch(':id/restore')
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Restore a soft-deleted actor (admin, employee only)',
   })
-  async restoreActor(@Param('id', ParseIntPipe) id: number, @Req() req) {
-    const user = req.user as JWTUserType;
-    checkAdminEmployeeRole(
-      user,
-      'Unauthorized: Only admin or employee can restore an actor.',
-    );
+  async restoreActor(@Param('id', ParseIntPipe) id: number) {
     return await this.actorService.restoreActor(id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Delete(':id')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Permanently delete an actor' })
-  async removeActor(@Req() req, @Param('id') id: string) {
-    checkAdminEmployeeRole(
-      req.user,
-      'Unauthorized: Only admin can permanently delete an actor.',
-    );
+  async removeActor(@Param('id') id: string) {
     return await this.actorService.removeActor(+id);
   }
 

@@ -58,16 +58,16 @@ export class TicketService {
     };
   }
   async getTicketOverview() {
-    const result = await this.ticketRepository
+    const result : { totalTickets: string; totalAvailable: string } = await this.ticketRepository
       .createQueryBuilder('ticket')
       .select([
         'COUNT(*) AS totalTickets',
         'COUNT(CASE WHEN ticket.is_used = false AND ticket.status = true THEN 1 END) AS totalAvailable',
       ])
-      .getRawOne();
+      .getRawOne() || { totalTickets: '0', totalAvailable: '0' };
 
-    const totalTickets = parseInt(result.totalTickets, 10);
-    const totalAvailable = parseInt(result.totalAvailable, 10);
+    const totalTickets = Number(result.totalTickets);
+    const totalAvailable = Number(result.totalAvailable);
     const totalUsed = totalTickets - totalAvailable;
 
     return {

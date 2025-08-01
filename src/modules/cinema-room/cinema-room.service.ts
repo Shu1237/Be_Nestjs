@@ -81,16 +81,16 @@ export class CinemaRoomService {
       page: filters.page,
     });
     const [cinemaRooms, total] = await qb.getManyAndCount();
-    const countResult = await this.cinemaRoomRepository
+    const countResult: { activeCount: number; deletedCount: number } = await this.cinemaRoomRepository
       .createQueryBuilder('cinemaRoom')
       .select([
         `SUM(CASE WHEN cinemaRoom.is_deleted = false THEN 1 ELSE 0 END) AS activeCount`,
         `SUM(CASE WHEN cinemaRoom.is_deleted = true THEN 1 ELSE 0 END) AS deletedCount`,
       ])
-      .getRawOne<{ activeCount: string; deletedCount: string }>();
+      .getRawOne() || { activeCount: 0, deletedCount: 0 };
 
-    const activeCount = parseInt(countResult?.activeCount || '0', 10);
-    const deletedCount = parseInt(countResult?.deletedCount || '0', 10);
+    const activeCount = Number(countResult?.activeCount) || 0;
+    const deletedCount = Number(countResult?.deletedCount) || 0;
     return buildPaginationResponse(cinemaRooms, {
       total,
       page: filters.page,

@@ -4,7 +4,6 @@ import { SeatTypeService } from './seat-type.service';
 import { SeatType } from 'src/database/entities/cinema/seat-type';
 import { NotFoundException } from 'src/common/exceptions/not-found.exception';
 import { Repository } from 'typeorm';
-import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
 
 describe('SeatTypeService', () => {
   let service: SeatTypeService;

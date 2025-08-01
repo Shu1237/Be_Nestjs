@@ -96,13 +96,13 @@ export class MovieService {
     });
     const [movies, total] = await qb.getManyAndCount();
     const summaries = movies.map((movie) => this.getMovieSummary(movie));
-    const counts = await this.movieRepository
+    const counts: { activeCount: number; deletedCount: number } = await this.movieRepository
       .createQueryBuilder('movie')
       .select([
         `SUM(CASE WHEN movie.is_deleted = false THEN 1 ELSE 0 END) AS activeCount`,
         `SUM(CASE WHEN movie.is_deleted = true THEN 1 ELSE 0 END) AS deletedCount`,
       ])
-      .getRawOne();
+      .getRawOne() || { activeCount: 0, deletedCount: 0 };
 
     const activeCount = Number(counts.activeCount) || 0;
     const deletedCount = Number(counts.deletedCount) || 0;

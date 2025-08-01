@@ -21,16 +21,18 @@ import {
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 import { SeatService } from './seat.service';
 import { BulkCreateSeatDto } from './dto/BulkCreateSeatDto';
-import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 import { SeatPaginationDto } from 'src/common/pagination/dto/seat/seatPagination.dto';
 import { BulkSeatOperationDto } from './dto/BulkSeatOperationDto';
 import { BulkSeatIdsDto } from './dto/BulkSeatIdsDto';
+import { Roles } from 'src/common/decorator/roles.decorator';
+import { Role } from 'src/common/enums/roles.enum';
+import { RolesGuard } from 'src/common/guards/roles.guard';
 
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 @Controller('seat')
 export class SeatController {
-  constructor(private readonly seatService: SeatService) {}
+  constructor(private readonly seatService: SeatService) { }
 
   // GET - Lấy danh sách seats cho user
   @Get('user')
@@ -40,6 +42,8 @@ export class SeatController {
   }
 
   // GET - Lấy danh sách seats cho admin (với phân trang)
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Get('admin')
   @ApiOperation({ summary: 'Get all seats for admin' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
@@ -47,14 +51,14 @@ export class SeatController {
   @ApiQuery({
     name: 'cinema_room_id',
     required: false,
-    type: String,
-    example: 'room-uuid',
+    type: Number,
+    example: 1,
   })
   @ApiQuery({
     name: 'seat_type_id',
     required: false,
-    type: String,
-    example: 'type-uuid',
+    type: Number,
+    example: 1,
   })
   @ApiQuery({ name: 'seat_row', required: false, type: String, example: 'A' })
   @ApiQuery({
@@ -81,13 +85,8 @@ export class SeatController {
     enum: ['ASC', 'DESC'],
     example: 'ASC',
   })
-  getAllSeats(@Query() query: SeatPaginationDto, @Req() req) {
-    checkAdminEmployeeRole(
-      req.user,
-      'Unauthorized: Only admin or employee can access this endpoint.',
-    );
+  getAllSeats(@Query() query: SeatPaginationDto) {
     const { page = 1, take = 10, ...restFilters } = query;
-
     return this.seatService.getAllSeats({
       page,
       take: Math.min(take, 100),
@@ -102,6 +101,8 @@ export class SeatController {
     return this.seatService.getSeatsByRoom(roomId);
   }
   // POST - Tạo seats theo bulk
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
   @Post('bulk')
   @ApiOperation({ summary: 'Create Seat By Row & Col' })
   createSeatsBulk(@Body() dto: BulkCreateSeatDto) {
@@ -109,25 +110,22 @@ export class SeatController {
   }
 
   // PUT - Bulk update multiple seats (PUT THIS BEFORE DYNAMIC ROUTES)
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
   @Put('bulk-update')
   @ApiOperation({ summary: 'Bulk update multiple seats (admin only)' })
   @ApiBody({ type: BulkSeatOperationDto })
   async bulkUpdateSeats(
-    @Body(new ValidationPipe({ whitelist: true })) dto: BulkSeatOperationDto,
-    @Req() { user }: any,
-  ) {
-    checkAdminEmployeeRole(user, 'Only admin can bulk update seats');
+    @Body(new ValidationPipe({ whitelist: true })) dto: BulkSeatOperationDto) {
     return this.seatService.bulkUpdateSeats(dto);
   }
-
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
   @Delete('bulk-delete')
   @ApiOperation({ summary: 'Bulk soft delete multiple seats (admin only)' })
   @ApiBody({ type: BulkSeatIdsDto })
   async bulkDeleteSeats(
-    @Body(new ValidationPipe({ whitelist: true })) dto: BulkSeatIdsDto,
-    @Req() { user }: any,
-  ) {
-    checkAdminEmployeeRole(user, 'Only admin can bulk delete seats');
+    @Body(new ValidationPipe({ whitelist: true })) dto: BulkSeatIdsDto) {
     return this.seatService.bulkDeleteSeats(dto);
   }
   // Commented out endpoints
@@ -144,11 +142,11 @@ export class SeatController {
   // cancelHoldSeat(@Body() data: HoldSeatDto, @Req() req) {
   //   return this.seatService.cancelHoldSeat(data, req.user);
   // }
-
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
   @Patch(':id/restore')
   @ApiOperation({ summary: 'Restore soft-deleted seat by ID (admin only)' })
-  restoreSeat(@Param('id') id: string, @Req() req) {
-    checkAdminEmployeeRole(req.user, 'Only admin can restore seats');
+  restoreSeat(@Param('id') id: string) {
     return this.seatService.restoreSeat(id);
   }
 }

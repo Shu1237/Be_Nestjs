@@ -7,7 +7,6 @@ import {
   Param,
   Body,
   UseGuards,
-  Req,
   Put,
   ParseIntPipe,
   Query,
@@ -17,14 +16,16 @@ import { CreateScheduleDto } from './dto/create-schedule.dto';
 import { UpdateScheduleDto } from './dto/update-schedule.dto';
 import { ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
-import { checkAdminEmployeeRole } from 'src/common/role/admin_employee';
 import { SchedulePaginationDto } from 'src/common/pagination/dto/shedule/schedulePagination.dto';
+import { Roles } from 'src/common/decorator/roles.decorator';
+import { Role } from 'src/common/enums/roles.enum';
+import { RolesGuard } from 'src/common/guards/roles.guard';
 
 @Controller('schedules')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class ScheduleController {
-  constructor(private readonly scheduleService: ScheduleService) {}
+  constructor(private readonly scheduleService: ScheduleService) { }
 
   // GET - Lấy danh sách schedules cho user
   @Get('user')
@@ -34,6 +35,8 @@ export class ScheduleController {
   }
 
   // GET - Lấy danh sách schedules cho admin (với phân trang)
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Get('admin')
   @ApiOperation({ summary: 'Get all schedules for admin' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
@@ -81,11 +84,7 @@ export class ScheduleController {
     enum: ['ASC', 'DESC'],
     example: 'DESC',
   })
-  async findAll(@Query() query: SchedulePaginationDto, @Req() req) {
-    checkAdminEmployeeRole(
-      req.user,
-      'Unauthorized: Only admin or employee can access this endpoint.',
-    );
+  async findAll(@Query() query: SchedulePaginationDto) {
     const { page = 1, take = 10, ...restFilters } = query;
     return await this.scheduleService.findAll({
       page,
@@ -102,63 +101,50 @@ export class ScheduleController {
   }
 
   // POST - Tạo schedule mới
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Post()
   @ApiOperation({ summary: 'Create a new schedule (admin, employee only)' })
-  async create(@Body() createScheduleDto: CreateScheduleDto, @Req() req) {
-    checkAdminEmployeeRole(
-      req.user,
-      'Unauthorized: Only admin or employee can create a schedule.',
-    );
+  async create(@Body() createScheduleDto: CreateScheduleDto) {
     return await this.scheduleService.create(createScheduleDto);
   }
 
   // PUT - Cập nhật schedule theo ID
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Put(':id')
   @ApiOperation({ summary: 'Update schedule by ID (admin, employee only)' })
   async update(
     @Param('id') id: number,
     @Body() updateScheduleDto: UpdateScheduleDto,
-    @Req() req,
   ) {
-    checkAdminEmployeeRole(
-      req.user,
-      'Unauthorized: Only admin or employee can update a schedule.',
-    );
     return await this.scheduleService.update(id, updateScheduleDto);
   }
 
   // PATCH - Soft delete schedule
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Patch(':id/soft-delete')
   @ApiOperation({ summary: 'Soft delete a schedule (admin, employee only)' })
-  async softDeleteSchedule(@Param('id', ParseIntPipe) id: number, @Req() req) {
-    checkAdminEmployeeRole(
-      req.user,
-      'Unauthorized: Only admin or employee can soft delete a schedule.',
-    );
+  async softDeleteSchedule(@Param('id', ParseIntPipe) id: number) {
     return await this.scheduleService.softDeleteSchedule(id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Patch(':id/restore')
   @ApiOperation({
     summary: 'Restore a soft-deleted schedule (admin, employee only)',
   })
-  async restoreSchedule(@Param('id', ParseIntPipe) id: number, @Req() req) {
-    checkAdminEmployeeRole(
-      req.user,
-      'Unauthorized: Only admin or employee can restore a schedule.',
-    );
+  async restoreSchedule(@Param('id', ParseIntPipe) id: number) {
     return await this.scheduleService.restoreSchedule(id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete schedule by ID (admin, employee only)' })
-  async remove(@Param('id') id: number, @Req() req) {
-    checkAdminEmployeeRole(
-      req.user,
-      'Unauthorized: Only admin or employee can delete a schedule.',
-    );
+  async remove(@Param('id') id: number) {
     return await this.scheduleService.softDelete(id);
   }
 }

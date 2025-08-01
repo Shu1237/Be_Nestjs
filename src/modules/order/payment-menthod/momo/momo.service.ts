@@ -2,12 +2,11 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
-  Redirect,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
 import axios from 'axios';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Transaction } from 'src/database/entities/order/transaction';
 import { Order } from 'src/database/entities/order/order';
 import { Ticket } from 'src/database/entities/order/ticket';
@@ -162,7 +161,7 @@ export class MomoService extends AbstractPaymentService {
     }
     if (Number(resultCode) === 0) {
       // Giao dịch thành công
-      return this.handleReturnSuccess(transaction, query);
+      return this.handleReturnSuccess(transaction);
     } else {
       // Giao dịch thất bại
       return this.handleReturnFailed(transaction);

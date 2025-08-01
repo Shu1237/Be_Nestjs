@@ -68,16 +68,16 @@ export class ActorService {
     });
     const [actors, total] = await qb.getManyAndCount();
 
-    const counts = await this.actorRepository
+    const counts: { activeCount: number; deletedCount: number } = await this.actorRepository
       .createQueryBuilder('actor')
       .select([
         `SUM(CASE WHEN actor.is_deleted = false THEN 1 ELSE 0 END) AS activeCount`,
         `SUM(CASE WHEN actor.is_deleted = true THEN 1 ELSE 0 END) AS deletedCount`,
       ])
-      .getRawOne();
+      .getRawOne() || { activeCount: 0, deletedCount: 0 };
 
-    const activeCount = parseInt(counts?.activeCount || '0', 10);
-    const deletedCount = parseInt(counts?.deletedCount || '0', 10);
+    const activeCount =  Number(counts?.activeCount) || 0;
+    const deletedCount =  Number(counts?.deletedCount) || 0;
     return buildPaginationResponse(actors, {
       total,
       page: filters.page,

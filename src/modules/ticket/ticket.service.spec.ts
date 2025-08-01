@@ -33,10 +33,6 @@ describe('TicketService', () => {
 
   describe('1.markTicketsAsUsed', () => {
     it('✅ 1.1 should mark all found tickets as used', async () => {
-      const fakeTickets = [
-        { id: 'a', is_used: false },
-        { id: 'b', is_used: false },
-      ];
       (mockTicketRepo.find as jest.Mock).mockResolvedValue([
         { id: 'a', is_used: false },
         { id: 'b', is_used: false },

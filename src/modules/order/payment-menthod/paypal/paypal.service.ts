@@ -141,17 +141,13 @@ export class PayPalService extends AbstractPaymentService {
     if (transaction.status !== StatusOrder.PENDING) {
       throw new NotFoundException('Transaction is not in pending state');
     }
-    if (transaction.paymentMethod.id === Method.PAYPAL) {
-      const captureResult = await this.captureOrderPaypal(
-        transaction.transaction_code,
+    const captureResult = await this.captureOrderPaypal(
+      transaction.transaction_code,
+    );
+    if (captureResult.status !== 'COMPLETED') {
+      throw new InternalServerErrorException(
+        'Payment not completed on PayPal',
       );
-      if (captureResult.status !== 'COMPLETED') {
-        throw new InternalServerErrorException(
-          'Payment not completed on PayPal',
-        );
-      }
-      // Pass the captureResult as rawResponse to create refund record properly
-      return this.handleReturnSuccess(transaction, captureResult);
     }
     return this.handleReturnSuccess(transaction);
   }

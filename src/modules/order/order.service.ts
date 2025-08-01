@@ -1,6 +1,6 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, IsNull, Not, Between } from 'typeorm';
+import { Repository, In, Between } from 'typeorm';
 import { Order } from 'src/database/entities/order/order';
 import { OrderDetail } from 'src/database/entities/order/order-detail';
 import { PaymentMethod } from 'src/database/entities/order/payment-method';
@@ -41,7 +41,6 @@ import { NotFoundException } from 'src/common/exceptions/not-found.exception';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
 import { ConflictException } from 'src/common/exceptions/conflict.exception';
 import { ForbiddenException } from 'src/common/exceptions/forbidden.exception';
-import { InternalServerErrorException } from 'src/common/exceptions/internal-server-error.exception';
 import { ConfigService } from '@nestjs/config';
 import { TicketService } from '../ticket/ticket.service';
 import { Role } from 'src/common/enums/roles.enum';
@@ -739,7 +738,7 @@ export class OrderService {
         .getRawOne<{ revenue: string }>(),
     ]);
 
-    const countByStatus = Object.fromEntries(
+    const countByStatus: Record<string, number> = Object.fromEntries(
       statusCounts.map((row) => [row.status, Number(row.count)]),
     );
 
@@ -1420,44 +1419,7 @@ export class OrderService {
       message: 'Order cancelled successfully',
     };
   }
-  async checkQueryOrderByGateway(orderId: number) {
-    const order = await this.orderRepository.findOne({
-      where: { id: orderId },
-      relations: ['transaction', 'transaction.paymentMethod'],
-    });
-    if (!order || !order.transaction || !order.transaction.paymentMethod) {
-      throw new NotFoundException(
-        `Order with ID ${orderId} not found or has no transaction`,
-      );
-    }
-    switch (order.transaction.paymentMethod.id) {
-      case Method.MOMO:
-        return this.momoService.queryOrderStatusMomo(
-          order.transaction.transaction_code,
-        );
-      case Method.PAYPAL:
-        return this.paypalService.queryOrderStatusPaypal(
-          order.transaction.transaction_code,
-        );
-      case Method.VISA:
-        return this.visaService.queryOrderStatusVisa(
-          order.transaction.transaction_code,
-        );
-      case Method.VNPAY:
-        return this.vnpayService.queryOrderStatusVnpay(
-          order.transaction.transaction_code,
-          formatDate(order.order_date),
-        );
-      case Method.ZALOPAY:
-        return this.zalopayService.queryOrderStatusZaloPay(
-          order.transaction.transaction_code,
-        );
-      default:
-        throw new BadRequestException(
-          `Unsupported payment method for query: ${order.transaction.paymentMethod.name}`,
-        );
-    }
-  }
+
 
   async checkAllOrdersStatusByGateway() {
     const now = new Date();
@@ -1598,6 +1560,44 @@ export class OrderService {
 
     return result;
   }
+  //   async checkQueryOrderByGateway(orderId: number) {
+  //   const order = await this.orderRepository.findOne({
+  //     where: { id: orderId },
+  //     relations: ['transaction', 'transaction.paymentMethod'],
+  //   });
+  //   if (!order || !order.transaction || !order.transaction.paymentMethod) {
+  //     throw new NotFoundException(
+  //       `Order with ID ${orderId} not found or has no transaction`,
+  //     );
+  //   }
+  //   switch (order.transaction.paymentMethod.id) {
+  //     case Method.MOMO:
+  //       return this.momoService.queryOrderStatusMomo(
+  //         order.transaction.transaction_code,
+  //       );
+  //     case Method.PAYPAL:
+  //       return this.paypalService.queryOrderStatusPaypal(
+  //         order.transaction.transaction_code,
+  //       );
+  //     case Method.VISA:
+  //       return this.visaService.queryOrderStatusVisa(
+  //         order.transaction.transaction_code,
+  //       );
+  //     case Method.VNPAY:
+  //       return this.vnpayService.queryOrderStatusVnpay(
+  //         order.transaction.transaction_code,
+  //         formatDate(order.order_date),
+  //       );
+  //     case Method.ZALOPAY:
+  //       return this.zalopayService.queryOrderStatusZaloPay(
+  //         order.transaction.transaction_code,
+  //       );
+  //     default:
+  //       throw new BadRequestException(
+  //         `Unsupported payment method for query: ${order.transaction.paymentMethod.name}`,
+  //       );
+  //   }
+  // }
 
   // refund order
   // async refundOrder(orderId: number) {

@@ -55,13 +55,13 @@ export class ProductService {
       take: fillters.take,
     });
     const [products, total] = await qb.getManyAndCount();
-    const counts = await this.productRepository
+    const counts : { activeCount: number; deletedCount: number } = await this.productRepository
       .createQueryBuilder('product')
       .select([
         `SUM(CASE WHEN product.is_deleted = false THEN 1 ELSE 0 END) AS activeCount`,
         `SUM(CASE WHEN product.is_deleted = true THEN 1 ELSE 0 END) AS deletedCount`,
       ])
-      .getRawOne();
+      .getRawOne() || { activeCount: 0, deletedCount: 0 };
     const activeCount = Number(counts.activeCount) || 0;
     const deletedCount = Number(counts.deletedCount) || 0;
     return buildPaginationResponse(products, {
@@ -109,7 +109,7 @@ export class ProductService {
     try {
       await this.productRepository.update(id, product);
     } catch (error) {
-      throw new BadRequestException('Failed to update product');
+      throw new BadRequestException('Failed to update product - ' + error.message);
     }
     return { msg: 'Product updated successfully' };
   }
