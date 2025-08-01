@@ -5,12 +5,7 @@ import { Order } from 'src/database/entities/order/order';
 import { OrderDetail } from 'src/database/entities/order/order-detail';
 import { PaymentMethod } from 'src/database/entities/order/payment-method';
 import { Transaction } from 'src/database/entities/order/transaction';
-import {
-  HoldSeatType,
-  JWTUserType,
-  OrderBillType,
-  SeatInfo,
-} from 'src/common/utils/type';
+import { HoldSeatType, JWTUserType, OrderBillType, SeatInfo } from 'src/common/utils/type';
 import { User } from 'src/database/entities/user/user';
 import { Promotion } from 'src/database/entities/promotion/promotion';
 import { Schedule } from 'src/database/entities/cinema/schedule';
@@ -29,12 +24,7 @@ import { StatusOrder } from 'src/common/enums/status-order.enum';
 import { MyGateWay } from 'src/common/gateways/seat.gateway';
 import { OrderExtra } from 'src/database/entities/order/order-extra';
 import { Product } from 'src/database/entities/item/product';
-import {
-  applyAudienceDiscount,
-  calculateProductTotal,
-  formatDate,
-  roundUpToNearest,
-} from 'src/common/utils/helper';
+import { applyAudienceDiscount, calculateProductTotal, formatDate, roundUpToNearest, } from 'src/common/utils/helper';
 import { ProductTypeEnum } from 'src/common/enums/product.enum';
 import { Combo } from 'src/database/entities/item/combo';
 import { NotFoundException } from 'src/common/exceptions/not-found.exception';
@@ -54,6 +44,7 @@ import { buildPaginationResponse } from 'src/common/pagination/pagination-respon
 import { applyPagination } from 'src/common/pagination/applyPagination';
 import { PaymentGateway } from 'src/common/enums/payment_gatewat.enum';
 import { DailyTransactionSummary } from 'src/database/entities/order/daily_transaction_summary';
+import { AudienceType } from 'src/common/enums/audience_type.enum';
 @Injectable()
 export class OrderService {
   constructor(
@@ -249,8 +240,8 @@ export class OrderService {
     if (promotion.id !== 1) {
       //check trường hợp nhân viên đặt hàng nhưng lại dùng giảm giá mà k gán customer
       if (
-        user.role.role_id === Role.EMPLOYEE ||
-        (user.role.role_id === Role.ADMIN && !orderBill.customer_id)
+        user.role.role_id as Role === Role.EMPLOYEE ||
+        (user.role.role_id as Role === Role.ADMIN && !orderBill.customer_id)
       ) {
         throw new ConflictException(
           'Staff must provide customer ID when using promotion.',
@@ -321,7 +312,7 @@ export class OrderService {
       if (!seat) throw new NotFoundException(`Seat ${seatData.id} not found`);
 
       const ticketType = ticketForAudienceTypes.find(
-        (t) => t.audience_type === seatData.audience_type,
+        (t) => t.audience_type as AudienceType === seatData.audience_type as AudienceType,
       );
       const discount = parseFloat(ticketType?.discount ?? '0');
 
@@ -364,9 +355,9 @@ export class OrderService {
       );
     }
 
-    let paymentCode: any;
+
     // get payment code
-    paymentCode = await this.getPaymentCode(orderBill, clientIp);
+    const paymentCode: { payUrl: string, orderId: string } = await this.getPaymentCode(orderBill, clientIp);
     if (!paymentCode || !paymentCode.payUrl || !paymentCode.orderId) {
       throw new BadRequestException('Payment method failed to create order');
     }
@@ -377,7 +368,7 @@ export class OrderService {
     const newOrder = await this.orderRepository.save({
       total_prices: orderBill.total_prices,
       status:
-        Number(orderBill.payment_method_id) === Method.CASH
+        Number(orderBill.payment_method_id as Method) === Method.CASH
           ? StatusOrder.SUCCESS
           : StatusOrder.PENDING,
       user,
@@ -390,7 +381,7 @@ export class OrderService {
       transaction_date: new Date(), // Save as UTC in database
       prices: orderBill.total_prices,
       status:
-        Number(orderBill.payment_method_id) === Method.CASH
+        Number(orderBill.payment_method_id as Method) === Method.CASH
           ? StatusOrder.SUCCESS
           : StatusOrder.PENDING,
       paymentMethod,
@@ -421,7 +412,7 @@ export class OrderService {
     for (const seatData of orderBill.seats) {
       const seat = scheduleSeats.find((s) => s.seat.id === seatData.id);
       const ticketType = ticketForAudienceTypes.find(
-        (t) => t.audience_type === seatData.audience_type,
+        (t) => t.audience_type as AudienceType === seatData.audience_type as AudienceType,
       );
       const priceBeforePromo = seatPriceMap.get(seatData.id)!;
 
@@ -445,7 +436,7 @@ export class OrderService {
         seat: seat.seat,
         schedule,
         ticketType,
-        status: Number(orderBill.payment_method_id) === Method.CASH,
+        status: Number(orderBill.payment_method_id as Method) === Method.CASH,
       });
 
       ticketsToSave.push(newTicket);
@@ -488,7 +479,7 @@ export class OrderService {
       for (const item of productTotals) {
         const shareRatio = item.total / totalProductBeforePromo || 0;
         const isCombo =
-          item.product.type.toLocaleLowerCase() === ProductTypeEnum.COMBO;
+          (item.product.type.toLocaleLowerCase() as ProductTypeEnum) === ProductTypeEnum.COMBO;
 
         const basePrice = Number(item.product.price);
         let unit_price_after_discount = basePrice;
@@ -519,7 +510,7 @@ export class OrderService {
           order: newOrder,
           product: item.product,
           status:
-            Number(orderBill.payment_method_id) === Method.CASH
+            Number(orderBill.payment_method_id as Method) === Method.CASH
               ? StatusOrder.SUCCESS
               : StatusOrder.PENDING,
         });
@@ -529,7 +520,7 @@ export class OrderService {
     }
 
     // If payment method is CASH, immediately change seat status to BOOKED
-    if (Number(orderBill.payment_method_id) === Method.CASH) {
+    if (Number(orderBill.payment_method_id as Method) === Method.CASH) {
       const seatIds = orderBill.seats.map((seat) => seat.id);
       await this.changeStatusScheduleSeatToBooked(
         seatIds,
@@ -541,14 +532,14 @@ export class OrderService {
     if (
       orderBill.customer_id &&
       orderBill.customer_id.trim() !== '' &&
-      Number(orderBill.payment_method_id) === Method.CASH
+      Number(orderBill.payment_method_id as Method) === Method.CASH
     ) {
       const customer = await this.userRepository.findOne({
         where: { id: orderBill.customer_id },
         relations: ['role'],
       });
 
-      if (!customer || customer.role.role_id !== Role.USER) {
+      if (!customer || customer.role.role_id as Role !== Role.USER) {
         throw new ForbiddenException('Invalid customer for point accumulation');
       }
 
@@ -565,7 +556,7 @@ export class OrderService {
         order: newOrder,
       });
     }
-    if (Number(orderBill.payment_method_id) === Method.CASH) {
+    if (Number(orderBill.payment_method_id as Method) === Method.CASH) {
       this.gateway.emitBookSeat({
         schedule_id: orderBill.schedule_id,
         seatIds: orderBill.seats.map((seat) => seat.id),
@@ -638,8 +629,8 @@ export class OrderService {
     return true;
   }
 
-  private async getPaymentCode(orderBill: OrderBillType, clientIp: string) {
-    switch (Number(orderBill.payment_method_id)) {
+  private async getPaymentCode(orderBill: OrderBillType, clientIp: string): Promise<{ payUrl: string, orderId: string }> {
+    switch (Number(orderBill.payment_method_id as Method)) {
       case Method.MOMO:
         return this.momoService.createOrderMomo(orderBill.total_prices);
       case Method.PAYPAL:
@@ -993,7 +984,7 @@ export class OrderService {
     }
 
     // 3. Kiểm tra trạng thái đơn hàng
-    if (order.status !== StatusOrder.PENDING) {
+    if (order.status as StatusOrder !== StatusOrder.PENDING) {
       throw new BadRequestException('Only pending orders can be processed');
     }
 
@@ -1070,10 +1061,7 @@ export class OrderService {
     }
 
     // 6. Tạo payment URL mới
-    const paymentCode = await this.getPaymentCode(
-      orderData as OrderBillType,
-      clientIp,
-    );
+    const paymentCode = await this.getPaymentCode(orderData, clientIp);
 
     if (!paymentCode?.payUrl || !paymentCode?.orderId) {
       throw new BadRequestException('Failed to create payment URL');
@@ -1118,7 +1106,7 @@ export class OrderService {
 
     if (!existingOrder)
       throw new NotFoundException(`Order ${orderId} not found`);
-    if (existingOrder.status !== StatusOrder.PENDING) {
+    if (existingOrder.status as StatusOrder !== StatusOrder.PENDING) {
       throw new BadRequestException('Only pending orders can be updated');
     }
 
@@ -1141,7 +1129,7 @@ export class OrderService {
 
     if (isPromotionChanged && newPromotion?.id !== 1) {
       if (
-        (user.role_id === Role.EMPLOYEE || user.role_id === Role.ADMIN) &&
+        (user.role_id as Role === Role.EMPLOYEE || user.role_id as Role === Role.ADMIN) &&
         !updateData.customer_id
       ) {
         throw new ConflictException(
@@ -1218,7 +1206,7 @@ export class OrderService {
       if (quantity <= 0) continue;
 
       let basePrice = Number(product.price);
-      if (product.type.toLowerCase() === ProductTypeEnum.COMBO) {
+      if ((product.type.toLowerCase() as ProductTypeEnum) === ProductTypeEnum.COMBO) {
         const combo = product as Combo;
         if (combo.discount) {
           basePrice *= 1 - combo.discount / 100;
@@ -1246,7 +1234,7 @@ export class OrderService {
         product,
         order: existingOrder,
         status:
-          Number(updateData.payment_method_id) === Method.CASH
+          Number(updateData.payment_method_id as Method) === Method.CASH
             ? StatusOrder.SUCCESS
             : StatusOrder.PENDING,
       });
@@ -1264,7 +1252,7 @@ export class OrderService {
       promotion: newPromotion,
       order_date: new Date(),
       status:
-        Number(updateData.payment_method_id) === Method.CASH
+        Number(updateData.payment_method_id as Method) === Method.CASH
           ? StatusOrder.SUCCESS
           : StatusOrder.PENDING,
     });
@@ -1286,13 +1274,13 @@ export class OrderService {
     existingOrder.transaction.transaction_code = paymentCode.orderId;
     existingOrder.transaction.transaction_date = new Date();
     existingOrder.transaction.status =
-      Number(updateData.payment_method_id) === Method.CASH
+      Number(updateData.payment_method_id as Method) === Method.CASH
         ? StatusOrder.SUCCESS
         : StatusOrder.PENDING;
     await this.transactionRepository.save(existingOrder.transaction);
     // update schedule seat in db
     // If payment method is CASH, immediately change seat status to BOOKED
-    if (Number(updateData.payment_method_id) === Method.CASH) {
+    if (Number(updateData.payment_method_id as Method) === Method.CASH) {
       const seatIds = updateData.seats.map((seat) => seat.id);
       await this.changeStatusScheduleSeatToBooked(
         seatIds,
@@ -1302,7 +1290,7 @@ export class OrderService {
     //  Cộng điểm nếu là thanh toán CASH + promotion mới
     if (
       updateData.customer_id &&
-      Number(updateData.payment_method_id) === Method.CASH &&
+      Number(updateData.payment_method_id as Method) === Method.CASH &&
       isPromotionChanged
     ) {
       const customer = await this.userRepository.findOne({
@@ -1310,7 +1298,7 @@ export class OrderService {
         relations: ['role'],
       });
 
-      if (!customer || customer.role.role_id !== Role.USER) {
+      if (!customer || customer.role.role_id as Role !== Role.USER) {
         throw new ForbiddenException('Invalid customer for point accumulation');
       }
 
@@ -1326,7 +1314,7 @@ export class OrderService {
       });
     }
     // socket emit for order update for cash
-    if (Number(updateData.payment_method_id) === Method.CASH) {
+    if (Number(updateData.payment_method_id as Method) === Method.CASH) {
       this.gateway.emitBookSeat({
         schedule_id: updateData.schedule_id,
         seatIds: updateData.seats.map((seat) => seat.id),
@@ -1355,7 +1343,7 @@ export class OrderService {
     }
 
     // check status
-    if (order.status !== StatusOrder.PENDING) {
+    if (order.status as StatusOrder !== StatusOrder.PENDING) {
       throw new BadRequestException('Only pending orders can be cancelled');
     }
     // 1. Free up the seats that were booked for this order
@@ -1372,7 +1360,7 @@ export class OrderService {
       });
 
       for (const scheduleSeat of scheduleSeats) {
-        if (scheduleSeat.status === StatusSeat.HELD) {
+        if (scheduleSeat.status as StatusSeat === StatusSeat.HELD) {
           scheduleSeat.status = StatusSeat.NOT_YET;
         }
       }
@@ -1472,7 +1460,7 @@ export class OrderService {
       code: string,
       date: Date,
     ) => {
-      switch (method) {
+      switch (method as PaymentGateway) {
         case PaymentGateway.MOMO:
           return await this.momoService.queryOrderStatusMomo(code);
         case PaymentGateway.PAYPAL:
@@ -1501,8 +1489,8 @@ export class OrderService {
       const method = methodMap[methodId];
       if (!method) return;
 
-      if (method === PaymentGateway.CASH) {
-        if (status === StatusOrder.SUCCESS) {
+      if (method as PaymentGateway === PaymentGateway.CASH) {
+        if (status as StatusOrder === StatusOrder.SUCCESS) {
           result[method].totalSuccess++;
           result[method].totalRevenue += Number(total_prices) || 0;
         } else {
