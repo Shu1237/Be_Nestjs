@@ -107,7 +107,7 @@ export class PromotionService {
       ...dto,
       start_time: dto.start_time ? new Date(dto.start_time) : undefined,
       end_time: dto.end_time ? new Date(dto.end_time) : undefined,
-      is_active: dto.is_active ?? false,
+      is_active: dto.is_active ?? true,
       promotionType: promotionType as PromotionType,
     });
 
