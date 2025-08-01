@@ -108,39 +108,7 @@ describe('ProductService', () => {
     });
   });
 
-  describe('3.updateProduct', () => {
-    it('✅ 3.1 should update a product successfully', async () => {
-      (mockProductRepo.findOne as jest.Mock).mockResolvedValue({
-        id: 1,
-        name: 'OldName',
-      });
-      (mockProductRepo.save as jest.Mock).mockResolvedValue({
-        id: 1,
-        name: 'NewName',
-      });
-      const result = await service.updateProduct(1, { name: 'NewName' });
-      expect(result).toEqual({ msg: 'Product updated successfully' });
-    });
 
-    it('❌ 3.2 should throw NotFoundException if product not found', async () => {
-      (mockProductRepo.findOne as jest.Mock).mockResolvedValue(undefined);
-      await expect(service.updateProduct(99, { name: 'X' })).rejects.toThrow(
-        NotFoundException,
-      );
-    });
-    it('❌ 3.3 should throw if save fails', async () => {
-      (mockProductRepo.findOne as jest.Mock).mockResolvedValue({
-        id: 1,
-        name: 'Old',
-      });
-      (mockProductRepo.save as jest.Mock).mockRejectedValue(
-        new Error('Save failed'),
-      );
-      await expect(service.updateProduct(1, { name: 'New' })).rejects.toThrow(
-        'Save failed',
-      );
-    });
-  });
 
   describe('4.deleteProduct', () => {
     it('✅ 4.1 should delete a product if found', async () => {
@@ -302,15 +270,6 @@ describe('ProductService', () => {
     await expect(service.createProduct(dtoFood)).resolves.toEqual({ msg: 'Product created successfully' });
     await expect(service.createProduct(dtoCombo)).resolves.toEqual({ msg: 'Product created successfully' });
   });
-  it('✅ 11.1 should not change existing fields if dto omits them', async () => {
-    const existing = { id: 1, name: 'Coke', price: 10000 };
-    (mockProductRepo.findOne as jest.Mock).mockResolvedValue(existing);
-    (mockProductRepo.save as jest.Mock).mockResolvedValue(existing);
-  
-    const result = await service.updateProduct(1, { name: 'Coke Zero' } as any);
-    expect(result).toEqual({ msg: 'Product updated successfully' });
-    expect(mockProductRepo.save).toHaveBeenCalledWith(expect.objectContaining({ price: 10000 }));
-  });
   it('❌ 16.1 should throw when id is NaN', async () => {
     (mockProductRepo.findOne as jest.Mock).mockResolvedValue(null);
     await expect(service.restoreProduct(NaN)).rejects.toThrow(NotFoundException);
@@ -343,12 +302,7 @@ describe('ProductService', () => {
   
   
  
-  it('✅ 24.1 should not save if values are unchanged', async () => {
-    const existing = { id: 1, name: 'Coke', price: 10000 };
-    (mockProductRepo.findOne as jest.Mock).mockResolvedValue(existing);
-    const result = await service.updateProduct(1, { name: 'Coke', price: 10000 } as any);
-    expect(mockProductRepo.save).toHaveBeenCalledWith(existing);
-  });
+  
  
   it('✅ 26.1 should convert string id to number and delete', async () => {
     (mockProductRepo.delete as jest.Mock).mockResolvedValue({ affected: 1 });

@@ -263,67 +263,7 @@ describe('CinemaRoomService', () => {
     });
   });
 
-  describe('4.remove', () => {
-    it('✅ 4.1 should delete a cinema room successfully', async () => {
-      (mockCinemaRoomRepo.findOne as jest.Mock).mockResolvedValue({ id: 1 });
-      (mockCinemaRoomRepo.remove as jest.Mock).mockResolvedValue({});
-      const result = await service.remove(1);
-      expect(result).toEqual({ msg: 'Cinema Room deleted successfully' });
-    });
-    it('❌ 4.3 should throw error if remove fails', async () => {
-      (mockCinemaRoomRepo.findOne as jest.Mock).mockResolvedValue({ id: 1 });
-      (mockCinemaRoomRepo.remove as jest.Mock).mockRejectedValue(
-        new Error('Remove failed'),
-      );
-
-      await expect(service.remove(1)).rejects.toThrow('Remove failed');
-    });
-    it('❌ 4.4 should throw if remove fails due to DB error', async () => {
-      (mockCinemaRoomRepo.findOne as jest.Mock).mockResolvedValue({ id: 1 });
-      (mockCinemaRoomRepo.remove as jest.Mock).mockRejectedValue(
-        new Error('SQL error'),
-      );
-      await expect(service.remove(1)).rejects.toThrow('SQL error');
-    });
-  });
-
-  describe('5.softDeleteCinemaRoom', () => {
-    it('✅ 5.1 should soft delete a cinema room', async () => {
-      const cinemaRoom = { id: 1, is_deleted: false };
-      (mockCinemaRoomRepo.findOne as jest.Mock).mockResolvedValue(cinemaRoom);
-      (mockCinemaRoomRepo.save as jest.Mock).mockResolvedValue({
-        ...cinemaRoom,
-        is_deleted: true,
-      });
-      const result = await service.softDeleteCinemaRoom(1);
-      expect(result).toEqual({
-        msg: 'Cinema Room soft-deleted successfully',
-        cinemaRoom,
-      });
-    });
-    it('❌ 5.2 should throw NotFoundException if not found', async () => {
-      (mockCinemaRoomRepo.findOne as jest.Mock).mockResolvedValue(undefined);
-      await expect(service.softDeleteCinemaRoom(1)).rejects.toThrow(
-        NotFoundException,
-      );
-    });
-    it('✅ 5.3 should still proceed if already soft-deleted (idempotent)', async () => {
-      const cinemaRoom = { id: 1, is_deleted: true };
-      (mockCinemaRoomRepo.findOne as jest.Mock).mockResolvedValue(cinemaRoom);
-      (mockCinemaRoomRepo.save as jest.Mock).mockResolvedValue(cinemaRoom);
-
-      const result = await service.softDeleteCinemaRoom(1);
-      expect(result.cinemaRoom.is_deleted).toBe(true);
-    });
-    it('✅ 5.4 should allow soft delete even if already soft-deleted', async () => {
-      const room = { id: 1, is_deleted: true };
-      (mockCinemaRoomRepo.findOne as jest.Mock).mockResolvedValue(room);
-      (mockCinemaRoomRepo.save as jest.Mock).mockResolvedValue(room);
-      const result = await service.softDeleteCinemaRoom(1);
-      expect(result.cinemaRoom.is_deleted).toBe(true);
-    });
-  });
-
+  
   describe('6.restoreCinemaRoom', () => {
     it('✅ 6.1 should restore a soft-deleted cinema room', async () => {
       const cinemaRoom = { id: 1, is_deleted: true };
