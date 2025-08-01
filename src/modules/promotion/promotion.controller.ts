@@ -126,23 +126,15 @@ export class PromotionController {
   updatePromotion(
     @Param('id', ParseIntPipe) id: number,
     @Body() updatePromotionDto: UpdatePromotionDto,
-
   ) {
     return this.promotionService.updatePromotion(id, updatePromotionDto);
   }
 
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
-  @Patch(':id')
-  @ApiOperation({ summary: 'Soft delete promotion by ID (admin only)' })
-  async deleteSoftPromotion(@Param('id', ParseIntPipe) id: number) {
-    return this.promotionService.deleteSoftPromotion(id);
-  }
-  @UseGuards(RolesGuard)
-  @Roles(Role.ADMIN, Role.EMPLOYEE)
-  @Patch(':id/restore')
-  @ApiOperation({ summary: 'Restore soft-deleted promotion by ID (admin only)' })
-  async restorePromotion(@Param('id', ParseIntPipe) id: number) {
-    return this.promotionService.restorePromotion(id);
+  @Patch(':id/toggle-status')
+  @ApiOperation({ summary: 'Toggle promotion status (activate/deactivate) by ID (Admin only)' })
+  togglePromotionStatus(@Param('id', ParseIntPipe) id: number) {
+    return this.promotionService.togglePromotionStatus(id);
   }
 }

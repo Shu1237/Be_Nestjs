@@ -46,13 +46,14 @@ export class PromotionService {
       take: fillters.take,
     });
     const [promotions, total] = await qb.getManyAndCount();
-    const counts: { activeCount: number; deletedCount: number } = await this.promotionRepository
-      .createQueryBuilder('promotion')
-      .select([
-        `SUM(CASE WHEN promotion.is_active = false THEN 1 ELSE 0 END) AS activeCount`,
-        `SUM(CASE WHEN promotion.is_active = true THEN 1 ELSE 0 END) AS deletedCount`,
-      ])
-      .getRawOne() || { activeCount: 0, deletedCount: 0 };
+    const counts: { activeCount: number; deletedCount: number } =
+      (await this.promotionRepository
+        .createQueryBuilder('promotion')
+        .select([
+          `SUM(CASE WHEN promotion.is_active = false THEN 1 ELSE 0 END) AS activeCount`,
+          `SUM(CASE WHEN promotion.is_active = true THEN 1 ELSE 0 END) AS deletedCount`,
+        ])
+        .getRawOne()) || { activeCount: 0, deletedCount: 0 };
 
     const activeCount = counts.activeCount || 0;
     const deletedCount = counts.deletedCount || 0;
@@ -120,41 +121,22 @@ export class PromotionService {
     return { msg: 'Promotion updated successfully' };
   }
 
-  // async deletePromotion(id: number) {
-  //   const promotion = await this.promotionRepository.findOne({
-  //     where: { id },
-  //   });
-  //   if (!promotion) {
-  //     throw new NotFoundException('Promotion not found');
-  //   }
-  //   await this.promotionRepository.remove(promotion);
-  //   return { msg: 'Promotion deleted successfully' };
-  // }
+  async togglePromotionStatus(id: number) {
+    const promotion = await this.promotionRepository.findOne({
+      where: { id },
+      relations: ['promotionType'],
+    });
 
-  async deleteSoftPromotion(id: number) {
-    const promotion = await this.promotionRepository.findOne({ where: { id } });
     if (!promotion) {
       throw new NotFoundException('Promotion not found');
     }
 
-    if (!promotion.is_active) {
-      throw new BadRequestException('Promotion is already deleted');
-    }
-
-    promotion.is_active = false;
+    // Toggle the is_active status
+    promotion.is_active = !promotion.is_active;
     await this.promotionRepository.save(promotion);
 
-    return { msg: 'Promotion deleted successfully' };
-  }
-  async restorePromotion(id: number) {
-    const promotion = await this.promotionRepository.findOne({ where: { id } });
-    if (!promotion) throw new NotFoundException('Promotion not found');
-    if (!promotion.is_active) {
-      throw new BadRequestException('Promotion is not soft-deleted');
-    }
-    promotion.is_active = false;
-    await this.promotionRepository.save(promotion);
-    return { msg: 'Promotion restored successfully' };
+    const action = promotion.is_active ? 'activated' : 'deactivated';
+    return { msg: `Promotion ${action} successfully` };
   }
 
   private validateDates(
