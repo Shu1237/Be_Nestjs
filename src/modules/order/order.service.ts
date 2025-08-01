@@ -222,7 +222,20 @@ export class OrderService {
     orderBill: OrderBillType,
     clientIp: string,
   ) {
-    const user = await this.getUserById(userData.account_id);
+    let user: User | null = null;
+    let customer: User | null = null;
+    // nếu có customerid thì gọi // 
+    if (orderBill.customer_id) {
+      const [fetchedUser, fetchedCustomer] = await Promise.all([
+        this.getUserById(userData.account_id),
+        this.getUserById(orderBill.customer_id),
+      ]);
+      user = fetchedUser;
+      customer = fetchedCustomer;
+    }
+    else {
+      user = await this.getUserById(userData.account_id);
+    }
     // check products
     const products = orderBill.products || [];
     let orderExtras: Product[] = [];
@@ -262,6 +275,14 @@ export class OrderService {
         throw new ConflictException(
           'You do not have enough score to use this promotion.',
         );
+      }
+      if (customer) {
+        // Check if customer has enough score
+        if (promotion.exchange > customer.score) {
+          throw new ConflictException(
+            'Customer does not have enough score to use this promotion.',
+          );
+        }
       }
     }
 
@@ -530,16 +551,7 @@ export class OrderService {
     }
 
     // add score for user , employee order
-    if (
-      orderBill.customer_id &&
-      orderBill.customer_id.trim() !== '' &&
-      Number(orderBill.payment_method_id as Method) === Method.CASH
-    ) {
-      const customer = await this.userRepository.findOne({
-        where: { id: orderBill.customer_id },
-        relations: ['role'],
-      });
-
+    if (customer && Number(orderBill.payment_method_id as Method) === Method.CASH) {
       if (!customer || customer.role.role_id as Role !== Role.USER) {
         throw new ForbiddenException('Invalid customer for point accumulation');
       }
@@ -1127,7 +1139,17 @@ export class OrderService {
     const newPromotion = isPromotionChanged
       ? await this.getPromotionById(updateData.promotion_id)
       : existingOrder.promotion;
-
+    const isChangeCustomerId = updateData.customer_id !== existingOrder.customer_id;
+    let newCustomer: User | null = null;
+    if (isChangeCustomerId) {
+      if (!updateData.customer_id) {
+        throw new BadRequestException('Customer ID is required when changing customer');
+      }
+      newCustomer = await this.getUserById(updateData.customer_id);
+      if (!newCustomer) {
+        throw new NotFoundException(`Customer with ID ${updateData.customer_id} not found`);
+      }
+    }
     if (isPromotionChanged && newPromotion?.id !== 1) {
       if (
         (user.role_id as Role === Role.EMPLOYEE || user.role_id as Role === Role.ADMIN) &&
@@ -1146,10 +1168,15 @@ export class OrderService {
       ) {
         throw new BadRequestException('Promotion is not valid at this time');
       }
+      if (user.role_id as Role !== Role.USER) {
+        // check score of customer 
+        if (newCustomer && newPromotion.exchange > newCustomer.score) {
+          throw new ConflictException(
+            'Not enough points to use this promotion for customer',
+          );
+        }
 
-      const checkUser = await this.getUserById(user.account_id);
-      if (newPromotion.exchange > checkUser.score && user.role_id as Role === Role.USER) {
-        throw new ConflictException('Not enough points to use this promotion');
+
       }
     }
 
@@ -1256,6 +1283,7 @@ export class OrderService {
         Number(updateData.payment_method_id as Method) === Method.CASH
           ? StatusOrder.SUCCESS
           : StatusOrder.PENDING,
+      customer_id: isChangeCustomerId ? newCustomer?.id : existingOrder.customer_id,
     });
 
     //  Update lại transaction
