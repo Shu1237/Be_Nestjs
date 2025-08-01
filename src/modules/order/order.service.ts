@@ -1508,7 +1508,6 @@ export class OrderService {
           result[method].totalFailed++;
         }
       } catch (err) {
-        console.error(`Error processing order ${order.id}:`, err);
         result[method].totalFailed++;
       }
     });
