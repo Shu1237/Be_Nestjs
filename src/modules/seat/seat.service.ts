@@ -122,6 +122,29 @@ export class SeatService {
       relations: ['seatType'],
     });
   }
+  
+  async toggleSeatStatus(id: string) {
+    const seat = await this.seatRepository.findOne({
+      where: { id },
+      relations: ['seatType', 'cinemaRoom'],
+    });
+
+    if (!seat) {
+      throw new NotFoundException('Seat not found');
+    }
+
+    // Toggle the is_deleted status
+    seat.is_deleted = !seat.is_deleted;
+    await this.seatRepository.save(seat);
+
+    const action = seat.is_deleted ? 'deleted' : 'restored';
+    return { 
+      success: true, 
+      msg: `Seat ${action} successfully`,
+      seat: this.getSeatSummary(seat)
+    };
+  }
+  
   async restoreSeat(id: string) {
     const seat = await this.seatRepository.findOne({
       where: { id, is_deleted: false },
