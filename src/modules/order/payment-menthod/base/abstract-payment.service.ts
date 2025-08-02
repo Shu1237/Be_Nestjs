@@ -106,104 +106,11 @@ export abstract class AbstractPaymentService {
             await this.scheduleSeatRepository.save(seat);
         }
     }
-    // async createOrderRefundRecord(params: {
-    //     order: Order;
-    //     transaction: Transaction;
-    //     gateway: PaymentGateway;
-    //     response: any;
-    // }): Promise<OrderRefund> {
-    //     const { order, transaction, gateway, response } = params;
-
-    //     const commonData = {
-    //         order,
-    //         payment_gateway: gateway,
-    //         order_ref_id: `refund_${Date.now()}`,
-    //         refund_amount: order.total_prices,
-    //         refund_status: RefundStatus.PENDING,
-    //         created_at: new Date(),
-    //         description: `Refund for order ${order.id} via ${gateway}`,
-    //     };
-
-    //     if (gateway === PaymentGateway.MOMO) {
-    //         return this.orderRefundRepository.save(
-    //             this.orderRefundRepository.create({
-    //                 ...commonData,
-    //                 transaction_code: response.transId,
-    //                 partner_code: this.configService.get<string>('momo.partnerCode'),
-    //                 request_id: response.requestId,
-    //                 signature: response.signature,
-    //                 lang: 'vi',
-    //             }),
-    //         );
-    //     }
-
-    //     if (gateway === PaymentGateway.PAYPAL) {
-    //         return this.orderRefundRepository.save(
-    //             this.orderRefundRepository.create({
-    //                 ...commonData,
-    //                 transaction_code: transaction.transaction_code,
-    //                 currency_code: 'USD',
-    //                 request_id: response?.purchase_units?.[0]?.payments?.captures?.[0]?.id || transaction.transaction_code,
-    //             }),
-    //         );
-    //     }
-
-    //     if (gateway === PaymentGateway.VISA) {
-    //         // Handle both old format (sessionId|paymentIntentId) and new format (sessionId only)
-    //         const transactionCode = transaction.transaction_code;
-    //         const paymentIntentId = response?.payment_intent || null;
-            
-    //         const refundData = {
-    //             ...commonData,
-    //             transaction_code: transactionCode,
-    //             currency_code: 'USD',
-    //             request_id: paymentIntentId || transactionCode,
-    //             order_ref_id: transactionCode, // sessionId for retrieving session later
-    //         };
-            
-    //         // Only include payment_intent_id if it exists and is not null
-    //         if (paymentIntentId) {
-    //             (refundData as any).payment_intent_id = paymentIntentId;
-    //         }
-            
-    //         return this.orderRefundRepository.save(
-    //             this.orderRefundRepository.create(refundData),
-    //         );
-    //     }
-
-    //     throw new Error('Unsupported gateway for refund record');
-    // }
-
     async handleReturnSuccess(transaction: Transaction): Promise<string> {
         const order = transaction.order;
         transaction.status = StatusOrder.SUCCESS;
         order.status = StatusOrder.SUCCESS;
-
         await this.transactionRepository.save(transaction);
-        // const paymentMethodId = transaction.paymentMethod.id;
-        // let gateway: PaymentGateway | null = null;
-
-        // switch (paymentMethodId) {
-        //     case Method.MOMO:
-        //         gateway = PaymentGateway.MOMO;
-        //         break;
-        //     case Method.PAYPAL:
-        //         gateway = PaymentGateway.PAYPAL;
-        //         break;
-        //     case Method.VISA:
-        //         gateway = PaymentGateway.VISA;
-        //         break;
-        // }
-
-        // if (gateway) {
-        //     await this.createOrderRefundRecord({
-        //         order,
-        //         transaction,
-        //         gateway,
-        //         response: rawResponse,
-        //     });
-        // }
-
         const endScheduleTime = order.orderDetails[0].ticket.schedule.end_movie_time;
         const endTime = new Date(endScheduleTime).getTime();
         const now = Date.now();
@@ -270,7 +177,16 @@ export abstract class AbstractPaymentService {
         }
 
         try {
-            await this.sendOrderConfirmationEmail(order, transaction);
+            const user = await this.userRepository.findOne({
+                where: { id: order.user.id },
+                relations: ['role'],
+            });
+            if (!user) {
+                throw new NotFoundException('User not found');
+            }
+            if (user.role.role_id === Role.USER) {
+                await this.sendOrderConfirmationEmail(order, transaction);
+            }
         } catch (error) {
             // console.error('Mailer error:', error);
             throw new NotFoundException('Failed to send confirmation email');
@@ -284,7 +200,7 @@ export abstract class AbstractPaymentService {
 
         return `${this.configService.get<string>('redirectFE.url')}?status=success&orderId=${savedOrder.id}&total=${savedOrder.total_prices}&paymentMethod=${transaction.paymentMethod.name}`;
     }
-     handleReturnFailed(transaction: Transaction){
+    handleReturnFailed(transaction: Transaction) {
         // const order = transaction.order;
 
         // // Change seat status from HELD to NOT_YET when payment fails
