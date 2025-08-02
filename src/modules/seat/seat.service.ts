@@ -122,6 +122,29 @@ export class SeatService {
       relations: ['seatType'],
     });
   }
+  
+  async toggleSeatStatus(id: string) {
+    const seat = await this.seatRepository.findOne({
+      where: { id },
+      relations: ['seatType', 'cinemaRoom'],
+    });
+
+    if (!seat) {
+      throw new NotFoundException('Seat not found');
+    }
+
+    // Toggle the is_deleted status
+    seat.is_deleted = !seat.is_deleted;
+    await this.seatRepository.save(seat);
+
+    const action = seat.is_deleted ? 'deleted' : 'restored';
+    return { 
+      success: true, 
+      message: `Seat ${action} successfully`,
+      seat: this.getSeatSummary(seat)
+    };
+  }
+  
   async restoreSeat(id: string) {
     const seat = await this.seatRepository.findOne({
       where: { id, is_deleted: false },
@@ -373,6 +396,7 @@ export class SeatService {
     const { seat_ids, room_id } = dto;
     if (!seat_ids?.length)
       throw new BadRequestException('No seat IDs provided');
+    
     // Build where condition
     const whereCondition: {
       id: any;
@@ -384,25 +408,73 @@ export class SeatService {
     if (room_id) {
       whereCondition.cinemaRoom = { id: parseInt(room_id) };
     }
-    // Get valid seats (bao gồm cả seats đã bị soft delete)
+    
+    // Get valid seats (including already soft deleted seats)
     const existingSeats = await this.seatRepository.find({
       where: whereCondition,
-      select: ['id'],
+      select: ['id', 'is_deleted'],
     });
 
     if (!existingSeats.length) {
       throw new NotFoundException('No seats found to delete');
     }
+    
     const validIds = existingSeats.map((s) => s.id);
-    // Execute hard delete
-    const result = await this.seatRepository.delete({
-      id: In(validIds),
-    });
+    
+    // Execute soft delete by updating is_deleted flag
+    const result = await this.seatRepository.update(
+      { id: In(validIds) },
+      { is_deleted: true }
+    );
+    
     return {
       success: true,
       deleted_count: result.affected || 0,
       deleted_seat_ids: validIds,
-      message: 'Seats deleted successfully',
+      message: 'Seats soft deleted successfully',
+    };
+  }
+
+  async bulkRestoreSeats(dto: BulkSeatIdsDto) {
+    const { seat_ids, room_id } = dto;
+    if (!seat_ids?.length)
+      throw new BadRequestException('No seat IDs provided');
+    
+    // Build where condition
+    const whereCondition: {
+      id: any;
+      cinemaRoom?: { id: number };
+    } = {
+      id: In(seat_ids),
+    };
+
+    if (room_id) {
+      whereCondition.cinemaRoom = { id: parseInt(room_id) };
+    }
+    
+    // Get valid seats (including already soft deleted seats)
+    const existingSeats = await this.seatRepository.find({
+      where: whereCondition,
+      select: ['id', 'is_deleted'],
+    });
+
+    if (!existingSeats.length) {
+      throw new NotFoundException('No seats found to restore');
+    }
+    
+    const validIds = existingSeats.map((s) => s.id);
+    
+    // Execute soft restore by updating is_deleted flag
+    const result = await this.seatRepository.update(
+      { id: In(validIds) },
+      { is_deleted: false }
+    );
+    
+    return {
+      success: true,
+      restored_count: result.affected || 0,
+      restored_seat_ids: validIds,
+      message: 'Seats restored successfully',
     };
   }
 }

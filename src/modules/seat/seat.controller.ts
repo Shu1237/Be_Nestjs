@@ -6,7 +6,6 @@ import {
   Param,
   Put,
   UseGuards,
-  Req,
   Patch,
   Query,
   Delete,
@@ -116,7 +115,7 @@ export class SeatController {
   @ApiOperation({ summary: 'Bulk update multiple seats (admin only)' })
   @ApiBody({ type: BulkSeatOperationDto })
   async bulkUpdateSeats(
-    @Body(new ValidationPipe({ whitelist: true })) dto: BulkSeatOperationDto) {
+    @Body() dto: BulkSeatOperationDto) {
     return this.seatService.bulkUpdateSeats(dto);
   }
   @UseGuards(RolesGuard)
@@ -125,8 +124,18 @@ export class SeatController {
   @ApiOperation({ summary: 'Bulk soft delete multiple seats (admin only)' })
   @ApiBody({ type: BulkSeatIdsDto })
   async bulkDeleteSeats(
-    @Body(new ValidationPipe({ whitelist: true })) dto: BulkSeatIdsDto) {
+    @Body() dto: BulkSeatIdsDto) {
     return this.seatService.bulkDeleteSeats(dto);
+  }
+
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
+  @Patch('bulk-restore')
+  @ApiOperation({ summary: 'Bulk restore multiple soft deleted seats (admin only)' })
+  @ApiBody({ type: BulkSeatIdsDto })
+  async bulkRestoreSeats(
+    @Body() dto: BulkSeatIdsDto) {
+    return this.seatService.bulkRestoreSeats(dto);
   }
   // Commented out endpoints
   // @Patch('hold')
@@ -144,9 +153,9 @@ export class SeatController {
   // }
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
-  @Patch(':id/restore')
-  @ApiOperation({ summary: 'Restore soft-deleted seat by ID (admin only)' })
-  restoreSeat(@Param('id') id: string) {
-    return this.seatService.restoreSeat(id);
+  @Patch(':id/toggle-status')
+  @ApiOperation({ summary: 'Toggle seat status (delete/restore) by ID (Admin only)' })
+  toggleSeatStatus(@Param('id') id: string) {
+    return this.seatService.toggleSeatStatus(id);
   }
 }

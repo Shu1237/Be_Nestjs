@@ -14,10 +14,10 @@ export class PromotionCronService {
     private readonly promotionRepository: Repository<Promotion>,
   ) {}
 
-  @Cron('0 */2 * * *', {
+  @Cron('* * * * *', {
     name: 'promotion-check',
-    // timeZone: 'Asia/Ho_Chi_Minh',
   })
+
   async processPromotions(): Promise<void> {
     if (this.isRunning) return;
 
@@ -74,16 +74,16 @@ export class PromotionCronService {
     }
   }
 
-  async manualPromotionCheck(): Promise<{
-    message: string;
-    timestamp: string;
-  }> {
-    await this.processPromotions();
-    return {
-      message: 'Manual check completed',
-      timestamp: new Date().toLocaleString('vi-VN', {
-        // timeZone: 'Asia/Ho_Chi_Minh',
-      }),
-    };
-  }
+  // async manualPromotionCheck(): Promise<{
+  //   message: string;
+  //   timestamp: string;
+  // }> {
+  //   await this.processPromotions();
+  //   return {
+  //     message: 'Manual check completed',
+  //     timestamp: new Date().toLocaleString('vi-VN', {
+  //       // timeZone: 'Asia/Ho_Chi_Minh',
+  //     }),
+  //   };
+  // }
 }
