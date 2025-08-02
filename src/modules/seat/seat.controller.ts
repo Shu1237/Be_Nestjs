@@ -6,7 +6,6 @@ import {
   Param,
   Put,
   UseGuards,
-  Req,
   Patch,
   Query,
   Delete,
@@ -116,7 +115,7 @@ export class SeatController {
   @ApiOperation({ summary: 'Bulk update multiple seats (admin only)' })
   @ApiBody({ type: BulkSeatOperationDto })
   async bulkUpdateSeats(
-    @Body(new ValidationPipe({ whitelist: true })) dto: BulkSeatOperationDto) {
+    @Body() dto: BulkSeatOperationDto) {
     return this.seatService.bulkUpdateSeats(dto);
   }
   @UseGuards(RolesGuard)
@@ -125,7 +124,7 @@ export class SeatController {
   @ApiOperation({ summary: 'Bulk soft delete multiple seats (admin only)' })
   @ApiBody({ type: BulkSeatIdsDto })
   async bulkDeleteSeats(
-    @Body(new ValidationPipe({ whitelist: true })) dto: BulkSeatIdsDto) {
+    @Body() dto: BulkSeatIdsDto) {
     return this.seatService.bulkDeleteSeats(dto);
   }
 
@@ -135,7 +134,7 @@ export class SeatController {
   @ApiOperation({ summary: 'Bulk restore multiple soft deleted seats (admin only)' })
   @ApiBody({ type: BulkSeatIdsDto })
   async bulkRestoreSeats(
-    @Body(new ValidationPipe({ whitelist: true })) dto: BulkSeatIdsDto) {
+    @Body() dto: BulkSeatIdsDto) {
     return this.seatService.bulkRestoreSeats(dto);
   }
   // Commented out endpoints
