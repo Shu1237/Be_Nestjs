@@ -62,10 +62,25 @@ export class GerneService {
     });
 
     const [gernes, total] = await qb.getManyAndCount();
+    
+    // Get counts for active and deleted genres
+    const counts = await this.gerneRepository
+      .createQueryBuilder('gerne')
+      .select([
+        `SUM(CASE WHEN gerne.is_deleted = false THEN 1 ELSE 0 END) AS activeCount`,
+        `SUM(CASE WHEN gerne.is_deleted = true THEN 1 ELSE 0 END) AS deletedCount`,
+      ])
+      .getRawOne() || { activeCount: 0, deletedCount: 0 };
+
+    const activeCount = Number(counts?.activeCount) || 0;
+    const deletedCount = Number(counts?.deletedCount) || 0;
+
     return buildPaginationResponse(gernes, {
       page: filters.page,
       take: filters.take,
       total,
+      activeCount,
+      deletedCount,
     });
   }
 
