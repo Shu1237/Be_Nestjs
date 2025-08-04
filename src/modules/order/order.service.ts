@@ -383,7 +383,7 @@ export class OrderService {
     if (!paymentCode || !paymentCode.payUrl || !paymentCode.orderId) {
       throw new BadRequestException('Payment method failed to create order');
     }
-   
+
 
     // Create order
 
@@ -522,13 +522,13 @@ export class OrderService {
             unit_price_after_discount *= 1 - comboProduct.discount / 100;
           }
         }
-          const newOrderExtraForeachProduct = this.orderExtraRepository.create({
-            quantity: item.quantity,
-            unit_price: roundUpToNearest(
-              unit_price_after_discount,
-              1000,
-            ).toString(),
-            order: newOrder,
+        const newOrderExtraForeachProduct = this.orderExtraRepository.create({
+          quantity: item.quantity,
+          unit_price: roundUpToNearest(
+            unit_price_after_discount,
+            1000,
+          ).toString(),
+          order: newOrder,
           product: item.product,
           status:
             Number(orderBill.payment_method_id as Method) === Method.CASH
@@ -537,8 +537,9 @@ export class OrderService {
         });
         orderExtrasToSave.push(newOrderExtraForeachProduct);
       }
-
-      await this.orderExtraRepository.save(orderExtrasToSave);
+      if (orderExtrasToSave.length > 0) {
+        await this.orderExtraRepository.save(orderExtrasToSave);
+      }
     }
 
     // If payment method is CASH, immediately change seat status to BOOKED
