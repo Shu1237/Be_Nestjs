@@ -23,7 +23,7 @@ export class Promotion {
   @Column({ type: 'varchar', nullable: false })
   code: string;
 
-  @Column({ type: 'varchar', nullable: false })
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: false })
   discount: string;
 
   @Column({ type: 'datetime', nullable: true })
