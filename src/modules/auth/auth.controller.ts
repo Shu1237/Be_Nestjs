@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards, Request } from '@nestjs/common';
+import { Body, Controller, Post, UseGuards, Request, Get } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
@@ -6,6 +6,7 @@ import { LogoutDto } from './dtos/Logout.dto';
 import { RefreshTokenDto } from './dtos/RefreshToken.dto';
 import { RefreshGuard } from 'src/common/guards/refresh-token.guard';
 import { LoginAzureDto } from './dtos/loginazure.dto';
+import { CheckEmail } from './dtos/CheckMail.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -39,10 +40,12 @@ export class AuthController {
     return this.authService.logout(data, req.user);
   }
 
-  // @Post('forgotPassword')
-  // @ApiOperation({ summary: 'Send OTP to email for password reset' })
-  // @ApiBody({ type: ForgotPasswordDto })
-  // checkEmail(@Body() body: ForgotPasswordDto) {
+  @Post('checkEmail')
+  @ApiOperation({ summary: 'Check if email exists' })
+  @ApiBody({ type: CheckEmail })
+  checkEmail(@Body() body: CheckEmail) {
+    return this.authService.checkEmail(body);
+  }
   //   return this.authService.checkEmail(body.email);
   // }
 
