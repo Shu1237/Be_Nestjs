@@ -271,7 +271,7 @@ export class AuthService {
     return user;
   }
 
-  async checkEmail(data: CheckEmail) :Promise<{msg}>{
+  async checkEmail(data: CheckEmail) :Promise<{msg:string}>{
     const user = await this.userRepository.findOne({
       where: { email: data.email },
     });
