@@ -130,7 +130,7 @@ export class MyGateWay implements OnGatewayConnection, OnModuleInit {
 
   // Method để xử lý order expired từ cron job
   // Thông báo huỷ đặt ghế khi order hết hạn cho tất cả client đang join schedule đó
-  onOrderExpired(data: { schedule_id: number; seatIds: string[] }) {
+  onOrderExpired(data: HoldSeatType) {
     if (!data?.seatIds?.length || !data.schedule_id) {
       this.logger.warn('Invalid order expired data');
       return;
