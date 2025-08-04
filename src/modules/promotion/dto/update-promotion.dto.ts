@@ -22,7 +22,7 @@ export class UpdatePromotionDto {
   @IsString()
   detail?: string;
 
-  @ApiProperty({ required: false, example: '50%' })
+  @ApiProperty({ required: false, example: 'Not add more % or VND( vd :50 | 50000)' })
   @IsOptional()
   @IsString()
   discount?: string;

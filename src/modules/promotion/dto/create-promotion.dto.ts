@@ -23,7 +23,7 @@ export class CreatePromotionDto {
   @IsString()
   detail?: string;
 
-  @ApiProperty({ example: '50%' })
+  @ApiProperty({ example: 'Not add more % or VND( vd :50 | 50000)' })
   @IsString()
   @IsNotEmpty()
   discount: string;
