@@ -16,6 +16,7 @@ import { ForbiddenException } from 'src/common/exceptions/forbidden.exception';
 import { ConfigService } from '@nestjs/config';
 import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
 import { QrCodeService } from 'src/common/qrcode/qrcode.service';
+import { CheckEmail } from './dtos/CheckMail.dto';
 
 @Injectable()
 export class AuthService {
@@ -29,7 +30,7 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private qrcodeService: QrCodeService,
-  ) {}
+  ) { }
 
   async checkStatus(payload: JWTUserType): Promise<void> {
     const user = await this.userRepository.findOne({
@@ -270,6 +271,19 @@ export class AuthService {
     return user;
   }
 
+  async checkEmail(data: CheckEmail) :Promise<{msg}>{
+    const user = await this.userRepository.findOne({
+      where: { email: data.email },
+    });
+    if (user) {
+       return {
+        msg: 'Email already exists',
+       };
+    }
+    return {
+      msg: 'Email is available',
+    };
+  }
   // async OtpCode(email: string) {
   //   const otpCode = randomInt(100000, 999999).toString();
 
