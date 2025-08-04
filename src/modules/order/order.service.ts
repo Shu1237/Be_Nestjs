@@ -383,7 +383,7 @@ export class OrderService {
     if (!paymentCode || !paymentCode.payUrl || !paymentCode.orderId) {
       throw new BadRequestException('Payment method failed to create order');
     }
-    // check customer_email
+   
 
     // Create order
 
@@ -424,9 +424,9 @@ export class OrderService {
     const updatedSeats: ScheduleSeat[] = [];
     const orderDetails: {
       total_each_ticket: string;
-      order: any;
-      ticket: any;
-      schedule: any;
+      order: Order;
+      ticket: Ticket;
+      schedule: Schedule;
     }[] = [];
 
     // const discountPerSeat = seatDiscount / orderBill.seats.length;
@@ -496,7 +496,7 @@ export class OrderService {
         (sum, item) => sum + item.total,
         0,
       );
-      const orderExtrasToSave: Omit<OrderExtra, 'id'>[] = [];
+      const orderExtrasToSave: OrderExtra[] = [];
 
       for (const item of productTotals) {
         const shareRatio = item.total / totalProductBeforePromo || 0;
@@ -522,20 +522,20 @@ export class OrderService {
             unit_price_after_discount *= 1 - comboProduct.discount / 100;
           }
         }
-
-        orderExtrasToSave.push({
-          quantity: item.quantity,
-          unit_price: roundUpToNearest(
-            unit_price_after_discount,
-            1000,
-          ).toString(),
-          order: newOrder,
+          const newOrderExtraForeachProduct = this.orderExtraRepository.create({
+            quantity: item.quantity,
+            unit_price: roundUpToNearest(
+              unit_price_after_discount,
+              1000,
+            ).toString(),
+            order: newOrder,
           product: item.product,
           status:
             Number(orderBill.payment_method_id as Method) === Method.CASH
               ? StatusOrder.SUCCESS
               : StatusOrder.PENDING,
         });
+        orderExtrasToSave.push(newOrderExtraForeachProduct);
       }
 
       await this.orderExtraRepository.save(orderExtrasToSave);
