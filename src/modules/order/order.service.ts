@@ -251,6 +251,8 @@ export class OrderService {
 
     // check promtion time
     if (promotion.id !== 1) {
+      // check trường hợp emloyee lấy id của mình để apply promtion 
+
       //check trường hợp nhân viên đặt hàng nhưng lại dùng giảm giá mà k gán customer
       if (
         user.role.role_id as Role === Role.EMPLOYEE ||
@@ -277,6 +279,12 @@ export class OrderService {
         );
       }
       if (customer) {
+        // check cutomerid cũng là user đang đặt hàng role là EMPLOYEE/ ADMIN
+        if ((customer.id === user.id && user.role.role_id as Role === Role.EMPLOYEE) || (customer.id !== user.id && user.role.role_id as Role === Role.ADMIN)) {
+          throw new ConflictException(
+            'Employee/Admin cannot use promotion with customer ID.',
+          );
+        }
         // Check if customer has enough score
         if (promotion.exchange > customer.score) {
           throw new ConflictException(
@@ -1096,7 +1104,6 @@ export class OrderService {
       payUrl: paymentCode.payUrl,
     };
   }
-
   async adminUpdateAndProcessOrder(
     orderId: number,
     updateData: OrderBillType,
@@ -1121,7 +1128,8 @@ export class OrderService {
 
     if (!existingOrder)
       throw new NotFoundException(`Order ${orderId} not found`);
-    if (existingOrder.status as StatusOrder !== StatusOrder.PENDING) {
+
+    if (existingOrder.status !== StatusOrder.PENDING) {
       throw new BadRequestException('Only pending orders can be updated');
     }
 
@@ -1129,6 +1137,41 @@ export class OrderService {
       throw new BadRequestException('Cannot change schedule of existing order');
     }
 
+    // --- Xử lý customer_id ---
+    let isChangeCustomerId = false;
+    let newCustomer: User | null = null;
+
+    if (updateData.customer_id) {
+      if (updateData.customer_id === user.account_id) {
+        throw new ForbiddenException('You cannot set yourself as the customer');
+      }
+
+      if (existingOrder.customer_id) {
+        if (updateData.customer_id !== existingOrder.customer_id) {
+          isChangeCustomerId = true;
+        } else {
+          updateData.customer_id = existingOrder.customer_id;
+        }
+      } else {
+        isChangeCustomerId = true;
+      }
+
+      if (isChangeCustomerId) {
+        newCustomer = await this.getUserById(updateData.customer_id);
+        if (!newCustomer) {
+          throw new NotFoundException(`Customer with ID ${updateData.customer_id} not found`);
+        }
+        if (newCustomer.role.role_id as Role !== Role.USER) {
+          throw new ForbiddenException('Customer must be a  user');
+        }
+      }
+    } else {
+      if (existingOrder.customer_id) {
+        updateData.customer_id = existingOrder.customer_id;
+      }
+    }
+
+    // --- Xử lý sản phẩm ---
     const products = updateData.products || [];
     let orderExtras: Product[] = [];
     if (products.length > 0) {
@@ -1136,57 +1179,45 @@ export class OrderService {
       orderExtras = await this.getOrderExtraByIds(productIds);
     }
 
-    const isPromotionChanged =
-      updateData.promotion_id !== existingOrder.promotion?.id;
+    const isPromotionChanged = updateData.promotion_id !== existingOrder.promotion?.id;
     const newPromotion = isPromotionChanged
       ? await this.getPromotionById(updateData.promotion_id)
       : existingOrder.promotion;
-    const isChangeCustomerId = updateData.customer_id !== existingOrder.customer_id;
-    let newCustomer: User | null = null;
-    if (isChangeCustomerId) {
-      if (!updateData.customer_id) {
-        throw new BadRequestException('Customer ID is required when changing customer');
-      }
-      newCustomer = await this.getUserById(updateData.customer_id);
-      if (!newCustomer) {
-        throw new NotFoundException(`Customer with ID ${updateData.customer_id} not found`);
-      }
-    }
+
+    // --- Kiểm tra điều kiện promotion ---
     if (isPromotionChanged && newPromotion?.id !== 1) {
       if (
-        (user.role_id as Role === Role.EMPLOYEE || user.role_id as Role === Role.ADMIN) &&
+        (user.role_id === Role.EMPLOYEE || user.role_id === Role.ADMIN) &&
         !updateData.customer_id
       ) {
         throw new ConflictException(
           'Staff must provide customer ID when using promotion',
         );
       }
+
       const now = new Date();
       if (
         !newPromotion?.start_time ||
         !newPromotion?.end_time ||
-        now < newPromotion?.start_time ||
-        now > newPromotion?.end_time
+        now < newPromotion.start_time ||
+        now > newPromotion.end_time
       ) {
         throw new BadRequestException('Promotion is not valid at this time');
       }
-      if (user.role_id as Role !== Role.USER) {
-        // check score of customer 
-        if (newCustomer && newPromotion.exchange > newCustomer.score) {
-          throw new ConflictException(
-            'Not enough points to use this promotion for customer',
-          );
-        }
 
-
+      if (user.role_id !== Role.USER && newPromotion.exchange > (newCustomer?.score ?? 0)) {
+        throw new ConflictException(
+          'Not enough points to use this promotion for customer',
+        );
       }
     }
 
+    // --- Tính toán tổng ---
     const ticketTotal = existingOrder.orderDetails.reduce(
       (sum, d) => sum + Number(d.total_each_ticket),
       0,
     );
-    const productTotal = calculateProductTotal(orderExtras, updateData);
+    const productTotal =calculateProductTotal(orderExtras, updateData);
     const totalBeforeDiscount = ticketTotal + productTotal;
 
     const isPercentage = newPromotion?.promotionType?.type === 'percentage';
@@ -1207,7 +1238,6 @@ export class OrderService {
     const ticketDiscountAmount = Math.round(promotionAmount * ticketRatio);
     const productDiscountAmount = promotionAmount - ticketDiscountAmount;
 
-    //  Update lại total_each_ticket nếu mã thay đổi
     if (isPromotionChanged) {
       for (const detail of existingOrder.orderDetails) {
         const oldPrice = Number(detail.total_each_ticket);
@@ -1221,18 +1251,17 @@ export class OrderService {
       await this.orderDetailRepository.save(existingOrder.orderDetails);
     }
 
-    //  Update lại orderExtras
+    // --- Cập nhật OrderExtra ---
     await this.orderExtraRepository.remove(existingOrder.orderExtras);
+
     const totalProductBeforePromo = orderExtras.reduce((sum, p) => {
       const qty = products.find((x) => x.product_id === p.id)?.quantity || 0;
       return sum + Number(p.price) * qty;
     }, 0);
 
     const extrasToSave: OrderExtra[] = [];
-
     for (const product of orderExtras) {
-      const quantity =
-        products.find((x) => x.product_id === product.id)?.quantity || 0;
+      const quantity = products.find((x) => x.product_id === product.id)?.quantity || 0;
       if (quantity <= 0) continue;
 
       let basePrice = Number(product.price);
@@ -1245,11 +1274,7 @@ export class OrderService {
 
       let unitPrice = basePrice;
 
-      if (
-        promotionAmount > 0 &&
-        isPromotionChanged &&
-        totalProductBeforePromo > 0
-      ) {
+      if (promotionAmount > 0 && isPromotionChanged && totalProductBeforePromo > 0) {
         const shareRatio = (basePrice * quantity) / totalProductBeforePromo;
         const discount = isPercentage
           ? basePrice * (productDiscountAmount / totalProductBeforePromo)
@@ -1264,7 +1289,7 @@ export class OrderService {
         product,
         order: existingOrder,
         status:
-          Number(updateData.payment_method_id as Method) === Method.CASH
+          Number(updateData.payment_method_id) === Method.CASH
             ? StatusOrder.SUCCESS
             : StatusOrder.PENDING,
       });
@@ -1276,19 +1301,19 @@ export class OrderService {
       await this.orderExtraRepository.save(extrasToSave);
     }
 
-    //  Update lại order // nếu là cash thì success
+    // --- Cập nhật Order ---
     await this.orderRepository.update(existingOrder.id, {
       total_prices: totalAfterDiscount.toString(),
       promotion: newPromotion,
       order_date: new Date(),
       status:
-        Number(updateData.payment_method_id as Method) === Method.CASH
+        Number(updateData.payment_method_id) === Method.CASH
           ? StatusOrder.SUCCESS
           : StatusOrder.PENDING,
       customer_id: isChangeCustomerId ? newCustomer?.id : existingOrder.customer_id,
     });
 
-    //  Update lại transaction
+    // --- Cập nhật transaction ---
     const paymentCode = await this.getPaymentCode(updateData, clientIp);
     if (!paymentCode?.payUrl || !paymentCode?.orderId) {
       throw new BadRequestException('Failed to create payment URL');
@@ -1305,23 +1330,21 @@ export class OrderService {
     existingOrder.transaction.transaction_code = paymentCode.orderId;
     existingOrder.transaction.transaction_date = new Date();
     existingOrder.transaction.status =
-      Number(updateData.payment_method_id as Method) === Method.CASH
+      Number(updateData.payment_method_id) === Method.CASH
         ? StatusOrder.SUCCESS
         : StatusOrder.PENDING;
     await this.transactionRepository.save(existingOrder.transaction);
-    // update schedule seat in db
-    // If payment method is CASH, immediately change seat status to BOOKED
-    if (Number(updateData.payment_method_id as Method) === Method.CASH) {
+
+    // --- Đánh dấu ghế là đã BOOKED nếu thanh toán tiền mặt ---
+    if (Number(updateData.payment_method_id) === Method.CASH) {
       const seatIds = updateData.seats.map((seat) => seat.id);
-      await this.changeStatusScheduleSeatToBooked(
-        seatIds,
-        updateData.schedule_id,
-      );
+      await this.changeStatusScheduleSeatToBooked(seatIds, updateData.schedule_id);
     }
-    //  Cộng điểm nếu là thanh toán CASH + promotion mới
+
+    // --- Cộng điểm nếu là thanh toán tiền mặt + có promotion ---
     if (
       updateData.customer_id &&
-      Number(updateData.payment_method_id as Method) === Method.CASH &&
+      Number(updateData.payment_method_id) === Method.CASH &&
       isPromotionChanged
     ) {
       const customer = await this.userRepository.findOne({
@@ -1329,7 +1352,7 @@ export class OrderService {
         relations: ['role'],
       });
 
-      if (!customer || customer.role.role_id as Role !== Role.USER) {
+      if (!customer || customer.role.role_id !== Role.USER) {
         throw new ForbiddenException('Invalid customer for point accumulation');
       }
 
@@ -1344,17 +1367,20 @@ export class OrderService {
         order: existingOrder,
       });
     }
-    // socket emit for order update for cash
-    if (Number(updateData.payment_method_id as Method) === Method.CASH) {
+
+    // --- Phát socket nếu là tiền mặt ---
+    if (Number(updateData.payment_method_id) === Method.CASH) {
       this.gateway.emitBookSeat({
         schedule_id: updateData.schedule_id,
         seatIds: updateData.seats.map((seat) => seat.id),
       });
     }
+
     return {
       payUrl: paymentCode.payUrl,
     };
   }
+
 
   async adminCancelOrder(orderId: number) {
     const order = await this.orderRepository.findOne({
