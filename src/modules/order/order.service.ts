@@ -819,7 +819,7 @@ export class OrderService {
       .leftJoinAndSelect('orderExtra.product', 'product')
       .where('user.id = :userId', { userId: filters.userId });
     applyCommonFilters(qb, filters, orderFieldMapping);
-    console.log(1)
+
     const allowedSortFields = [
       'order.id',
       'order.order_date',
@@ -854,7 +854,7 @@ export class OrderService {
         revenue: '0',
       });
     }
-    console.log(5)
+
     const summaries = orders.map((order) =>
       this.mapToBookingSummaryLite(order),
     );
