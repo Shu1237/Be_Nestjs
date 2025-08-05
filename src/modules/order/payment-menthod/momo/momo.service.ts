@@ -66,33 +66,32 @@ export class MomoService extends AbstractPaymentService {
     const accessKey = this.configService.get<string>('momo.accessKey');
     const secretKey = this.configService.get<string>('momo.secretKey');
     const partnerCode = this.configService.get<string>('momo.partnerCode');
-
-    if (!accessKey || !secretKey || !partnerCode) {
+    const redirectUrl = this.configService.get<string>('momo.redirectUrl');
+    const ipnUrl = this.configService.get<string>('momo.ipnUrl');
+    if (!accessKey || !secretKey || !partnerCode || !redirectUrl || !ipnUrl) {
       throw new InternalServerErrorException('Momo configuration is missing');
     }
 
     const requestId = partnerCode + new Date().getTime();
     const orderId = requestId;
     const orderInfo = 'Momo payment';
-    const redirectUrl = this.configService.get<string>('momo.redirectUrl');
-    const ipnUrl = this.configService.get<string>('momo.ipnUrl');
     const requestType = 'payWithMethod';
     const extraData = '';
     const autoCapture = true;
-
-    const rawSignature = `accessKey=${accessKey}&amount=${total}&extraData=${extraData}&ipnUrl=${ipnUrl}&orderId=${orderId}&orderInfo=${orderInfo}&partnerCode=${partnerCode}&redirectUrl=${redirectUrl}&requestId=${requestId}&requestType=${requestType}`;
-
+    const amount = parseInt(total); 
+    const rawSignature = `accessKey=${accessKey}&amount=${amount}&extraData=${extraData}&ipnUrl=${ipnUrl}&orderId=${orderId}&orderInfo=${orderInfo}&partnerCode=${partnerCode}&redirectUrl=${redirectUrl}&requestId=${requestId}&requestType=${requestType}`;
+   
     const signature = crypto
       .createHmac('sha256', secretKey)
       .update(rawSignature)
       .digest('hex');
-    // console.log('Momo signature:', signature);
+
     const requestBody = {
       partnerCode,
       partnerName: 'CINEMA',
       storeId: 'MyStore',
       requestId,
-      amount: total,
+      amount: amount, 
       orderId,
       orderInfo,
       redirectUrl,
@@ -111,13 +110,15 @@ export class MomoService extends AbstractPaymentService {
         requestBody,
         {
           headers: { 'Content-Type': 'application/json' },
+          timeout: 30000 
         },
       );
+    
       return result.data;
     } catch (error: any) {
       return {
         error: 'Failed to create Momo payment',
-        detail: error?.response?.data,
+        detail: error?.response?.data || error?.message,
       };
     }
   }
