@@ -222,6 +222,10 @@ export class OrderService {
     orderBill: OrderBillType,
     clientIp: string,
   ) {
+    // check total
+    if (Number(orderBill.total_prices) < 0) {
+      throw new BadRequestException('Total price must be greater than 0.');
+    }
     let user: User | null = null;
     let customer: User | null = null;
     // nếu có customerid thì gọi // 
@@ -366,7 +370,7 @@ export class OrderService {
 
     // 5. So sánh với client gửi
     const inputTotal = parseFloat(orderBill.total_prices);
-    if (Math.abs(totalPrice - inputTotal) > 0.01) {
+    if (Math.abs(totalPrice - inputTotal) > 0.01 ) {
       throw new BadRequestException(
         'Total price mismatch. Please refresh and try again.',
       );
@@ -1169,7 +1173,7 @@ export class OrderService {
           throw new NotFoundException(`Customer with ID ${updateData.customer_id} not found`);
         }
         if (newCustomer.role.role_id as Role !== Role.USER) {
-          throw new ForbiddenException('Customer must be a  user');
+          throw new ForbiddenException('Customer must be a user');
         }
       }
     } else {
@@ -1219,14 +1223,39 @@ export class OrderService {
       }
     }
 
-    // --- Tính toán tổng ---
-    const ticketTotal = existingOrder.orderDetails.reduce(
-      (sum, d) => sum + Number(d.total_each_ticket),
-      0,
+    // --- Tính toán lại giá gốc của vé (trước khi áp promotion) ---
+    const audienceTypes = updateData.seats.map((seat) => seat.audience_type);
+    const ticketTypes = await this.getTicketTypesByAudienceTypes(audienceTypes);
+    const scheduleSeats = await this.getScheduleSeatsByIds(
+      updateData.seats.map((seat) => seat.id), 
+      updateData.schedule_id
     );
-    const productTotal =calculateProductTotal(orderExtras, updateData);
-    const totalBeforeDiscount = ticketTotal + productTotal;
 
+    let originalTicketTotal = 0;
+    const seatPriceMap = new Map<string, number>();
+
+    // Tính lại giá gốc của từng vé dựa trên seat type và audience discount
+    for (const seatData of updateData.seats) {
+      const scheduleSeat = scheduleSeats.find(s => s.seat.id === seatData.id);
+      const ticketType = ticketTypes.find(t => t.audience_type === seatData.audience_type as AudienceType);
+      
+      if (!scheduleSeat) {
+        throw new NotFoundException(`Seat ${seatData.id} not found`);
+      }
+      
+      const basePrice = scheduleSeat.seat.seatType.seat_type_price;
+      const audienceDiscount = parseFloat(ticketType?.discount ?? '0');
+      const finalPrice = applyAudienceDiscount(basePrice, audienceDiscount);
+      
+      seatPriceMap.set(seatData.id, finalPrice);
+      originalTicketTotal += finalPrice;
+    }
+
+    // --- Tính toán giá gốc của sản phẩm ---
+    const originalProductTotal = calculateProductTotal(orderExtras, updateData);
+    const totalBeforeDiscount = originalTicketTotal + originalProductTotal;
+
+    // --- Tính promotion discount ---
     const isPercentage = newPromotion?.promotionType?.type === 'percentage';
     const discountValue = parseFloat(newPromotion?.discount ?? '0');
     const promotionAmount = isPercentage
@@ -1241,17 +1270,19 @@ export class OrderService {
       );
     }
 
-    const ticketRatio = ticketTotal / totalBeforeDiscount || 0;
+    const ticketRatio = originalTicketTotal / totalBeforeDiscount || 0;
     const ticketDiscountAmount = Math.round(promotionAmount * ticketRatio);
     const productDiscountAmount = promotionAmount - ticketDiscountAmount;
 
+    // --- Cập nhật giá vé với promotion mới ---
     if (isPromotionChanged) {
       for (const detail of existingOrder.orderDetails) {
-        const oldPrice = Number(detail.total_each_ticket);
-        const ratio = oldPrice / ticketTotal || 0;
+        const seatId = detail.ticket.seat.id;
+        const originalPrice = seatPriceMap.get(seatId) || 0;
+        const ratio = originalPrice / originalTicketTotal || 0;
         const discount = Math.round(ticketDiscountAmount * ratio);
         detail.total_each_ticket = roundUpToNearest(
-          oldPrice - discount,
+          originalPrice - discount,
           1000,
         ).toString();
       }
