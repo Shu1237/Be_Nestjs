@@ -36,6 +36,7 @@ export class UserService {
       'user.email',
       'user.status',
       'role.name',
+      'user.score',
     ];
 
     applySorting(
