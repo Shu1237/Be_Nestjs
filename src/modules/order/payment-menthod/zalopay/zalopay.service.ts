@@ -142,7 +142,6 @@ export class ZalopayService extends AbstractPaymentService {
           `ZaloPay error: ${res.data.sub_return_message}`,
         );
       }
-      // console.log('ZaloPay order created:', res.data);
       return {
         payUrl: res.data.order_url,
         orderId: app_trans_id,
