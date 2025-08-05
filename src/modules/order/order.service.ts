@@ -678,6 +678,7 @@ export class OrderService {
     const qb = this.orderRepository
       .createQueryBuilder('order')
       .leftJoinAndSelect('order.user', 'user')
+      .leftJoinAndSelect('user.role', 'role')
       .leftJoinAndSelect('order.promotion', 'promotion')
       .leftJoinAndSelect('order.transaction', 'transaction')
       .leftJoinAndSelect('transaction.paymentMethod', 'paymentMethod')
@@ -901,6 +902,7 @@ export class OrderService {
         id: order.user.id,
         username: order.user.username,
         email: order.user.email,
+        role: order.user.role.role_id ,
       },
       promotion: {
         id: order.promotion?.id,
