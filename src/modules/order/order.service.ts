@@ -887,13 +887,15 @@ export class OrderService {
       order_date: order.order_date,
       total_prices: order.total_prices,
       status: order.status,
-      qr_code: order.qr_code,
+      qr_code: order.qr_code ?? undefined,
+      customer_id: order.customer_id ?? undefined,
       user: {
         id: order.user.id,
         username: order.user.username,
         email: order.user.email,
       },
       promotion: {
+        id: order.promotion?.id,
         title: order.promotion?.title,
       },
       cinemaroom: {
