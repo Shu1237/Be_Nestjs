@@ -82,6 +82,9 @@ export class MovieService {
       'movie.name',
       'movie.director',
       'movie.nation',
+      'gerne.genre_name',
+      'actor.name',
+      'version.name',
     ];
     applySorting(
       qb,
