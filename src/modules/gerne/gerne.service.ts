@@ -47,13 +47,13 @@ export class GerneService {
 
     applyCommonFilters(qb, filters, gerneFieldMapping);
 
-    const allowedSortFields = ['gerne.genre_name'];
+    const allowedSortFields = ['gerne.genre_name', 'gerne.id'];
     applySorting(
       qb,
       filters.sortBy,
       filters.sortOrder,
       allowedSortFields,
-      'gerne.genre_name',
+      'gerne.id',
     );
 
     applyPagination(qb, {

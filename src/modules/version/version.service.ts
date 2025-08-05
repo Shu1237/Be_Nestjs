@@ -45,13 +45,13 @@ export class VersionService {
     const qb = this.versionRepository.createQueryBuilder('version');
 
     applyCommonFilters(qb, fillters, versionFieldMapping);
-    const allowedFields = ['version.name', 'version.is_deleted'];
+    const allowedFields = ['version.name', 'version.id'];
     applySorting(
       qb,
       fillters.sortBy,
       fillters.sortOrder,
       allowedFields,
-      'version.name',
+      'version.id',
     );
     applyPagination(qb, {
       page: fillters.page,
