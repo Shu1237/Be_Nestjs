@@ -280,7 +280,7 @@ export class OrderService {
       }
       if (customer) {
         // check cutomerid cũng là user đang đặt hàng role là EMPLOYEE/ ADMIN
-        if ((customer.id === user.id && customer.role.role_id as Role !== Role.EMPLOYEE) || (customer.id !== user.id && customer.role.role_id as Role !== Role.ADMIN)) {
+        if (customer.id !== user.id && customer.role.role_id as Role === Role.USER) {
           throw new ConflictException(
             'Employee/Admin cannot use promotion with customer ID.',
           );
