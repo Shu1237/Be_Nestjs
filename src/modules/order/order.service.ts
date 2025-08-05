@@ -1078,7 +1078,6 @@ export class OrderService {
 
     // 6. Tạo payment URL mới
     const paymentCode = await this.getPaymentCode(orderData, clientIp);
-    console.log('Payment Code:', paymentCode);
     if (!paymentCode?.payUrl || !paymentCode?.orderId) {
       throw new BadRequestException('Failed to create payment URL');
     }
