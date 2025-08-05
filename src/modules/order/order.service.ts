@@ -576,6 +576,7 @@ export class OrderService {
         score_change: addScore,
         user: customer,
         order: newOrder,
+        created_at: new Date(),
       });
     }
     if (Number(orderBill.payment_method_id as Method) === Method.CASH) {
@@ -1371,6 +1372,7 @@ export class OrderService {
         score_change: earnedScore,
         user: customer,
         order: existingOrder,
+        created_at: new Date(),
       });
     }
 
