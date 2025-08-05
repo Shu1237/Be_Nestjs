@@ -87,29 +87,29 @@ export class OrderController {
 
 
   // // POST /order/admin/update-order/:orderId - Admin/Employee update pending order
-  // @UseGuards(JwtAuthGuard, RolesGuard)
-  // @Roles(Role.ADMIN, Role.EMPLOYEE)
-  // @Post('admin/update-order/:orderId')
-  // @ApiBearerAuth()
-  // @ApiOperation({ summary: 'Admin/Employee update pending order', })
-  // async adminUpdateOrder(
-  //   @Param('orderId', ParseIntPipe) orderId: number,
-  //   @Body() updateData: CreateOrderBillDto,
-  //   @Req() req,
-  // ) {
-  //   const user = req.user as JWTUserType
-  //   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-  //   if (!clientIp) {
-  //     throw new InternalServerErrorException('Client IP address not found');
-  //   }
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
+  @Post('admin/update-order/:orderId')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Admin/Employee update pending order', })
+  async adminUpdateOrder(
+    @Param('orderId', ParseIntPipe) orderId: number,
+    @Body() updateData: CreateOrderBillDto,
+    @Req() req,
+  ) {
+    const user = req.user as JWTUserType
+    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    if (!clientIp) {
+      throw new InternalServerErrorException('Client IP address not found');
+    }
 
-  //   return this.orderService.adminUpdateAndProcessOrder(
-  //     orderId,
-  //     updateData,
-  //     clientIp,
-  //     user
-  //   );
-  // }
+    return this.orderService.adminUpdateAndProcessOrder(
+      orderId,
+      updateData,
+      clientIp,
+      user
+    );
+  }
 
 
 
