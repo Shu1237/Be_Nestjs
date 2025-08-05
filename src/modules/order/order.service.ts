@@ -775,6 +775,7 @@ export class OrderService {
     const qb = this.orderRepository
       .createQueryBuilder('order')
       .leftJoinAndSelect('order.user', 'user')
+      .leftJoinAndSelect('user.role', 'role')
       .leftJoinAndSelect('order.promotion', 'promotion')
       .leftJoinAndSelect('order.transaction', 'transaction')
       .leftJoinAndSelect('transaction.paymentMethod', 'paymentMethod')
@@ -802,6 +803,7 @@ export class OrderService {
     const qb = this.orderRepository
       .createQueryBuilder('order')
       .leftJoinAndSelect('order.user', 'user')
+      .leftJoinAndSelect('user.role', 'role')
       .leftJoinAndSelect('order.promotion', 'promotion')
       .leftJoinAndSelect('order.transaction', 'transaction')
       .leftJoinAndSelect('transaction.paymentMethod', 'paymentMethod')
@@ -816,7 +818,7 @@ export class OrderService {
       .leftJoinAndSelect('orderExtra.product', 'product')
       .where('user.id = :userId', { userId: filters.userId });
     applyCommonFilters(qb, filters, orderFieldMapping);
-
+    console.log(1)
     const allowedSortFields = [
       'order.id',
       'order.order_date',
@@ -825,6 +827,7 @@ export class OrderService {
       'order.status',
       'order.total_prices',
     ];
+
     applySorting(
       qb,
       filters.sortBy,
@@ -837,7 +840,7 @@ export class OrderService {
       page: filters.page,
       take: filters.take,
     });
-
+  
     const [orders, total] = await qb.getManyAndCount();
     if (total === 0) {
       return buildPaginationResponse([], {
@@ -850,6 +853,7 @@ export class OrderService {
         revenue: '0',
       });
     }
+    console.log(5)
     const summaries = orders.map((order) =>
       this.mapToBookingSummaryLite(order),
     );
