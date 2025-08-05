@@ -14,7 +14,6 @@ import { ForbiddenException } from '../exceptions/forbidden.exception';
 @Injectable()
 export class HttpErrorInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-    // console.log('HttpErrorInterceptor: intercepting request');
     return next.handle().pipe(
       catchError((error) => {
         if (error instanceof HttpException) {

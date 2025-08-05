@@ -302,7 +302,7 @@ export class OrderService {
     const seatIds = orderBill.seats.map((seat: SeatInfo) => seat.id);
     const scheduleId = orderBill.schedule_id;
 
-    // check redis
+    // // check redis
     const check = await this.validateBeforeOrder(scheduleId, user.id, seatIds);
     if (!check) {
       throw new ConflictException(
@@ -365,8 +365,6 @@ export class OrderService {
       : Math.round(promotionDiscount);
 
     totalPrice = roundUpToNearest(totalBeforePromotion - promotionAmount, 1000);
-
-    // console.log({ totalBeforePromotion, promotionAmount, totalPrice });
 
     // 5. So sánh với client gửi
     const inputTotal = parseFloat(orderBill.total_prices);
@@ -1175,12 +1173,15 @@ export class OrderService {
         if (newCustomer.role.role_id as Role !== Role.USER) {
           throw new ForbiddenException('Customer must be a user');
         }
-      }
-    } else {
-      if (existingOrder.customer_id) {
-        updateData.customer_id = existingOrder.customer_id;
+      }else {
+        // customer id k đổi
+        
+        newCustomer = await this.getUserById(existingOrder.customer_id);
+
       }
     }
+   
+
 
     // --- Xử lý sản phẩm ---
     const products = updateData.products || [];
@@ -1203,6 +1204,15 @@ export class OrderService {
       ) {
         throw new ConflictException(
           'Staff must provide customer ID when using promotion',
+        );
+      }
+      // check trường hợp emloyee gán cuntomerid là role != user
+      if (
+        (user.role_id === Role.EMPLOYEE || user.role_id === Role.ADMIN) &&
+        newCustomer?.role.role_id !== Role.USER
+      ) {
+        throw new ConflictException(
+          'Promotion can only be used for users',
         );
       }
 
@@ -1381,27 +1391,17 @@ export class OrderService {
 
     // --- Cộng điểm nếu là thanh toán tiền mặt + có promotion ---
     if (
-      updateData.customer_id &&
-      Number(updateData.payment_method_id) === Method.CASH &&
-      isPromotionChanged
+       newCustomer &&
+      Number(updateData.payment_method_id) === Method.CASH 
     ) {
-      const customer = await this.userRepository.findOne({
-        where: { id: updateData.customer_id },
-        relations: ['role'],
-      });
-
-      if (!customer || customer.role.role_id !== Role.USER) {
-        throw new ForbiddenException('Invalid customer for point accumulation');
-      }
-
       const earnedScore =
         Math.floor(totalAfterDiscount / 1000) - (newPromotion?.exchange ?? 0);
-      customer.score += earnedScore;
+      newCustomer.score += earnedScore;
 
-      await this.userRepository.save(customer);
+      await this.userRepository.save(newCustomer);
       await this.historyScoreRepository.save({
         score_change: earnedScore,
-        user: customer,
+        user: newCustomer,
         order: existingOrder,
         created_at: new Date(),
       });
