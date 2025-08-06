@@ -72,6 +72,8 @@ export class OrderService {
     private orderExtraRepository: Repository<OrderExtra>,
     @InjectRepository(Product)
     private productRepository: Repository<Product>,
+    @InjectRepository(Combo)
+    private comboRepository: Repository<Combo>,
     @InjectRepository(HistoryScore)
     private historyScoreRepository: Repository<HistoryScore>,
     @InjectRepository(DailyTransactionSummary)
@@ -164,15 +166,26 @@ export class OrderService {
   }
 
   private async getOrderExtraByIds(productIds: number[]) {
-    const orderExtras = await this.productRepository.find({
+    const products = await this.productRepository.find({
       where: { id: In(productIds) },
     });
-    if (!orderExtras || orderExtras.length === 0) {
+    if (!products || products.length === 0) {
       throw new NotFoundException(
         `No products found for IDs: ${productIds.join(', ')}`,
       );
     }
-    return orderExtras;
+
+    // Lấy tất cả combos trong DB (không filter theo category vì data không consistent)
+    const allCombos = await this.comboRepository.find();
+
+    // Tạo map từ combo data
+    const comboMap = new Map(allCombos.map(combo => [combo.id, combo.discount]));
+
+    // Enhance products với discount từ combo map
+    return products.map(product => ({
+      ...product,
+      discount: comboMap.get(product.id) || 0
+    }));
   }
 
   private async getScheduleSeatsByIds(seatIds: string[], scheduleId: number) {
@@ -411,7 +424,7 @@ export class OrderService {
 
     const newOrder = await this.orderRepository.save({
       total_prices: orderBill.total_prices,
-      original_price: totalBeforePromotion.toString(),
+      original_tickets: totalSeats.toString(),
       status:
         Number(orderBill.payment_method_id as Method) === Method.CASH
           ? StatusOrder.SUCCESS
@@ -524,7 +537,7 @@ export class OrderService {
       for (const item of productTotals) {
         const shareRatio = item.total / totalProductBeforePromo || 0;
         const isCombo =
-          (item.product.type.toLocaleLowerCase() as ProductTypeEnum) === ProductTypeEnum.COMBO;
+          (item.product.category as ProductTypeEnum) === ProductTypeEnum.COMBO;
 
         const basePrice = Number(item.product.price);
         let unit_price_after_discount = basePrice;
@@ -929,7 +942,7 @@ export class OrderService {
       id: order.id,
       order_date: order.order_date,
       total_prices: order.total_prices,
-      original_price: order.original_price,
+      original_tickets: order.original_tickets,
       status: order.status,
       qr_code: order.qr_code ?? undefined,
       customer_id: order.customer_id ?? undefined,
@@ -978,7 +991,7 @@ export class OrderService {
           product: {
             id: extra.product.id,
             name: extra.product.name,
-            type: extra.product.type,
+            category: extra.product.category,
             price: extra.product.price,
           },
         })) ?? [],
@@ -1350,7 +1363,7 @@ export class OrderService {
         if (quantity <= 0) continue;
 
         let basePrice = Number(product.price);
-        if ((product.type.toLowerCase() as ProductTypeEnum) === ProductTypeEnum.COMBO) {
+        if ((product.category as ProductTypeEnum) === ProductTypeEnum.COMBO) {
           const combo = product as Combo;
           if (combo.discount) {
             basePrice *= 1 - combo.discount / 100;
@@ -1390,7 +1403,7 @@ export class OrderService {
     // --- Cập nhật Order ---
     await this.orderRepository.update(existingOrder.id, {
       total_prices: totalAfterDiscount.toString(),
-      original_price: totalBeforeDiscount.toString(),
+      original_tickets: originalTicketTotal.toString(),
       promotion: newPromotion,
       order_date: new Date(),
       status:
