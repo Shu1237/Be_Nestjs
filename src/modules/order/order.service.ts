@@ -789,9 +789,9 @@ export class OrderService {
       where: { id: In(customerId) },
     });
     //map key là userid , value là User
-    const customerMap = new Map<string, User>();
+    const customerMap = new Map<string, string>();
     customers.forEach(customer => {
-      customerMap.set(customer.id, customer);
+      customerMap.set(customer.id, customer.username);
     });
     //  Map to summary DTO
     const summaries = orders.map((order) =>
@@ -955,12 +955,11 @@ export class OrderService {
     });
   }
 
-  private mapToBookingSummaryLite(order: Order, customers?: Map<string, User>) {
+  private mapToBookingSummaryLite(order: Order, customers?: Map<string, string>) {
     // check order có customer k
     const customerUser = order.customer_id
       ? customers?.get(order.customer_id)
       : undefined;
-
     return {
       id: order.id,
       order_date: order.order_date,
@@ -968,7 +967,8 @@ export class OrderService {
       original_tickets: order.original_tickets,
       status: order.status,
       qr_code: order.qr_code ?? undefined,
-      customer: customerUser,
+      customer_id:order.customer_id ?? undefined,
+      customer_username: customerUser,
       user: {
         id: order.user.id,
         username: order.user.username,
