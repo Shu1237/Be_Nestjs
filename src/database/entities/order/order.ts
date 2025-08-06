@@ -23,6 +23,9 @@ export class Order {
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: false })
   total_prices: string;
 
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: false })
+  original_price: string;
+
   @Column({ type: 'varchar', length: 50, nullable: false })
   status: string;
 
