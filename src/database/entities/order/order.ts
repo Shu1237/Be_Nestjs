@@ -24,7 +24,7 @@ export class Order {
   total_prices: string;
 
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: false })
-  original_price: string;
+  original_tickets: string;
 
   @Column({ type: 'varchar', length: 50, nullable: false })
   status: string;

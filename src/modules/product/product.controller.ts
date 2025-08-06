@@ -79,8 +79,8 @@ export class ProductController {
   // GET - Lấy product theo ID
   @Get(':id')
   @ApiOperation({ summary: 'Get product by ID' })
-  getProdcutById(@Param('id', ParseIntPipe) id: number) {
-    return this.productService.getProdcutById(id);
+  getProductById(@Param('id', ParseIntPipe) id: number) {
+    return this.productService.getProductById(id);
   }
 
   // POST - Tạo product mới
