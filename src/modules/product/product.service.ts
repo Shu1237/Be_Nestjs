@@ -48,7 +48,7 @@ export class ProductService {
     // 4. Trả về mảng sản phẩm, thêm discount nếu có trong combo map
     return products.map((product) => ({
       ...product,
-      discount: comboMap.get(product.id) || 0,
+      discount: comboMap.get(product.id) ?? undefined ,
     }));
   }
 
@@ -86,7 +86,7 @@ export class ProductService {
     // Enhance products với discount từ combo map
     const enhancedProducts = products.map(product => ({
       ...product,
-      discount: comboMap.get(product.id) || 0
+      discount: comboMap.get(product.id) ?? undefined
     }));
 
     const counts: { activeCount: number; deletedCount: number } = await this.productRepository
@@ -127,7 +127,7 @@ export class ProductService {
 
     return {
       ...product,
-      discount: combo?.discount ?? null,
+      discount: combo?.discount ?? undefined,
     };
   }
 
