@@ -736,7 +736,7 @@ export class OrderService {
       .leftJoinAndSelect('orderExtra.product', 'product')
       .where('order.id NOT IN (:...excludedIds)', { excludedIds: [173, 174] });
 
-   
+
 
 
 
@@ -788,10 +788,10 @@ export class OrderService {
     const customers = await this.userRepository.find({
       where: { id: In(customerId) },
     });
-    //map key là userid , value là username
-    const customerMap = new Map<string, string>();
+    //map key là userid , value là User
+    const customerMap = new Map<string, User>();
     customers.forEach(customer => {
-      customerMap.set(customer.id, customer.username);
+      customerMap.set(customer.id, customer);
     });
     //  Map to summary DTO
     const summaries = orders.map((order) =>
@@ -955,7 +955,7 @@ export class OrderService {
     });
   }
 
-  private mapToBookingSummaryLite(order: Order, customers?: Map<string, string>) {
+  private mapToBookingSummaryLite(order: Order, customers?: Map<string, User>) {
     // check order có customer k
     const customerUser = order.customer_id
       ? customers?.get(order.customer_id)
@@ -968,7 +968,7 @@ export class OrderService {
       original_tickets: order.original_tickets,
       status: order.status,
       qr_code: order.qr_code ?? undefined,
-      customer_name: customerUser,
+      customer: customerUser,
       user: {
         id: order.user.id,
         username: order.user.username,
