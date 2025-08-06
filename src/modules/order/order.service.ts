@@ -1390,6 +1390,7 @@ export class OrderService {
     // --- Cập nhật Order ---
     await this.orderRepository.update(existingOrder.id, {
       total_prices: totalAfterDiscount.toString(),
+      original_price: totalBeforeDiscount.toString(),
       promotion: newPromotion,
       order_date: new Date(),
       status:
