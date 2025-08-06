@@ -184,7 +184,7 @@ export class OrderService {
     // Enhance products với discount từ combo map
     return products.map(product => ({
       ...product,
-      discount: comboMap.get(product.id) || 0
+      discount: comboMap.get(product.id) ?? undefined
     }));
   }
 
@@ -249,7 +249,7 @@ export class OrderService {
           'Cannot use your own ID as customer ID.',
         );
       }
-      
+
       const [fetchedUser, fetchedCustomer] = await Promise.all([
         this.getUserById(userData.account_id),
         this.getUserById(orderBill.customer_id),
@@ -283,7 +283,7 @@ export class OrderService {
           'Staff must provide customer ID when using promotion.',
         );
       }
-      
+
       const currentTime = new Date();
       if (
         !promotion.start_time ||
@@ -293,14 +293,14 @@ export class OrderService {
       ) {
         throw new BadRequestException('Promotion is not valid at this time.');
       }
-      
+
       // check score với tk user (chỉ áp dụng cho USER role)
       if (user.role.role_id as Role === Role.USER && promotion.exchange > user.score) {
         throw new ConflictException(
           'You do not have enough score to use this promotion.',
         );
       }
-      
+
       if (customer) {
         // Không cho phép employee/admin đặt với customer_id là chính họ
         if (customer.id === user.id) {
@@ -598,7 +598,7 @@ export class OrderService {
         if (customer.role.role_id as Role !== Role.USER) {
           throw new ForbiddenException('Invalid customer for point accumulation');
         }
-        
+
         customer.score += addScore;
         await this.userRepository.save(customer);
 
@@ -736,6 +736,10 @@ export class OrderService {
       .leftJoinAndSelect('orderExtra.product', 'product')
       .where('order.id NOT IN (:...excludedIds)', { excludedIds: [173, 174] });
 
+   
+
+
+
     //  Apply filters
     applyCommonFilters(qb, filters, orderFieldMapping);
 
@@ -775,9 +779,23 @@ export class OrderService {
         revenue: '0',
       });
     }
+    const mapCustomerId = new Map<number, string>(); // key orderId -> customerId
+    orders.forEach(order => {
+      mapCustomerId.set(order.id, order.customer_id);
+    });
+    // call dn customerId
+    const customerId = Array.from(mapCustomerId.values());
+    const customers = await this.userRepository.find({
+      where: { id: In(customerId) },
+    });
+    //map key là userid , value là username
+    const customerMap = new Map<string, string>();
+    customers.forEach(customer => {
+      customerMap.set(customer.id, customer.username);
+    });
     //  Map to summary DTO
     const summaries = orders.map((order) =>
-      this.mapToBookingSummaryLite(order),
+      this.mapToBookingSummaryLite(order, customerMap),
     );
     //  Calculate additional metrics
     const [statusCounts, revenueResult] = await Promise.all([
@@ -937,7 +955,12 @@ export class OrderService {
     });
   }
 
-  private mapToBookingSummaryLite(order: Order) {
+  private mapToBookingSummaryLite(order: Order, customers?: Map<string, string>) {
+    // check order có customer k
+    const customerUser = order.customer_id
+      ? customers?.get(order.customer_id)
+      : undefined;
+
     return {
       id: order.id,
       order_date: order.order_date,
@@ -945,7 +968,7 @@ export class OrderService {
       original_tickets: order.original_tickets,
       status: order.status,
       qr_code: order.qr_code ?? undefined,
-      customer_id: order.customer_id ?? undefined,
+      customer_name: customerUser,
       user: {
         id: order.user.id,
         username: order.user.username,
@@ -980,6 +1003,7 @@ export class OrderService {
         },
         ticketType: {
           ticket_name: detail.ticket.ticketType.ticket_name,
+          audience_type: detail.ticket.ticketType.audience_type,
         },
       })),
       orderExtras:
