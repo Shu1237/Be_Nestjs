@@ -411,6 +411,7 @@ export class OrderService {
 
     const newOrder = await this.orderRepository.save({
       total_prices: orderBill.total_prices,
+      original_price: totalBeforePromotion.toString(),
       status:
         Number(orderBill.payment_method_id as Method) === Method.CASH
           ? StatusOrder.SUCCESS
@@ -928,6 +929,7 @@ export class OrderService {
       id: order.id,
       order_date: order.order_date,
       total_prices: order.total_prices,
+      original_price: order.original_price,
       status: order.status,
       qr_code: order.qr_code ?? undefined,
       customer_id: order.customer_id ?? undefined,
