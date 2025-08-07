@@ -34,7 +34,10 @@ export class CreatePromotionDto {
   @Length(1, 255)
   code: string;
 
-  @ApiProperty({ example: 10 })
+  @ApiProperty({ 
+    example: 10,
+    description: 'Points required to exchange for this promotion'
+  })
   @IsNumber()
   @Min(0)
   exchange: number;

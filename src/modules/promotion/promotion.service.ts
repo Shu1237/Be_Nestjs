@@ -205,17 +205,11 @@ export class PromotionService {
       );
     }
 
-    // Validate exchange based on promotion type
-    if (promotionType.type === 'percentage') {
-      if (exchange <= 0 || exchange > 100) {
-        throw new BadRequestException(
-          'Percentage discount must be between 1 and 100',
-        );
-      }
-    } else if (promotionType.type === 'amount') {
-      if (exchange <= 0) {
-        throw new BadRequestException('Amount discount must be greater than 0');
-      }
+    // Validate exchange points (must be positive for all promotion types)
+    if (exchange <= 0) {
+      throw new BadRequestException(
+        'Exchange points must be greater than 0',
+      );
     }
   }
 
