@@ -779,20 +779,24 @@ export class OrderService {
         revenue: '0',
       });
     }
-    const mapCustomerId = new Map<number, string>(); // key orderId -> customerId
-    orders.forEach(order => {
-      mapCustomerId.set(order.id, order.customer_id);
-    });
-    // call dn customerId
-    const customerId = Array.from(mapCustomerId.values());
-    const customers = await this.userRepository.find({
-      where: { id: In(customerId) },
-    });
-    //map key là userid , value là User
-    const customerMap = new Map<string, string>();
-    customers.forEach(customer => {
-      customerMap.set(customer.id, customer.username);
-    });
+    const mapCustomerId = new Map<number, string>();
+orders.forEach(order => {
+  if (order.customer_id) {
+    mapCustomerId.set(order.id, order.customer_id);
+  }
+});
+
+const customerIds = Array.from(new Set(mapCustomerId.values()));
+
+const customers = await this.userRepository.find({
+  where: { id: In(customerIds) },
+});
+
+const customerMap = new Map<string, string>();
+customers.forEach(customer => {
+  customerMap.set(customer.id, customer.username);
+});
+
     //  Map to summary DTO
     const summaries = orders.map((order) =>
       this.mapToBookingSummaryLite(order, customerMap),
