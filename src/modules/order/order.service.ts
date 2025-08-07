@@ -5,7 +5,12 @@ import { Order } from 'src/database/entities/order/order';
 import { OrderDetail } from 'src/database/entities/order/order-detail';
 import { PaymentMethod } from 'src/database/entities/order/payment-method';
 import { Transaction } from 'src/database/entities/order/transaction';
-import { HoldSeatType, JWTUserType, OrderBillType, SeatInfo } from 'src/common/utils/type';
+import {
+  HoldSeatType,
+  JWTUserType,
+  OrderBillType,
+  SeatInfo,
+} from 'src/common/utils/type';
 import { User } from 'src/database/entities/user/user';
 import { Promotion } from 'src/database/entities/promotion/promotion';
 import { Schedule } from 'src/database/entities/cinema/schedule';
@@ -24,7 +29,12 @@ import { StatusOrder } from 'src/common/enums/status-order.enum';
 import { MyGateWay } from 'src/common/gateways/seat.gateway';
 import { OrderExtra } from 'src/database/entities/order/order-extra';
 import { Product } from 'src/database/entities/item/product';
-import { applyAudienceDiscount, calculateProductTotal, formatDate, roundUpToNearest, } from 'src/common/utils/helper';
+import {
+  applyAudienceDiscount,
+  calculateProductTotal,
+  formatDate,
+  roundUpToNearest,
+} from 'src/common/utils/helper';
 import { ProductTypeEnum } from 'src/common/enums/product.enum';
 import { Combo } from 'src/database/entities/item/combo';
 import { NotFoundException } from 'src/common/exceptions/not-found.exception';
@@ -90,7 +100,7 @@ export class OrderService {
     private readonly jwtService: JwtService,
 
     @Inject('REDIS_CLIENT') private readonly redisClient: Redis,
-  ) { }
+  ) {}
   private async getUserById(userId: string) {
     const user = await this.userRepository.findOne({
       where: { id: userId },
@@ -179,12 +189,14 @@ export class OrderService {
     const allCombos = await this.comboRepository.find();
 
     // Tạo map từ combo data
-    const comboMap = new Map(allCombos.map(combo => [combo.id, combo.discount]));
+    const comboMap = new Map(
+      allCombos.map((combo) => [combo.id, combo.discount]),
+    );
 
     // Enhance products với discount từ combo map
-    return products.map(product => ({
+    return products.map((product) => ({
       ...product,
-      discount: comboMap.get(product.id) ?? undefined
+      discount: comboMap.get(product.id) ?? undefined,
     }));
   }
 
@@ -245,9 +257,7 @@ export class OrderService {
     if (orderBill.customer_id) {
       // Kiểm tra employee/admin không được đặt với customer_id là chính họ
       if (orderBill.customer_id === userData.account_id) {
-        throw new ConflictException(
-          'Cannot use your own ID as customer ID.',
-        );
+        throw new ConflictException('Cannot use your own ID as customer ID.');
       }
 
       const [fetchedUser, fetchedCustomer] = await Promise.all([
@@ -276,7 +286,8 @@ export class OrderService {
     if (promotion.id !== 1) {
       // check trường hợp employee/admin đặt hàng nhưng lại dùng giảm giá mà không gán customer
       if (
-        (user.role.role_id as Role === Role.EMPLOYEE || user.role.role_id as Role === Role.ADMIN) &&
+        ((user.role.role_id as Role) === Role.EMPLOYEE ||
+          (user.role.role_id as Role) === Role.ADMIN) &&
         !orderBill.customer_id
       ) {
         throw new ConflictException(
@@ -295,7 +306,10 @@ export class OrderService {
       }
 
       // check score với tk user (chỉ áp dụng cho USER role)
-      if (user.role.role_id as Role === Role.USER && promotion.exchange > user.score) {
+      if (
+        (user.role.role_id as Role) === Role.USER &&
+        promotion.exchange > user.score
+      ) {
         throw new ConflictException(
           'You do not have enough score to use this promotion.',
         );
@@ -304,15 +318,11 @@ export class OrderService {
       if (customer) {
         // Không cho phép employee/admin đặt với customer_id là chính họ
         if (customer.id === user.id) {
-          throw new ConflictException(
-            'Cannot use your own ID as customer ID.',
-          );
+          throw new ConflictException('Cannot use your own ID as customer ID.');
         }
         // Customer phải có role USER
-        if (customer.role.role_id as Role !== Role.USER) {
-          throw new ConflictException(
-            'Customer must have USER role.',
-          );
+        if ((customer.role.role_id as Role) !== Role.USER) {
+          throw new ConflictException('Customer must have USER role.');
         }
         // Check if customer has enough score
         if (promotion.exchange > customer.score) {
@@ -371,7 +381,9 @@ export class OrderService {
       if (!seat) throw new NotFoundException(`Seat ${seatData.id} not found`);
 
       const ticketType = ticketForAudienceTypes.find(
-        (t) => t.audience_type as AudienceType === seatData.audience_type as AudienceType,
+        (t) =>
+          (t.audience_type as AudienceType) ===
+          (seatData.audience_type as AudienceType),
       );
       const discount = parseFloat(ticketType?.discount ?? '0');
 
@@ -412,13 +424,12 @@ export class OrderService {
       );
     }
 
-
     // get payment code
-    const paymentCode: { payUrl: string, orderId: string } = await this.getPaymentCode(orderBill, clientIp);
+    const paymentCode: { payUrl: string; orderId: string } =
+      await this.getPaymentCode(orderBill, clientIp);
     if (!paymentCode || !paymentCode.payUrl || !paymentCode.orderId) {
       throw new BadRequestException('Payment method failed to create order');
     }
-
 
     // Create order
 
@@ -470,7 +481,9 @@ export class OrderService {
     for (const seatData of orderBill.seats) {
       const seat = scheduleSeats.find((s) => s.seat.id === seatData.id);
       const ticketType = ticketForAudienceTypes.find(
-        (t) => t.audience_type as AudienceType === seatData.audience_type as AudienceType,
+        (t) =>
+          (t.audience_type as AudienceType) ===
+          (seatData.audience_type as AudienceType),
       );
       const priceBeforePromo = seatPriceMap.get(seatData.id)!;
 
@@ -596,8 +609,10 @@ export class OrderService {
 
       if (customer) {
         // Nếu có customer (employee/admin đặt cho customer)
-        if (customer.role.role_id as Role !== Role.USER) {
-          throw new ForbiddenException('Invalid customer for point accumulation');
+        if ((customer.role.role_id as Role) !== Role.USER) {
+          throw new ForbiddenException(
+            'Invalid customer for point accumulation',
+          );
         }
 
         customer.score += addScore;
@@ -609,7 +624,7 @@ export class OrderService {
           order: newOrder,
           created_at: new Date(),
         });
-      } else if (user.role.role_id as Role === Role.USER) {
+      } else if ((user.role.role_id as Role) === Role.USER) {
         // Nếu không có customer và user là USER thì cộng điểm cho user
         user.score += addScore;
         await this.userRepository.save(user);
@@ -695,7 +710,10 @@ export class OrderService {
     return true;
   }
 
-  private async getPaymentCode(orderBill: OrderBillType, clientIp: string): Promise<{ payUrl: string, orderId: string }> {
+  private async getPaymentCode(
+    orderBill: OrderBillType,
+    clientIp: string,
+  ): Promise<{ payUrl: string; orderId: string }> {
     switch (Number(orderBill.payment_method_id as Method)) {
       case Method.MOMO:
         return this.momoService.createOrderMomo(orderBill.total_prices);
@@ -737,10 +755,6 @@ export class OrderService {
       .leftJoinAndSelect('orderExtra.product', 'product')
       .where('order.id NOT IN (:...excludedIds)', { excludedIds: [173, 174] });
 
-
-
-
-
     //  Apply filters
     applyCommonFilters(qb, filters, orderFieldMapping);
 
@@ -781,7 +795,7 @@ export class OrderService {
       });
     }
     const mapCustomerId = new Map<number, string>();
-    orders.forEach(order => {
+    orders.forEach((order) => {
       if (order.customer_id) {
         mapCustomerId.set(order.id, order.customer_id);
       }
@@ -794,7 +808,7 @@ export class OrderService {
     });
 
     const customerMap = new Map<string, string>();
-    customers.forEach(customer => {
+    customers.forEach((customer) => {
       customerMap.set(customer.id, customer.username);
     });
 
@@ -924,7 +938,6 @@ export class OrderService {
       this.mapToBookingSummaryLite(order),
     );
 
-
     const [statusCounts, revenueResult] = await Promise.all([
       this.orderRepository
         .createQueryBuilder('order')
@@ -962,7 +975,10 @@ export class OrderService {
     });
   }
 
-  private mapToBookingSummaryLite(order: Order, customers?: Map<string, string>) {
+  private mapToBookingSummaryLite(
+    order: Order,
+    customers?: Map<string, string>,
+  ) {
     // check order có customer k
     const customerUser = order.customer_id
       ? customers?.get(order.customer_id)
@@ -1089,7 +1105,7 @@ export class OrderService {
     }
 
     // 3. Kiểm tra trạng thái đơn hàng
-    if (order.status as StatusOrder !== StatusOrder.PENDING) {
+    if ((order.status as StatusOrder) !== StatusOrder.PENDING) {
       throw new BadRequestException('Only pending orders can be processed');
     }
 
@@ -1245,20 +1261,19 @@ export class OrderService {
       if (isChangeCustomerId) {
         newCustomer = await this.getUserById(updateData.customer_id);
         if (!newCustomer) {
-          throw new NotFoundException(`Customer with ID ${updateData.customer_id} not found`);
+          throw new NotFoundException(
+            `Customer with ID ${updateData.customer_id} not found`,
+          );
         }
-        if (newCustomer.role.role_id as Role !== Role.USER) {
+        if ((newCustomer.role.role_id as Role) !== Role.USER) {
           throw new ForbiddenException('Customer must be a user');
         }
       } else {
         // customer id k đổi
 
         newCustomer = await this.getUserById(existingOrder.customer_id);
-
       }
     }
-
-
 
     // --- Xử lý sản phẩm ---
     const products = updateData.products || [];
@@ -1268,7 +1283,8 @@ export class OrderService {
       orderExtras = await this.getOrderExtraByIds(productIds);
     }
 
-    const isPromotionChanged = updateData.promotion_id !== existingOrder.promotion?.id;
+    const isPromotionChanged =
+      updateData.promotion_id !== existingOrder.promotion?.id;
     const newPromotion = isPromotionChanged
       ? await this.getPromotionById(updateData.promotion_id)
       : existingOrder.promotion;
@@ -1289,9 +1305,7 @@ export class OrderService {
         updateData.customer_id &&
         newCustomer?.role.role_id !== Role.USER
       ) {
-        throw new ConflictException(
-          'Promotion can only be used for users',
-        );
+        throw new ConflictException('Promotion can only be used for users');
       }
 
       const now = new Date();
@@ -1304,7 +1318,10 @@ export class OrderService {
         throw new BadRequestException('Promotion is not valid at this time');
       }
 
-      if (user.role_id !== Role.USER && newPromotion.exchange > (newCustomer?.score ?? 0)) {
+      if (
+        user.role_id !== Role.USER &&
+        newPromotion.exchange > (newCustomer?.score ?? 0)
+      ) {
         throw new ConflictException(
           'Not enough points to use this promotion for customer',
         );
@@ -1316,7 +1333,7 @@ export class OrderService {
     const ticketTypes = await this.getTicketTypesByAudienceTypes(audienceTypes);
     const scheduleSeats = await this.getScheduleSeatsByIds(
       updateData.seats.map((seat) => seat.id),
-      updateData.schedule_id
+      updateData.schedule_id,
     );
 
     let originalTicketTotal = 0;
@@ -1324,8 +1341,10 @@ export class OrderService {
 
     // Tính lại giá gốc của từng vé dựa trên seat type và audience discount
     for (const seatData of updateData.seats) {
-      const scheduleSeat = scheduleSeats.find(s => s.seat.id === seatData.id);
-      const ticketType = ticketTypes.find(t => t.audience_type === seatData.audience_type as AudienceType);
+      const scheduleSeat = scheduleSeats.find((s) => s.seat.id === seatData.id);
+      const ticketType = ticketTypes.find(
+        (t) => t.audience_type === (seatData.audience_type as AudienceType),
+      );
 
       if (!scheduleSeat) {
         throw new NotFoundException(`Seat ${seatData.id} not found`);
@@ -1350,7 +1369,11 @@ export class OrderService {
       ? Math.round((totalBeforeDiscount * discountValue) / 100)
       : Math.round(discountValue);
 
-    const totalAfterDiscount = totalBeforeDiscount - promotionAmount;
+    const totalAfterDiscount = roundUpToNearest(
+      totalBeforeDiscount - promotionAmount,
+      1000,
+    );
+
     const inputTotal = parseFloat(updateData.total_prices.toString());
     if (Math.abs(totalAfterDiscount - inputTotal) > 0.01) {
       throw new BadRequestException(
@@ -1401,7 +1424,8 @@ export class OrderService {
 
       const extrasToSave: OrderExtra[] = [];
       for (const product of orderExtras) {
-        const quantity = products.find((x) => x.product_id === product.id)?.quantity || 0;
+        const quantity =
+          products.find((x) => x.product_id === product.id)?.quantity || 0;
         if (quantity <= 0) continue;
 
         let basePrice = Number(product.price);
@@ -1452,7 +1476,9 @@ export class OrderService {
         Number(updateData.payment_method_id) === Method.CASH
           ? StatusOrder.SUCCESS
           : StatusOrder.PENDING,
-      customer_id: isChangeCustomerId ? newCustomer?.id : existingOrder.customer_id,
+      customer_id: isChangeCustomerId
+        ? newCustomer?.id
+        : existingOrder.customer_id,
     });
 
     // --- Cập nhật transaction ---
@@ -1462,7 +1488,7 @@ export class OrderService {
     }
 
     const paymentMethod = await this.paymentMethodRepository.findOne({
-      where: { id: Number(updateData.payment_method_id) }
+      where: { id: Number(updateData.payment_method_id) },
     });
 
     if (paymentMethod) {
@@ -1479,14 +1505,14 @@ export class OrderService {
     // --- Đánh dấu ghế là đã BOOKED nếu thanh toán tiền mặt ---
     if (Number(updateData.payment_method_id) === Method.CASH) {
       const seatIds = updateData.seats.map((seat) => seat.id);
-      await this.changeStatusScheduleSeatToBooked(seatIds, updateData.schedule_id);
+      await this.changeStatusScheduleSeatToBooked(
+        seatIds,
+        updateData.schedule_id,
+      );
     }
 
     // --- Cộng điểm nếu là thanh toán tiền mặt + có promotion ---
-    if (
-      newCustomer &&
-      Number(updateData.payment_method_id) === Method.CASH
-    ) {
+    if (newCustomer && Number(updateData.payment_method_id) === Method.CASH) {
       const earnedScore =
         Math.floor(totalAfterDiscount / 1000) - (newPromotion?.exchange ?? 0);
       newCustomer.score += earnedScore;
@@ -1513,7 +1539,6 @@ export class OrderService {
     };
   }
 
-
   async adminCancelOrder(orderId: number) {
     const order = await this.orderRepository.findOne({
       where: { id: orderId },
@@ -1532,7 +1557,7 @@ export class OrderService {
     }
 
     // check status
-    if (order.status as StatusOrder !== StatusOrder.PENDING) {
+    if ((order.status as StatusOrder) !== StatusOrder.PENDING) {
       throw new BadRequestException('Only pending orders can be cancelled');
     }
     // 1. Free up the seats that were booked for this order
@@ -1549,7 +1574,7 @@ export class OrderService {
       });
 
       for (const scheduleSeat of scheduleSeats) {
-        if (scheduleSeat.status as StatusSeat === StatusSeat.HELD) {
+        if ((scheduleSeat.status as StatusSeat) === StatusSeat.HELD) {
           scheduleSeat.status = StatusSeat.NOT_YET;
         }
       }
@@ -1597,24 +1622,31 @@ export class OrderService {
     };
   }
 
-
   async checkAllOrdersStatusByGateway() {
     const now = new Date();
     now.setUTCDate(now.getUTCDate() - 1); // lùi về hôm qua
 
-    const startOfDay = new Date(Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate(),
-      0, 0, 0
-    ));
+    const startOfDay = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+        0,
+        0,
+        0,
+      ),
+    );
 
-    const endOfDay = new Date(Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate(),
-      23, 59, 59
-    ));
+    const endOfDay = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+        23,
+        59,
+        59,
+      ),
+    );
     // const startOfDay = new Date(2025, 6, 29, 0, 0, 0);    // ngày 29/7/2025 lúc 00:00:00
     // const endOfDay = new Date(2025, 6, 29, 23, 59, 59);   // ngày 29/7/2025 lúc 23:59:59
 
@@ -1678,8 +1710,8 @@ export class OrderService {
       const method = methodMap[methodId];
       if (!method) return;
 
-      if (method as PaymentGateway === PaymentGateway.CASH) {
-        if (status as StatusOrder === StatusOrder.SUCCESS) {
+      if ((method as PaymentGateway) === PaymentGateway.CASH) {
+        if ((status as StatusOrder) === StatusOrder.SUCCESS) {
           result[method].totalSuccess++;
           result[method].totalRevenue += Number(total_prices) || 0;
         } else {
