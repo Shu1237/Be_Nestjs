@@ -33,7 +33,11 @@ export class UpdatePromotionDto {
   @Length(1, 255)
   code?: string;
 
-  @ApiProperty({ required: false, example: 10 })
+  @ApiProperty({ 
+    required: false, 
+    example: 10,
+    description: 'Points required to exchange for this promotion'
+  })
   @IsOptional()
   @IsNumber()
   @Min(0)
