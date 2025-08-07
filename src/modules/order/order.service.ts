@@ -780,22 +780,22 @@ export class OrderService {
       });
     }
     const mapCustomerId = new Map<number, string>();
-orders.forEach(order => {
-  if (order.customer_id) {
-    mapCustomerId.set(order.id, order.customer_id);
-  }
-});
+    orders.forEach(order => {
+      if (order.customer_id) {
+        mapCustomerId.set(order.id, order.customer_id);
+      }
+    });
 
-const customerIds = Array.from(new Set(mapCustomerId.values()));
+    const customerIds = Array.from(new Set(mapCustomerId.values()));
 
-const customers = await this.userRepository.find({
-  where: { id: In(customerIds) },
-});
+    const customers = await this.userRepository.find({
+      where: { id: In(customerIds) },
+    });
 
-const customerMap = new Map<string, string>();
-customers.forEach(customer => {
-  customerMap.set(customer.id, customer.username);
-});
+    const customerMap = new Map<string, string>();
+    customers.forEach(customer => {
+      customerMap.set(customer.id, customer.username);
+    });
 
     //  Map to summary DTO
     const summaries = orders.map((order) =>
