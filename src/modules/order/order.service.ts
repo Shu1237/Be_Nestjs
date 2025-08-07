@@ -832,7 +832,7 @@ customers.forEach(customer => {
       totalSuccess,
       totalFailed,
       totalPending,
-      revenue: revenueResult?.revenue,
+      revenue: revenueResult?.revenue || '0',
     });
   }
 
@@ -923,9 +923,11 @@ customers.forEach(customer => {
       this.mapToBookingSummaryLite(order),
     );
 
+
     const [statusCounts, revenueResult] = await Promise.all([
       this.orderRepository
         .createQueryBuilder('order')
+
         .select('order.status', 'status')
         .addSelect('COUNT(*)', 'count')
         .where('order.user.id = :userId', { userId: filters.userId })
@@ -955,7 +957,7 @@ customers.forEach(customer => {
       totalSuccess,
       totalFailed,
       totalPending,
-      revenue: revenueResult?.revenue,
+      revenue: revenueResult?.revenue || '0',
     });
   }
 
@@ -971,7 +973,7 @@ customers.forEach(customer => {
       original_tickets: order.original_tickets,
       status: order.status,
       qr_code: order.qr_code ?? undefined,
-      customer_id:order.customer_id ?? undefined,
+      customer_id: order.customer_id ?? undefined,
       customer_username: customerUser,
       user: {
         id: order.user.id,
