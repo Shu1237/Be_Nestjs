@@ -495,6 +495,7 @@ export class OrderService {
         schedule,
         ticketType,
         status: Number(orderBill.payment_method_id as Method) === Method.CASH,
+        is_used: Number(orderBill.payment_method_id as Method) === Method.CASH,
       });
 
       ticketsToSave.push(newTicket);
@@ -1363,6 +1364,7 @@ export class OrderService {
 
     // --- Cập nhật giá vé với promotion ---
     // Luôn cập nhật giá vé vì có thể seats hoặc promotion thay đổi
+    const ticketsToSave: Ticket[] = [];
     for (const detail of existingOrder.orderDetails) {
       const seatId = detail.ticket.seat.id;
       const originalPrice = seatPriceMap.get(seatId) || 0;
@@ -1372,6 +1374,16 @@ export class OrderService {
         originalPrice - discount,
         1000,
       ).toString();
+
+      // Cập nhật ticket status nếu thanh toán bằng CASH
+      if (Number(updateData.payment_method_id) === Method.CASH) {
+        detail.ticket.status = true;
+        detail.ticket.is_used = true;
+        ticketsToSave.push(detail.ticket);
+      }
+    }
+    if (ticketsToSave.length > 0) {
+      await this.ticketRepository.save(ticketsToSave);
     }
     await this.orderDetailRepository.save(existingOrder.orderDetails);
     // --- Cập nhật OrderExtra ---
@@ -1414,8 +1426,8 @@ export class OrderService {
         const orderExtra = this.orderExtraRepository.create({
           quantity,
           unit_price: roundUpToNearest(unitPrice, 1000).toString(),
-          product,
           order: existingOrder,
+          product,
           status:
             Number(updateData.payment_method_id) === Method.CASH
               ? StatusOrder.SUCCESS
@@ -1450,13 +1462,12 @@ export class OrderService {
     }
 
     const paymentMethod = await this.paymentMethodRepository.findOne({
-      where: { id: Number(updateData.payment_method_id) },
+      where: { id: Number(updateData.payment_method_id) }
     });
 
     if (paymentMethod) {
       existingOrder.transaction.paymentMethod = paymentMethod;
     }
-
     existingOrder.transaction.transaction_code = paymentCode.orderId;
     existingOrder.transaction.transaction_date = new Date();
     existingOrder.transaction.status =
