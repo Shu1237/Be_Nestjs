@@ -177,7 +177,7 @@ export class OrderService {
 
   private async getOrderExtraByIds(productIds: number[]) {
     const products = await this.productRepository.find({
-      where: { id: In(productIds) },
+      where: { id: In(productIds) , is_deleted: false },
     });
     if (!products || products.length === 0) {
       throw new NotFoundException(

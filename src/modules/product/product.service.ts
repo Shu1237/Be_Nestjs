@@ -271,8 +271,14 @@ export class ProductService {
   async softDeleteProduct(id: number) {
     const product = await this.productRepository.findOne({ where: { id } });
     if (!product) throw new NotFoundException('Product not found');
+    
+    // Soft delete in main product table
     product.is_deleted = true;
     await this.productRepository.save(product);
+    
+    // Also soft delete in specific entity table based on category
+    await this.softDeleteSpecificEntity(id, product.category);
+    
     return { msg: 'Product soft deleted successfully' };
   }
 
@@ -282,8 +288,70 @@ export class ProductService {
     if (!product.is_deleted) {
       throw new BadRequestException('Product is not soft-deleted');
     }
+    
+    // Restore in main product table
     product.is_deleted = false;
     await this.productRepository.save(product);
+    
+    // Also restore in specific entity table based on category
+    await this.restoreSpecificEntity(id, product.category);
+    
     return { msg: 'Product restored successfully' };
+  }
+
+  private async softDeleteSpecificEntity(id: number, category: string) {
+    switch (category) {
+      case ProductTypeEnum.COMBO:
+        const combo = await this.comboRepository.findOne({ where: { id } });
+        if (combo) {
+          combo.is_deleted = true;
+          await this.comboRepository.save(combo);
+        }
+        break;
+
+      case ProductTypeEnum.FOOD:
+        const food = await this.foodRepository.findOne({ where: { id } });
+        if (food) {
+          food.is_deleted = true;
+          await this.foodRepository.save(food);
+        }
+        break;
+
+      case ProductTypeEnum.DRINK:
+        const drink = await this.drinkRepository.findOne({ where: { id } });
+        if (drink) {
+          drink.is_deleted = true;
+          await this.drinkRepository.save(drink);
+        }
+        break;
+    }
+  }
+
+  private async restoreSpecificEntity(id: number, category: string) {
+    switch (category) {
+      case ProductTypeEnum.COMBO:
+        const combo = await this.comboRepository.findOne({ where: { id } });
+        if (combo) {
+          combo.is_deleted = false;
+          await this.comboRepository.save(combo);
+        }
+        break;
+
+      case ProductTypeEnum.FOOD:
+        const food = await this.foodRepository.findOne({ where: { id } });
+        if (food) {
+          food.is_deleted = false;
+          await this.foodRepository.save(food);
+        }
+        break;
+
+      case ProductTypeEnum.DRINK:
+        const drink = await this.drinkRepository.findOne({ where: { id } });
+        if (drink) {
+          drink.is_deleted = false;
+          await this.drinkRepository.save(drink);
+        }
+        break;
+    }
   }
 }
