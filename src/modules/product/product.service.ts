@@ -171,37 +171,95 @@ export class ProductService {
     if (!product) throw new NotFoundException('Product not found');
 
     try {
-      // Cập nhật dựa trên category hiện tại của product
-      if (product.category === ProductTypeEnum.COMBO) {
-        const combo = await this.comboRepository.findOne({ where: { id } });
-        if (combo) {
-          Object.assign(combo, dto);
-          if (dto.discount !== undefined) {
-            combo.discount = dto.discount;
-          }
-          await this.comboRepository.save(combo);
-        }
-      } else if (product.category === ProductTypeEnum.FOOD) {
-        const food = await this.foodRepository.findOne({ where: { id } });
-        if (food) {
-          Object.assign(food, dto);
-          await this.foodRepository.save(food);
-        }
-      } else if (product.category === ProductTypeEnum.DRINK) {
-        const drink = await this.drinkRepository.findOne({ where: { id } });
-        if (drink) {
-          Object.assign(drink, dto);
-          await this.drinkRepository.save(drink);
-        }
+      // Check if category is changing
+      const isCategoryChanging = dto.category && dto.category !== product.category;
+      
+      if (isCategoryChanging) {
+        // Handle category change - delete old entity and create new one
+        await this.handleCategoryChange(id, product.category, dto);
       } else {
-        // Default: update product thông thường
-        Object.assign(product, dto);
-        await this.productRepository.save(product);
+        // Update existing entity based on current category
+        await this.updateExistingEntity(id, product.category, dto);
       }
     } catch (error) {
       throw new BadRequestException('Failed to update product - ' + error.message);
     }
+    
     return { msg: 'Product updated successfully' };
+  }
+
+  private async updateExistingEntity(id: number, category: string, dto: UpdateProductDto) {
+    switch (category) {
+      case ProductTypeEnum.COMBO:
+        const combo = await this.comboRepository.findOne({ where: { id } });
+        if (!combo) throw new NotFoundException('Combo not found');
+        Object.assign(combo, dto);
+        await this.comboRepository.save(combo);
+        break;
+
+      case ProductTypeEnum.FOOD:
+        const food = await this.foodRepository.findOne({ where: { id } });
+        if (!food) throw new NotFoundException('Food not found');
+        Object.assign(food, dto);
+        await this.foodRepository.save(food);
+        break;
+
+      case ProductTypeEnum.DRINK:
+        const drink = await this.drinkRepository.findOne({ where: { id } });
+        if (!drink) throw new NotFoundException('Drink not found');
+        Object.assign(drink, dto);
+        await this.drinkRepository.save(drink);
+        break;
+
+      default:
+        const product = await this.productRepository.findOne({ where: { id } });
+        if (!product) throw new NotFoundException('Product not found');
+        Object.assign(product, dto);
+        await this.productRepository.save(product);
+    }
+  }
+
+  private async handleCategoryChange(id: number, oldCategory: string, dto: UpdateProductDto) {
+    // First delete from old table
+    switch (oldCategory) {
+      case ProductTypeEnum.COMBO:
+        await this.comboRepository.delete(id);
+        break;
+      case ProductTypeEnum.FOOD:
+        await this.foodRepository.delete(id);
+        break;
+      case ProductTypeEnum.DRINK:
+        await this.drinkRepository.delete(id);
+        break;
+    }
+
+    // Then create in new table
+    switch (dto.category) {
+      case ProductTypeEnum.COMBO:
+        const combo = new Combo();
+        Object.assign(combo, { id, ...dto });
+        await this.comboRepository.save(combo);
+        break;
+
+      case ProductTypeEnum.FOOD:
+        const food = new Food();
+        Object.assign(food, { id, ...dto });
+        await this.foodRepository.save(food);
+        break;
+
+      case ProductTypeEnum.DRINK:
+        const drink = new Drink();
+        Object.assign(drink, { id, ...dto });
+        await this.drinkRepository.save(drink);
+        break;
+
+      default:
+        const product = await this.productRepository.findOne({ where: { id } });
+        if (product) {
+          Object.assign(product, dto);
+          await this.productRepository.save(product);
+        }
+    }
   }
 
   async deleteProduct(id: number) {
