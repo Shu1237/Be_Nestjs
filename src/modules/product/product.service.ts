@@ -9,7 +9,6 @@ import { Combo } from 'src/database/entities/item/combo';
 import { Food } from 'src/database/entities/item/food';
 import { UpdateProductDto } from './dto/updateProduct.dto';
 
-import { BadRequestException } from '@nestjs/common';
 
 import { ProductPaginationDto } from 'src/common/pagination/dto/product/productPagination.dto';
 import { applyCommonFilters } from 'src/common/pagination/applyCommonFilters';
@@ -18,6 +17,7 @@ import { applySorting } from 'src/common/pagination/apply_sort';
 import { applyPagination } from 'src/common/pagination/applyPagination';
 import { buildPaginationResponse } from 'src/common/pagination/pagination-response';
 import { ProductTypeEnum } from 'src/common/enums/product.enum';
+import { BadRequestException } from 'src/common/exceptions/bad-request.exception';
 
 
 @Injectable()

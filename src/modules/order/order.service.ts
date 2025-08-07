@@ -1299,6 +1299,16 @@ export class OrderService {
           'Staff must provide customer ID when using promotion',
         );
       }
+      // chekc trường hợp user là admin / emloyee gán customer là chính họ
+      if (
+        (user.role_id === Role.EMPLOYEE || user.role_id === Role.ADMIN) &&
+        updateData.customer_id &&
+        updateData.customer_id === user.account_id
+      ) {
+        throw new ForbiddenException(
+          'You cannot set yourself as the customer for promotion',
+        );
+      }
       // check trường hợp employee gán customer_id là role != user
       if (
         (user.role_id === Role.EMPLOYEE || user.role_id === Role.ADMIN) &&
