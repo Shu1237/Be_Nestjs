@@ -919,9 +919,11 @@ export class OrderService {
       this.mapToBookingSummaryLite(order),
     );
 
+
     const [statusCounts, revenueResult] = await Promise.all([
       this.orderRepository
         .createQueryBuilder('order')
+
         .select('order.status', 'status')
         .addSelect('COUNT(*)', 'count')
         .where('order.user.id = :userId', { userId: filters.userId })
@@ -951,7 +953,7 @@ export class OrderService {
       totalSuccess,
       totalFailed,
       totalPending,
-      revenue: revenueResult?.revenue,
+      revenue: revenueResult?.revenue || 0,
     });
   }
 
@@ -967,7 +969,7 @@ export class OrderService {
       original_tickets: order.original_tickets,
       status: order.status,
       qr_code: order.qr_code ?? undefined,
-      customer_id:order.customer_id ?? undefined,
+      customer_id: order.customer_id ?? undefined,
       customer_username: customerUser,
       user: {
         id: order.user.id,
