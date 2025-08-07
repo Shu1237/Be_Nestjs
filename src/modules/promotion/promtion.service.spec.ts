@@ -129,8 +129,8 @@ describe('PromotionService', () => {
       );
     });
 
-    it('❌ 2.4 should throw BadRequestException if percentage discount > 100', async () => {
-      const invalidDto = { ...dto, exchange: 150 };
+    it('❌ 2.4 should throw BadRequestException if exchange points <= 0', async () => {
+      const invalidDto = { ...dto, exchange: 0 };
       (mockPromotionRepo.findOne as jest.Mock).mockResolvedValue(undefined);
       (mockPromotionTypeRepo.findOne as jest.Mock).mockResolvedValue(mockPromotionType);
 
@@ -139,18 +139,29 @@ describe('PromotionService', () => {
       );
     });
 
-    it('❌ 2.5 should throw BadRequestException if amount discount <= 0', async () => {
-      const amountPromotionType = { id: 2, type: 'amount' };
-      const invalidDto = { ...dto, exchange: 0, promotion_type_id: 2 };
+    it('❌ 2.5 should throw BadRequestException if exchange points is negative', async () => {
+      const invalidDto = { ...dto, exchange: -10 };
       (mockPromotionRepo.findOne as jest.Mock).mockResolvedValue(undefined);
-      (mockPromotionTypeRepo.findOne as jest.Mock).mockResolvedValue(amountPromotionType);
+      (mockPromotionTypeRepo.findOne as jest.Mock).mockResolvedValue(mockPromotionType);
 
       await expect(service.createPromotion(invalidDto as any)).rejects.toThrow(
         BadRequestException,
       );
     });
 
-    it('❌ 2.6 should throw BadRequestException if end_time <= now for active promotion', async () => {
+    it('✅ 2.6 should accept exchange points > 100 for percentage type', async () => {
+      const validDto = { ...dto, exchange: 150 };
+      (mockPromotionRepo.findOne as jest.Mock).mockResolvedValue(undefined);
+      (mockPromotionTypeRepo.findOne as jest.Mock).mockResolvedValue(mockPromotionType);
+      (mockPromotionRepo.create as jest.Mock).mockReturnValue({ ...validDto });
+      (mockPromotionRepo.save as jest.Mock).mockResolvedValue({ ...validDto });
+
+      const result = await service.createPromotion(validDto as any);
+
+      expect(result).toEqual({ msg: 'Promotion created successfully' });
+    });
+
+    it('❌ 2.7 should throw BadRequestException if end_time <= now for active promotion', async () => {
       (mockPromotionRepo.findOne as jest.Mock).mockResolvedValue(undefined);
       (mockPromotionTypeRepo.findOne as jest.Mock).mockResolvedValue(mockPromotionType);
       const invalidDto = { ...dto, end_time: '2000-01-01T00:00:00+07:00' };
@@ -160,7 +171,7 @@ describe('PromotionService', () => {
       );
     });
 
-    it('❌ 2.7 should throw BadRequestException if start_time >= end_time', async () => {
+    it('❌ 2.8 should throw BadRequestException if start_time >= end_time', async () => {
       (mockPromotionRepo.findOne as jest.Mock).mockResolvedValue(undefined);
       (mockPromotionTypeRepo.findOne as jest.Mock).mockResolvedValue(mockPromotionType);
       const invalidDto = {
