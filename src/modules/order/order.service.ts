@@ -828,7 +828,7 @@ export class OrderService {
       totalSuccess,
       totalFailed,
       totalPending,
-      revenue: revenueResult?.revenue,
+      revenue: revenueResult?.revenue || '0',
     });
   }
 
@@ -953,7 +953,7 @@ export class OrderService {
       totalSuccess,
       totalFailed,
       totalPending,
-      revenue: revenueResult?.revenue || 0,
+      revenue: revenueResult?.revenue || '0',
     });
   }
 
