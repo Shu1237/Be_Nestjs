@@ -5,7 +5,7 @@ export class CreateVersionDto {
   @IsNotEmpty()
   @IsString()
   @ApiProperty({
-    description: 'Tên của phiên bản',
+    description: 'Version name',
     example: 'Version 1',
   })
   name: string;

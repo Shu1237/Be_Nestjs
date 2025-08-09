@@ -17,7 +17,7 @@ export class SeatTypeService {
     return this.seatTypeRepository.find();
   }
 
-  async getSeatTypeById(id: string) {
+  async getSeatTypeById(id: string) : Promise<SeatType> {
     const seatType = await this.seatTypeRepository.findOne({
       where: { id: parseInt(id) },
     });
@@ -27,20 +27,20 @@ export class SeatTypeService {
     return seatType;
   }
 
-  async createSeatType(createSeatTypeDto: CreateSeatTypeDto) {
+  async createSeatType(createSeatTypeDto: CreateSeatTypeDto) : Promise<{ msg: string }> {
     const seatType = this.seatTypeRepository.create(createSeatTypeDto);
     await this.seatTypeRepository.save(seatType);
     return { msg: 'Seat type created successfully' };
   }
 
-  async updateSeatType(id: string, updateSeatTypeDto: UpdateSeatTypeDto) {
+  async updateSeatType(id: string, updateSeatTypeDto: UpdateSeatTypeDto) : Promise<{ msg: string }> {
     const seatType = await this.getSeatTypeById(id);
     Object.assign(seatType, updateSeatTypeDto);
     await this.seatTypeRepository.save(seatType);
     return { msg: 'Seat type updated successfully' };
   }
 
-  async deleteSeatType(id: string) {
+  async deleteSeatType(id: string) : Promise<{ msg: string }> {
     const seatType = await this.getSeatTypeById(id);
     await this.seatTypeRepository.remove(seatType);
     return { msg: 'Seat type deleted successfully' };

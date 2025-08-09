@@ -19,7 +19,7 @@ export class GerneService {
   constructor(
     @InjectRepository(Gerne)
     private readonly gerneRepository: Repository<Gerne>,
-  ) {}
+  ) { }
   async getAllGernesUser(): Promise<Gerne[]> {
     return await this.gerneRepository.find({
       where: { is_deleted: false },
@@ -42,7 +42,7 @@ export class GerneService {
     return { msg: 'Gerne created successfully' };
   }
 
-  async findAllGernes(filters: GernePaginationDto) {
+  async findAllGernes(filters: GernePaginationDto): Promise<ReturnType<typeof buildPaginationResponse>> {
     const qb = this.gerneRepository.createQueryBuilder('gerne');
 
     applyCommonFilters(qb, filters, gerneFieldMapping);
@@ -62,7 +62,7 @@ export class GerneService {
     });
 
     const [gernes, total] = await qb.getManyAndCount();
-    
+
     // Get counts for active and deleted genres
     const counts = await this.gerneRepository
       .createQueryBuilder('gerne')
@@ -98,7 +98,7 @@ export class GerneService {
   ): Promise<{ msg: string }> {
     const gerne = await this.findGerneById(id);
 
-    // Nếu người dùng muốn đổi tên thì kiểm tra tên mới có trùng với cái khác không
+
     if (
       updateGerneDto.genre_name &&
       updateGerneDto.genre_name !== gerne.genre_name
@@ -112,8 +112,7 @@ export class GerneService {
       }
     }
 
-    Object.assign(gerne, updateGerneDto);
-    await this.gerneRepository.save(gerne);
+    await this.gerneRepository.update(id, updateGerneDto);
     return { msg: 'Gerne updated successfully' };
   }
 
@@ -129,7 +128,7 @@ export class GerneService {
       throw new NotFoundException(`Gerne with ID ${id} not found`);
     }
 
-    gerne.is_deleted = true; // Đánh dấu là đã xóa
+    gerne.is_deleted = true;
     await this.gerneRepository.save(gerne);
 
     return { msg: 'Gerne soft-deleted successfully', gerne };

@@ -37,7 +37,7 @@ export class PromotionController {
     return await this.promotionService.getAllPromotionsUser();
   }
 
-  // GET - Lấy danh sách promotions cho admin (với phân trang)
+  // GET - Get list of promotions for admin (with pagination)
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Get('admin')
@@ -117,7 +117,7 @@ export class PromotionController {
     return this.promotionService.createPromotion(createPromotionDto);
   }
 
-  // PUT - Cập nhật promotion theo ID
+  // PUT - Update promotion by ID
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Put(':id')

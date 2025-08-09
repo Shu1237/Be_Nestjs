@@ -27,14 +27,14 @@ import { RolesGuard } from 'src/common/guards/roles.guard';
 export class ScheduleController {
   constructor(private readonly scheduleService: ScheduleService) { }
 
-  // GET - Lấy danh sách schedules cho user
+  // GET - Get list of schedules for user
   @Get('user')
   @ApiOperation({ summary: 'Get all schedules for users' })
   async findAllUser() {
     return await this.scheduleService.findAllUser();
   }
 
-  // GET - Lấy danh sách schedules cho admin (với phân trang)
+  // GET - Get list of schedules for admin (with pagination)
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Get('admin')
@@ -51,7 +51,7 @@ export class ScheduleController {
     name: 'cinemaRoomName',
     required: false,
     type: String,
-    example: 'Phòng chiếu 1',
+    example: 'Room 1',
   })
   @ApiQuery({
     name: 'scheduleStartTime',
@@ -93,14 +93,14 @@ export class ScheduleController {
     });
   }
 
-  // GET - Lấy schedule theo ID
+  // GET - Get schedule by ID
   @Get(':id')
   @ApiOperation({ summary: 'Get schedule by ID' })
   async findOut(@Param('id') id: number) {
     return await this.scheduleService.findOut(id);
   }
 
-  // POST - Tạo schedule mới
+  // POST - Create new schedule
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Post()
@@ -109,7 +109,7 @@ export class ScheduleController {
     return await this.scheduleService.create(createScheduleDto);
   }
 
-  // PUT - Cập nhật schedule theo ID
+  // PUT - Update schedule by ID
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Put(':id')
@@ -129,7 +129,8 @@ export class ScheduleController {
   async softDeleteSchedule(@Param('id', ParseIntPipe) id: number) {
     return await this.scheduleService.softDeleteSchedule(id);
   }
-
+  
+  // PATCH - Restore soft-deleted schedule
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Patch(':id/restore')
@@ -139,7 +140,8 @@ export class ScheduleController {
   async restoreSchedule(@Param('id', ParseIntPipe) id: number) {
     return await this.scheduleService.restoreSchedule(id);
   }
-
+ 
+  // DELETE - Permanently delete schedule by ID
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Delete(':id')

@@ -20,7 +20,7 @@ export class CreateAccountDto {
 
   @ApiProperty()
   @IsDateString()
-  @Transform(({ value }) => new Date(value).toISOString().split('T')[0]) // Chuyển đổi sang định dạng YYYY-MM-DD
+  @Transform(({ value }) => new Date(value).toISOString().split('T')[0]) 
   @IsNotEmpty()
   date_of_birth: Date;
 

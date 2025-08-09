@@ -60,7 +60,7 @@ export class CinemaRoomService {
     };
   }
 
-  async findAll(filters: CinemaRoomPaginationDto) {
+  async findAll(filters: CinemaRoomPaginationDto): Promise<ReturnType<typeof buildPaginationResponse>> {
     if (!filters) {
       throw new BadRequestException('Filters are required');
     }
@@ -140,11 +140,13 @@ export class CinemaRoomService {
     }
 
     const cinemaRoom = await this.findOne(id);
-    Object.assign(cinemaRoom, {
+    if (!cinemaRoom) {
+      throw new NotFoundException(`Cinema room with ID ${id} not found`);
+    }
+    await this.cinemaRoomRepository.update(id, {
       ...updateCinemaRoomDto,
       cinema_room_name: trimmedName,
     });
-    await this.cinemaRoomRepository.save(cinemaRoom);
     return {
       message: 'Cinema room updated successfully',
     };
@@ -167,7 +169,7 @@ export class CinemaRoomService {
     if (!cinemaRoom) {
       throw new NotFoundException(`Cinema room with ID ${id} not found`);
     }
-    // check tất cả schedule đc mua trong tương lai
+
     const hasFutureTickets = cinemaRoom.schedules.some(schedule =>
       schedule.tickets.some(ticket => ticket.status && schedule.start_movie_time > new Date()),
     );
@@ -198,7 +200,7 @@ export class CinemaRoomService {
     if (!cinemaRoom) {
       throw new NotFoundException(`Cinema Room with ID ${id} not found`);
     }
-    // check tất cả schedule đc mua trong tương lai
+
     const hasFutureTickets = cinemaRoom.schedules.some(schedule =>
       schedule.tickets.some(ticket => ticket.status && schedule.start_movie_time > new Date()),
     );

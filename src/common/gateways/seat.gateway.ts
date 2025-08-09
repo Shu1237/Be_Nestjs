@@ -26,7 +26,7 @@ export class MyGateWay implements OnGatewayConnection, OnModuleInit {
   @WebSocketServer()
   server: Server;
 
-  // Khi server khởi động
+  // connect to socket server
   onModuleInit() {
     if (this.server) {
       this.server.on('connection', (socket) => {
@@ -39,7 +39,7 @@ export class MyGateWay implements OnGatewayConnection, OnModuleInit {
     }
   }
 
-  // Khi client connect lần đầu
+  // When a client connects for the first time
   async handleConnection(client: Socket) {
     const jwtSecret = this.configService.get<string>('jwt.secret');
     if (!jwtSecret) {
@@ -58,7 +58,7 @@ export class MyGateWay implements OnGatewayConnection, OnModuleInit {
     }
   }
 
-  // Client tham gia vào lịch chiếu
+  // When a client joins a schedule
   @SubscribeMessage('join_schedule')
   handleJoinSchedule(
     @MessageBody() data: { schedule_id: number },
@@ -70,7 +70,7 @@ export class MyGateWay implements OnGatewayConnection, OnModuleInit {
     this.logger.log(`Client ${client.id} joined room: ${room}`);
   }
 
-  // Client giữ ghế
+  // Client  hold seat
   @SubscribeMessage('client_hold_seat')
   async onClientHoldSeat(
     @MessageBody() data: HoldSeatType,
@@ -86,7 +86,7 @@ export class MyGateWay implements OnGatewayConnection, OnModuleInit {
     try {
       await this.seatService.holdSeat(data, user);
 
-      // Gửi đến room cụ thể
+      // Emit event to all clients in the schedule room
       if (this.server) {
         this.server
           .to(`schedule-${data.schedule_id}`)
@@ -101,7 +101,7 @@ export class MyGateWay implements OnGatewayConnection, OnModuleInit {
     }
   }
 
-  // Client huỷ giữ ghế
+  // Client cancel hold seat
   @SubscribeMessage('client_cancel_hold_seat')
   async onClientCancelHoldSeat(
     @MessageBody() data: HoldSeatType,
@@ -128,8 +128,7 @@ export class MyGateWay implements OnGatewayConnection, OnModuleInit {
     }
   }
 
-  // Method để xử lý order expired từ cron job
-  // Thông báo huỷ đặt ghế khi order hết hạn cho tất cả client đang join schedule đó
+  // Client cancel seats in the schedule when order expired
   onOrderExpired(data: HoldSeatType) {
     if (!data?.seatIds?.length || !data.schedule_id) {
       this.logger.warn('Invalid order expired data');
@@ -151,7 +150,7 @@ export class MyGateWay implements OnGatewayConnection, OnModuleInit {
     );
   }
 
-  // Public method để emit hold seat từ service khác
+  // Public method to emit hold seat from other services
   public emitHoldSeat(data: HoldSeatType) {
     if (!data?.seatIds?.length || !data.schedule_id) {
       this.logger.warn('Invalid hold seat data');
@@ -167,7 +166,7 @@ export class MyGateWay implements OnGatewayConnection, OnModuleInit {
     }
   }
 
-  // Public method để emit book seat từ service khác
+  // Public method to emit book seat from other services
   public emitBookSeat(data: HoldSeatType) {
     if (!data?.seatIds?.length || !data.schedule_id) {
       this.logger.warn('Invalid book seat data');
@@ -185,7 +184,7 @@ export class MyGateWay implements OnGatewayConnection, OnModuleInit {
     }
   }
 
-  // Public method để emit cancel book seat từ service khác
+  // Public method to emit cancel book seat from other services
   public emitCancelBookSeat(data: HoldSeatType) {
     if (!data?.seatIds?.length || !data.schedule_id) {
       this.logger.warn('Invalid cancel book seat data');

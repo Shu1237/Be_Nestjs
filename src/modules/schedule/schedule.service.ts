@@ -50,7 +50,7 @@ export class ScheduleService {
             id: schedule.version.id,
             name: schedule.version.name,
           }
-        : null, // Nếu version là null, trả về null
+        : null, 
     };
   }
   async findAllUser(): Promise<ISchedule[]> {
@@ -72,26 +72,26 @@ export class ScheduleService {
       id_Version,
     } = createScheduleDto;
 
-    // Kiểm tra sự tồn tại của Movie
+    // check movie_id
     const movie = await this.movieRepository.findOne({
       where: { id: movie_id },
-      relations: ['versions'], // Load danh sách versions
+      relations: ['versions'], 
     });
     if (!movie) {
       throw new NotFoundException(`Movie with ID ${movie_id} not found`);
     }
 
-    // Kiểm tra sự tồn tại của Cinema Room
+    // check cinema_room_id
     const cinemaRoom = await this.cinemaRoomRepository.findOne({
       where: { id: cinema_room_id },
-      select: ['id', 'cinema_room_name'], // Chỉ lấy id và name
+      select: ['id', 'cinema_room_name']
     });
     if (!cinemaRoom) {
       throw new NotFoundException(
         `Cinema Room with ID ${cinema_room_id} not found`,
       );
     }
-
+    // check version_id
     const version = await this.versionRepository.findOne({
       where: { id: id_Version },
     });
@@ -115,7 +115,7 @@ export class ScheduleService {
       })
       .andWhere('schedule.start_movie_time < :end', { end: end_movie_time })
       .andWhere('schedule.end_movie_time > :start', { start: start_movie_time })
-      .andWhere('schedule.is_deleted = false') // Chỉ kiểm tra các lịch chưa bị xóa
+      .andWhere('schedule.is_deleted = false') 
       .getOne();
 
     if (overlappingSchedule) {
@@ -124,22 +124,22 @@ export class ScheduleService {
       );
     }
 
-    // Tạo mới Schedule
+    // create new schedule
     const schedule = this.scheduleRepository.create({
       start_movie_time: start_movie_time,
       end_movie_time: end_movie_time,
       movie,
       cinemaRoom,
-      version, // Liên kết phiên bản cụ thể
+      version,
     });
 
     await this.scheduleRepository.save(schedule);
-    // Trả về dữ liệu đã gói gọn
+   
     return {
-      message: 'create successfully schedule', // Trả về phiên bản cụ thể
+      message: 'create successfully schedule'
     };
   }
-  async findAll(fillters: SchedulePaginationDto) {
+  async findAll(fillters: SchedulePaginationDto) : Promise<ReturnType<typeof buildPaginationResponse>> {
     const qb = this.scheduleRepository
       .createQueryBuilder('schedule')
       .leftJoinAndSelect('schedule.movie', 'movie')
@@ -214,15 +214,13 @@ export class ScheduleService {
     const schedules = await this.scheduleRepository.find({
       relations: ['movie', 'cinemaRoom', 'version'],
     });
-
-    // Gói gọn dữ liệu trả về
     return schedules.map((schedule) => this.getScheduleSummary(schedule));
   }
 
   async findOut(id: number): Promise<ISchedule> {
     const schedule = await this.scheduleRepository.findOne({
       where: { id },
-      relations: ['movie', 'cinemaRoom', 'movie.versions', 'version'], // Load các quan hệ liên quan
+      relations: ['movie', 'cinemaRoom', 'movie.versions', 'version'], 
     });
 
     if (!schedule) {
@@ -239,26 +237,26 @@ export class ScheduleService {
     const { movie_id, cinema_room_id, start_movie_time, end_movie_time } =
       updateScheduleDto;
 
-    // Tìm Schedule theo ID
+    //find existing schedule_id
     const schedule = await this.scheduleRepository.findOne({
       where: { id },
-      relations: ['movie', 'cinemaRoom'], // Lấy các quan hệ liên quan
+      relations: ['movie', 'cinemaRoom'], 
     });
     if (!schedule) {
       throw new NotFoundException(`Schedule with ID ${id} not found`);
     }
 
-    // Cập nhật ngày chiếu nếu có
+    // update start_movie_time and end_movie_time if provided
     if (start_movie_time) {
       schedule.start_movie_time = new Date(start_movie_time);
       schedule.end_movie_time = new Date(end_movie_time);
     }
 
-    // Cập nhật Movie nếu có
+    // update movie if provided
     if (movie_id) {
       const movie = await this.movieRepository.findOne({
         where: { id: movie_id },
-        select: ['id', 'name'], // Chỉ lấy id và name
+        select: ['id', 'name'],
       });
       if (!movie) {
         throw new NotFoundException(`Movie with ID ${movie_id} not found`);
@@ -266,11 +264,11 @@ export class ScheduleService {
       schedule.movie = movie;
     }
 
-    // Cập nhật Cinema Room nếu có
+    // update cinema room if provided
     if (cinema_room_id) {
       const cinemaRoom = await this.cinemaRoomRepository.findOne({
         where: { id: cinema_room_id },
-        select: ['id', 'cinema_room_name'], // Chỉ lấy id và name
+        select: ['id', 'cinema_room_name'],
       });
       if (!cinemaRoom) {
         throw new NotFoundException(
@@ -282,7 +280,6 @@ export class ScheduleService {
 
     await this.scheduleRepository.save(schedule);
 
-    // Trả về dữ liệu đã gói gọn
     return {
       message: 'update successfully schedule',
     };
@@ -302,7 +299,6 @@ export class ScheduleService {
       throw new NotFoundException(`Schedule with ID ${id} not found`);
     }
 
-    // 1. Đánh dấu đã xóa
     schedule.is_deleted = true;
     await this.scheduleRepository.save(schedule);
 

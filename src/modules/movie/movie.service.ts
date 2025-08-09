@@ -61,14 +61,15 @@ export class MovieService {
       })),
     };
   }
-  async getAllMoviesUser() {
+  async getAllMoviesUser(): Promise<IMovie[]> {
     const movies = await this.movieRepository.find({
       where: { is_deleted: false },
       relations: ['gernes', 'actors', 'versions'],
     });
     return movies.map((movie) => this.getMovieSummary(movie));
   }
-  async getAllMovies(fillters: MoviePaginationDto) {
+  
+  async getAllMovies(fillters: MoviePaginationDto) : Promise<ReturnType<typeof buildPaginationResponse>> {
     const qb = this.movieRepository
       .createQueryBuilder('movie')
       .leftJoinAndSelect('movie.actors', 'actor')
@@ -121,12 +122,12 @@ export class MovieService {
   async getMovieById(id: number): Promise<IMovie> {
     const movie = await this.movieRepository.findOne({
       where: { id },
-      relations: ['gernes', 'actors', 'versions'], // Lấy các quan hệ liên quan
+      relations: ['gernes', 'actors', 'versions'], 
     });
     if (!movie) {
       throw new NotFoundException(`Movie with ID ${id} not found`);
     }
-    // Gói gọn dữ liệu trả về
+
     return this.getMovieSummary(movie);
   }
 
@@ -143,7 +144,6 @@ export class MovieService {
       }
       const movie = this.movieRepository.create(movieDto);
 
-      // Nếu có danh sách id_Actor, thêm diễn viên vào bộ phim
       if (movieDto.id_Actor) {
         const actors = await this.actorRepository.find({
           where: { id: In(movieDto.id_Actor) },
@@ -157,7 +157,7 @@ export class MovieService {
         movie.actors = actors;
       }
 
-      // Nếu có danh sách id_Gerne, thêm thể loại vào bộ phim
+
       if (movieDto.id_Gerne) {
         const gernes = await this.gerneRepository.find({
           where: { id: In(movieDto.id_Gerne) },
@@ -171,7 +171,7 @@ export class MovieService {
         movie.gernes = gernes;
       }
 
-      // Nếu có danh sách id_Version, thêm phiên bản vào bộ phim
+
       if (movieDto.id_Version) {
         const versions = await this.versionRepository.find({
           where: { id: In(movieDto.id_Version) },
@@ -190,14 +190,14 @@ export class MovieService {
         msg: 'Movie created successfully',
       };
     } catch (error) {
-      // Nếu là lỗi đã throw ở trên thì trả về luôn
+
       if (
         error instanceof BadRequestException ||
         error instanceof NotFoundException
       ) {
         throw error;
       }
-      // Nếu là lỗi validate hoặc lỗi DB khác
+
       throw new BadRequestException(
         error.message || 'Unknown error when creating movie',
       );
@@ -219,7 +219,7 @@ export class MovieService {
 
     Object.assign(existingMovie, movieDto);
 
-    // Cập nhật danh sách diễn viên
+  
     if (movieDto.id_Actor) {
       const actors = await this.actorRepository.find({
         where: { id: In(movieDto.id_Actor) },
@@ -231,7 +231,7 @@ export class MovieService {
       existingMovie.actors = actors;
     }
 
-    // Cập nhật danh sách thể loại
+
     if (movieDto.id_Gerne) {
       const gernes = await this.gerneRepository.find({
         where: { id: In(movieDto.id_Gerne) },
@@ -243,7 +243,7 @@ export class MovieService {
       existingMovie.gernes = gernes;
     }
 
-    // Cập nhật danh sách phiên bản
+
     if (movieDto.id_Version) {
       const versions = await this.versionRepository.find({
         where: { id: In(movieDto.id_Version) },
@@ -256,13 +256,12 @@ export class MovieService {
     }
 
     await this.movieRepository.save(existingMovie);
-    // Trả về dữ liệu đã gói gọn
     return {
       msg: 'Movie updated successfully',
     };
   }
 
-  async deleteMovie(id: number) {
+  async deleteMovie(id: number) : Promise<{ msg: string }> {
     const result = await this.movieRepository.delete(id);
     if (result.affected === 0) {
       throw new NotFoundException(`Movie with ID ${id} not found`);
@@ -302,7 +301,7 @@ export class MovieService {
       throw new NotFoundException(`Movie with ID ${movieId} not found`);
     }
 
-    // Chỉ lấy `id` và `name` của các Actor
+
     return movie.actors.map((actor) => ({ id: actor.id, name: actor.name }));
   }
 
@@ -324,7 +323,6 @@ export class MovieService {
       throw new NotFoundException(`Actor with ID ${actorId} not found`);
     }
 
-    // Remove the actor from the movie's actors list
     movie.actors = movie.actors.filter(
       (existingActor) => existingActor.id !== actorId,
     );
@@ -347,7 +345,7 @@ export class MovieService {
   async removeGerneFromMovie(movieId: number, gerneId: number): Promise<Movie> {
     const movie = await this.movieRepository.findOne({
       where: { id: movieId },
-      relations: ['gernes'], // Lấy danh sách thể loại liên quan
+      relations: ['gernes'], 
     });
 
     const gerne = await this.gerneRepository.findOne({
@@ -362,7 +360,7 @@ export class MovieService {
       throw new NotFoundException(`Gerne with ID ${gerneId} not found`);
     }
 
-    // Kiểm tra nếu thể loại không tồn tại trong danh sách của phim
+
     const isGerneInMovie = movie.gernes.some(
       (existingGerne) => existingGerne.id === gerneId,
     );
@@ -372,7 +370,6 @@ export class MovieService {
       );
     }
 
-    // Xóa thể loại khỏi danh sách
     movie.gernes = movie.gernes.filter(
       (existingGerne) => existingGerne.id !== gerneId,
     );
@@ -382,7 +379,7 @@ export class MovieService {
   async getVersionsOfMovie(movieId: number): Promise<Version[]> {
     const movie = await this.movieRepository.findOne({
       where: { id: movieId },
-      relations: ['versions'], // Lấy danh sách phiên bản liên quan
+      relations: ['versions'],
     });
 
     if (!movie) {

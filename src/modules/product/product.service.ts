@@ -33,27 +33,20 @@ export class ProductService {
     private readonly drinkRepository: Repository<Drink>,
   ) { }
 
-  async getAllProductsUser() {
-    // 1. Lấy tất cả sản phẩm
+  async getAllProductsUser(): Promise<(Product | Combo | Food | Drink)[]> {
     const products = await this.productRepository.find({
       where: { is_deleted: false },
     });
-
-    // 2. Lấy tất cả combos trong DB (không filter theo category vì data không consistent)
     const allCombos = await this.comboRepository.find();
-
-    // 3. Tạo Map để ánh xạ id => discount
     const comboMap = new Map(allCombos.map(combo => [combo.id, combo.discount]));
-
-    // 4. Trả về mảng sản phẩm, thêm discount nếu có trong combo map
     return products.map((product) => ({
       ...product,
-      discount: comboMap.get(product.id) ?? undefined ,
+      discount: comboMap.get(product.id) ?? undefined,
     }));
   }
 
 
-  async getAllProducts(fillters: ProductPaginationDto) {
+  async getAllProducts(fillters: ProductPaginationDto): Promise<ReturnType<typeof buildPaginationResponse>> {
     const qb = this.productRepository.createQueryBuilder('product');
 
     applyCommonFilters(qb, fillters, productFieldMapping);
@@ -77,13 +70,13 @@ export class ProductService {
     });
     const [products, total] = await qb.getManyAndCount();
 
-    // Lấy tất cả combos trong DB (không filter theo category vì data không consistent)
+    // Get all combos in DB (not filtered by category because data is inconsistent)
     const allCombos = await this.comboRepository.find();
 
-    // Tạo map từ combo data
+    // Create map from combo data
     const comboMap = new Map(allCombos.map(combo => [combo.id, combo.discount]));
 
-    // Enhance products với discount từ combo map
+    // Enhance products with discount from combo map
     const enhancedProducts = products.map(product => ({
       ...product,
       discount: comboMap.get(product.id) ?? undefined
@@ -107,7 +100,7 @@ export class ProductService {
     });
   }
 
-  async getProductById(id: number) {
+  async getProductById(id: number): Promise<Product | Combo | Food | Drink> {
     const product = await this.productRepository.findOne({ where: { id } });
 
     if (!product) {
@@ -118,7 +111,7 @@ export class ProductService {
     if (product.category.toLowerCase() !== ProductTypeEnum.COMBO) {
       return {
         ...product,
-        discount: null,
+        discount: undefined,
       };
     }
 
@@ -131,8 +124,8 @@ export class ProductService {
     };
   }
 
-  async createProduct(dto: CreateProductDto) {
-    // check trùng name 
+  async createProduct(dto: CreateProductDto): Promise<{ msg: string }> {
+    // check name
     const existingProduct = await this.productRepository.findOne({
       where: { name: dto.name, is_deleted: false },
     });
@@ -140,40 +133,40 @@ export class ProductService {
       throw new BadRequestException('Product with this name already exists');
     }
 
-    // Tạo product dựa trên category
+    // create product based on category
     let savedProduct: Product | Combo | Food | Drink;
-    
+
     if (dto.category === ProductTypeEnum.COMBO) {
-      // Tạo combo với discount
+      // Create combo with discount
       const combo = new Combo();
       Object.assign(combo, dto);
       combo.discount = dto.discount || undefined;
       savedProduct = await this.comboRepository.save(combo);
     } else if (dto.category === ProductTypeEnum.FOOD) {
-      // Tạo food
+      // Create food
       const food = new Food();
       Object.assign(food, dto);
       savedProduct = await this.foodRepository.save(food);
     } else if (dto.category === ProductTypeEnum.DRINK) {
-      // Tạo drink
+      // Create drink
       const drink = new Drink();
       Object.assign(drink, dto);
       savedProduct = await this.drinkRepository.save(drink);
     } else {
-      // Default: tạo product thông thường
+      // Default: create regular product
       savedProduct = await this.productRepository.save(dto);
     }
 
-    return { msg: 'Product created successfully'};
+    return { msg: 'Product created successfully' };
   }
-  async updateProduct(id: number, dto: UpdateProductDto) {
+  async updateProduct(id: number, dto: UpdateProductDto): Promise<{ msg: string }> {
     const product = await this.productRepository.findOne({ where: { id } });
     if (!product) throw new NotFoundException('Product not found');
 
     try {
       // Check if category is changing
       const isCategoryChanging = dto.category && dto.category !== product.category;
-      
+
       if (isCategoryChanging) {
         // Handle category change - delete old entity and create new one
         await this.handleCategoryChange(id, product.category, dto);
@@ -184,11 +177,11 @@ export class ProductService {
     } catch (error) {
       throw new BadRequestException('Failed to update product - ' + error.message);
     }
-    
+
     return { msg: 'Product updated successfully' };
   }
 
-  private async updateExistingEntity(id: number, category: string, dto: UpdateProductDto) {
+  private async updateExistingEntity(id: number, category: string, dto: UpdateProductDto): Promise<void> {
     switch (category) {
       case ProductTypeEnum.COMBO:
         const combo = await this.comboRepository.findOne({ where: { id } });
@@ -219,7 +212,7 @@ export class ProductService {
     }
   }
 
-  private async handleCategoryChange(id: number, oldCategory: string, dto: UpdateProductDto) {
+  private async handleCategoryChange(id: number, oldCategory: string, dto: UpdateProductDto): Promise<void> {
     // First delete from old table
     switch (oldCategory) {
       case ProductTypeEnum.COMBO:
@@ -262,44 +255,44 @@ export class ProductService {
     }
   }
 
-  async deleteProduct(id: number) {
+  async deleteProduct(id: number): Promise<{ msg: string }> {
     const result = await this.productRepository.delete(id);
     if (result.affected === 0) throw new NotFoundException('Product not found');
     return { msg: 'Product deleted successfully' };
   }
 
-  async softDeleteProduct(id: number) {
+  async softDeleteProduct(id: number) : Promise<{ msg: string }> {
     const product = await this.productRepository.findOne({ where: { id } });
     if (!product) throw new NotFoundException('Product not found');
-    
+
     // Soft delete in main product table
     product.is_deleted = true;
     await this.productRepository.save(product);
-    
+
     // Also soft delete in specific entity table based on category
     await this.softDeleteSpecificEntity(id, product.category);
-    
+
     return { msg: 'Product soft deleted successfully' };
   }
 
-  async restoreProduct(id: number) {
+  async restoreProduct(id: number) : Promise<{ msg: string }> {
     const product = await this.productRepository.findOne({ where: { id } });
     if (!product) throw new NotFoundException('Product not found');
     if (!product.is_deleted) {
       throw new BadRequestException('Product is not soft-deleted');
     }
-    
+
     // Restore in main product table
     product.is_deleted = false;
     await this.productRepository.save(product);
-    
+
     // Also restore in specific entity table based on category
     await this.restoreSpecificEntity(id, product.category);
-    
+
     return { msg: 'Product restored successfully' };
   }
 
-  private async softDeleteSpecificEntity(id: number, category: string) {
+  private async softDeleteSpecificEntity(id: number, category: string): Promise<void> {
     switch (category) {
       case ProductTypeEnum.COMBO:
         const combo = await this.comboRepository.findOne({ where: { id } });
@@ -327,7 +320,7 @@ export class ProductService {
     }
   }
 
-  private async restoreSpecificEntity(id: number, category: string) {
+  private async restoreSpecificEntity(id: number, category: string): Promise<void> {
     switch (category) {
       case ProductTypeEnum.COMBO:
         const combo = await this.comboRepository.findOne({ where: { id } });

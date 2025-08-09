@@ -33,7 +33,7 @@ export class OrderCronService {
     this.logger.log('Running cron to check expired pending orders...');
 
     const now = new Date();
-    const expiredThreshold = new Date(now.getTime() - 20 * 60 * 1000); // 20 phút trước
+    const expiredThreshold = new Date(now.getTime() - 20 * 60 * 1000); 
 
     try {
       const expiredOrders = await this.orderRepository.find({
@@ -80,10 +80,10 @@ export class OrderCronService {
           }
         }
 
-        // Đánh dấu order là FAILED
+        // update order status to FAILED
         order.status = StatusOrder.FAILED;
 
-        // Cập nhật transaction status nếu có
+        // update transaction status if exists
         if (order.transaction) {
           order.transaction.status = StatusOrder.FAILED;
           this.logger.log(
@@ -91,7 +91,7 @@ export class OrderCronService {
           );
         }
 
-        // Cập nhật order extras status nếu có
+        // update order extras status to FAILED
         if (order.orderExtras && order.orderExtras.length > 0) {
           for (const extra of order.orderExtras) {
             extra.status = StatusOrder.FAILED;
@@ -105,10 +105,10 @@ export class OrderCronService {
       }
 
       if (ordersToFail.length > 0) {
-        // Save orders với cascade: true sẽ tự động save transaction
+        // save all orders in a single transaction
         await this.orderRepository.save(ordersToFail);
 
-        // Đảm bảo transaction được save riêng biệt
+        // update transactions in a single transaction
         const transactionsToUpdate = ordersToFail
           .map((order) => order.transaction)
           .filter((transaction) => transaction !== null);
@@ -117,7 +117,7 @@ export class OrderCronService {
           await this.transactionRepository.save(transactionsToUpdate);
         }
 
-        // Đảm bảo order extras được save riêng biệt
+        // update order extras status to FAILED
         const orderExtrasToUpdate = ordersToFail
           .flatMap((order) => order.orderExtras || [])
           .filter((extra) => extra !== null);
@@ -129,7 +129,7 @@ export class OrderCronService {
           );
         }
 
-        // Socket notification cho các seats đã được giải phóng
+        // socket notification
         const scheduleSeatsMap = new Map<number, string[]>();
 
         for (const order of ordersToFail) {
@@ -146,7 +146,7 @@ export class OrderCronService {
           }
         }
 
-        // Gửi socket notification cho từng schedule
+        // socket notification for each schedule
         for (const [scheduleId, seatIds] of scheduleSeatsMap) {
           this.gateway.onOrderExpired({
             schedule_id: scheduleId,

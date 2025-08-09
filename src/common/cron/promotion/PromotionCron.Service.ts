@@ -25,7 +25,7 @@ export class PromotionCronService {
     const now = new Date();
 
     try {
-      // Kích hoạt khuyến mãi đủ điều kiện
+      // activate promotions that have started
       const promotionsToActivate = await this.promotionRepository
         .createQueryBuilder('promo')
         .where('promo.start_time <= :now', { now })
@@ -47,7 +47,7 @@ export class PromotionCronService {
         this.logger.log(`Activated promotions: ${codes}`);
       }
 
-      // Hủy kích hoạt các khuyến mãi đã hết hạn
+      // cacncel promotions that have ended
       const promotionsToDeactivate = await this.promotionRepository
         .createQueryBuilder('promo')
         .where('promo.end_time <= :now', { now })
@@ -74,16 +74,5 @@ export class PromotionCronService {
     }
   }
 
-  // async manualPromotionCheck(): Promise<{
-  //   message: string;
-  //   timestamp: string;
-  // }> {
-  //   await this.processPromotions();
-  //   return {
-  //     message: 'Manual check completed',
-  //     timestamp: new Date().toLocaleString('vi-VN', {
-  //       // timeZone: 'Asia/Ho_Chi_Minh',
-  //     }),
-  //   };
-  // }
+
 }

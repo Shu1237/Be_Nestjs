@@ -20,7 +20,7 @@ export class CreateSeatTypeDto {
 
   @ApiProperty({
     description: 'Description of the seat type',
-    example: 'Ghế VIP với không gian rộng rãi',
+    example: 'VIP seats with spacious area',
   })
   @IsNotEmpty()
   @IsString()

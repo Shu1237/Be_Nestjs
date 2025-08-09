@@ -26,14 +26,14 @@ import { RolesGuard } from 'src/common/guards/roles.guard';
 export class MovieController {
   constructor(private readonly movieService: MovieService) { }
 
-  // GET - Lấy danh sách movies cho user
+  // GET - get all movies for user
   @Get('user')
   @ApiOperation({ summary: 'Get all movies for user' })
   getMovie() {
     return this.movieService.getAllMoviesUser();
   }
 
-  // GET - Lấy danh sách movies cho admin (với phân trang và filter)
+  // GET - get all movies for admin (with pagination)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Get('admin')
@@ -95,26 +95,26 @@ export class MovieController {
     });
   }
 
-  // GET - Lấy movie theo ID
+  // GET - get movie by ID
   @Get(':id')
   @ApiOperation({ summary: 'Get movie by ID' })
   getMovieById(@Param('id', ParseIntPipe) id: number) {
     return this.movieService.getMovieById(id);
   }
 
-  // GET - Lấy genres của movie
-@UseGuards(JwtAuthGuard, RolesGuard)
+  // GET - get all genres of a movie
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Get(':movieId/gernes')
   @ApiOperation({ summary: 'Get all genres of a movie' })
   getGernesOfMovie(
     @Param('movieId', ParseIntPipe) movieId: number,
-  ): Promise<any> {
+  ) {
     return this.movieService.getGernesOfMovie(movieId);
   }
 
-  // POST - Tạo movie mới
-@UseGuards(JwtAuthGuard, RolesGuard)
+  // POST - Create new movie
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Post()
   @ApiOperation({ summary: 'Create a new movie' })
@@ -122,20 +122,20 @@ export class MovieController {
     return this.movieService.createMovie(movieDto);
   }
 
-  // PUT - Cập nhật movie theo ID
- @UseGuards(JwtAuthGuard, RolesGuard)
+  // PUT - Update movie by ID
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Put(':id')
   @ApiOperation({ summary: 'Update movie by ID (admin, employee only)' })
   async updateMovie(
     @Param('id', ParseIntPipe) id: number,
     @Body() movieDTO: UpdateMovieDto,
-  ): Promise<any> {
+  ){
     return this.movieService.updateMovie(id, movieDTO);
   }
 
-  // PATCH - Soft delete movie
-@UseGuards(JwtAuthGuard, RolesGuard)
+  // PATCH - Soft delete movie by ID
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Patch(':id')
   @ApiOperation({ summary: 'Soft delete a movie by ID (admin, employee only)' })
@@ -144,7 +144,8 @@ export class MovieController {
     return { message: 'Movie soft deleted successfully' };
   }
 
-@UseGuards(JwtAuthGuard, RolesGuard)
+  // PATCH - Restore soft-deleted movie by ID
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Patch(':id/restore')
   @ApiOperation({
@@ -154,8 +155,8 @@ export class MovieController {
     return await this.movieService.restoreMovie(id);
   }
 
-  // DELETE - Xóa movie vĩnh viễn
-@UseGuards(JwtAuthGuard, RolesGuard)
+  // DELETE - Hard delete movie by ID
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Delete(':id')
   @ApiOperation({ summary: 'Hard delete a movie by ID (admin, employee only)' })

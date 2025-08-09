@@ -41,7 +41,7 @@ export class PromotionService {
       .getMany();
   }
 
-  async getAllPromotions(fillters: PromotionPaginationDto) {
+  async getAllPromotions(fillters: PromotionPaginationDto) : Promise<ReturnType<typeof buildPaginationResponse>> {
     const qb = this.promotionRepository
       .createQueryBuilder('promotion')
       .leftJoinAndSelect('promotion.promotionType', 'promotionType');
@@ -83,7 +83,7 @@ export class PromotionService {
     });
   }
 
-  async createPromotion(dto: CreatePromotionDto) {
+  async createPromotion(dto: CreatePromotionDto): Promise<{ msg: string }> {
     // Validate promotion code uniqueness
     const exist = await this.promotionRepository.findOne({
       where: { code: dto.code },
@@ -115,7 +115,7 @@ export class PromotionService {
     return { msg: 'Promotion created successfully' };
   }
 
-  async getPromotionById(id: number) {
+  async getPromotionById(id: number) : Promise<Promotion> {
     const promotion = await this.promotionRepository.findOne({
       where: { id, is_active: true },
     });
@@ -123,7 +123,7 @@ export class PromotionService {
     return promotion;
   }
 
-  async updatePromotion(id: number, dto: UpdatePromotionDto) {
+  async updatePromotion(id: number, dto: UpdatePromotionDto): Promise<{ msg: string }> {
     const promo = await this.getPromotionById(id);
 
     // Validate promotion code uniqueness (if provided)
@@ -159,7 +159,7 @@ export class PromotionService {
     return { msg: 'Promotion updated successfully' };
   }
 
-  async togglePromotionStatus(id: number) {
+  async togglePromotionStatus(id: number) : Promise<{ msg: string }> {
     const promotion = await this.promotionRepository.findOne({
       where: { id },
       relations: ['promotionType'],
@@ -169,8 +169,7 @@ export class PromotionService {
       throw new NotFoundException('Promotion not found');
     }
 
-    // Validate if promotion can be toggled (check if it's currently being used)
-    await this.validatePromotionToggle(promotion);
+
 
     // Toggle the is_active status
     promotion.is_active = !promotion.is_active;
@@ -180,7 +179,7 @@ export class PromotionService {
     return { msg: `Promotion ${action} successfully` };
   }
 
-  private async validatePromotionType(promotionTypeId: number) {
+  private async validatePromotionType(promotionTypeId: number) : Promise<void> {
     const promotionType = await this.promotionTypeRepository.findOne({
       where: { id: promotionTypeId },
     });
@@ -194,7 +193,7 @@ export class PromotionService {
   private async validateExchangeValue(
     exchange: number,
     promotionTypeId: number,
-  ) {
+  ) : Promise<void> {
     const promotionType = await this.promotionTypeRepository.findOne({
       where: { id: promotionTypeId },
     });
@@ -211,12 +210,6 @@ export class PromotionService {
         'Exchange points must be greater than 0',
       );
     }
-  }
-
-  private async validatePromotionToggle(promotion: Promotion) {
-    // Add business logic validation here if needed
-    // For example, check if promotion is currently being used in active orders
-    // This is a placeholder for future implementation
   }
 
   private validateDates(

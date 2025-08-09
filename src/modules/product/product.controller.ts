@@ -27,14 +27,14 @@ import { Role } from 'src/common/enums/roles.enum';
 export class ProductController {
   constructor(private readonly productService: ProductService) { }
 
-  // GET - Lấy danh sách products cho user
+  // GET - Get list of products for user
   @Get('user')
   @ApiOperation({ summary: 'Get all products for users' })
   async getAllProductsUser() {
     return await this.productService.getAllProductsUser();
   }
 
-  // GET - Lấy danh sách products cho admin (với phân trang và filter)
+  // GET - Get list of products for admin (with pagination)
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Get('admin')
@@ -76,14 +76,14 @@ export class ProductController {
     });
   }
 
-  // GET - Lấy product theo ID
+  // GET - Get product by ID
   @Get(':id')
   @ApiOperation({ summary: 'Get product by ID' })
   getProductById(@Param('id', ParseIntPipe) id: number) {
     return this.productService.getProductById(id);
   }
 
-  // POST - Tạo product mới
+  // POST - Create a new product
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Post()
@@ -92,7 +92,7 @@ export class ProductController {
     return this.productService.createProduct(dto);
   }
 
-  // PUT - Cập nhật product theo ID
+  // PUT - Update product by ID
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Put(':id')
@@ -105,7 +105,7 @@ export class ProductController {
     return this.productService.updateProduct(id, dto);
   }
 
-  // DELETE - Xóa product theo ID
+  // DELETE - Delete product by ID
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Delete(':id')
@@ -116,7 +116,7 @@ export class ProductController {
     return this.productService.deleteProduct(id);
   }
 
-
+  // PATCH - Soft delete product by ID and restore
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Patch(':id/soft-delete')
@@ -126,6 +126,8 @@ export class ProductController {
   async softDeleteProduct(@Param('id', ParseIntPipe) id: number) {
     return this.productService.softDeleteProduct(id);
   }
+
+  // PATCH - Restore soft-deleted product by ID
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Patch(':id/restore')

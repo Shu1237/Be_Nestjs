@@ -25,7 +25,7 @@ export class RefreshGuard implements CanActivate {
       );
     }
 
-    // get access token từ header
+    // get access token from header
     const authHeader = req.headers['authorization'];
     const accessToken =
       authHeader && authHeader.startsWith('Bearer ')
@@ -39,7 +39,7 @@ export class RefreshGuard implements CanActivate {
     try {
       // not expired
       jwt.verify(accessToken, jwtSecret);
-      //  Nếu access token còn hạn → không cần refresh
+      //  if access token is still valid, do not allow refresh
       throw new ForbiddenException(
         'Access token is still valid, refresh not allowed',
       );

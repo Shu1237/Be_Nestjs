@@ -2,7 +2,6 @@ import { BasePaginationDto } from '../basePagination.dto';
 import {
   IsOptional,
   IsNumber,
-  IsBooleanString,
   IsString,
   IsBoolean,
 } from 'class-validator';
@@ -30,14 +29,14 @@ export class PromotionPaginationDto extends BasePaginationDto {
 
   @IsOptional()
   @IsString()
-  startTime?: string; // định dạng yyyy-MM-dd
+  startTime?: string;
 
   @IsOptional()
   @IsString()
-  endTime?: string; // định dạng yyyy-MM-dd
+  endTime?: string; 
 
   @IsOptional()
   @Transform(({ value }) => value === 'true' || value === true)
   @IsBoolean()
-  is_active?: string; // 'true' hoặc 'false' dạng string (vì query param)
+  is_active?: string; 
 }

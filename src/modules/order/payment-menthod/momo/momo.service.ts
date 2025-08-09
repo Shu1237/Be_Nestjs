@@ -194,7 +194,6 @@ export class MomoService extends AbstractPaymentService {
   //     order_ref_id,
   //   } = refund;
 
-  //   // ✅ Tạo signature mới (chính xác)
   //   const rawSignature = `accessKey=${accessKey}&amount=${Number(refund_amount)}&description=${description}&orderId=${order_ref_id}&partnerCode=${partnerCode}&requestId=${request_id}&transId=${transaction_code}`;
 
   //   const signature = crypto
@@ -204,7 +203,7 @@ export class MomoService extends AbstractPaymentService {
 
   //   const requestBody = {
   //     partnerCode,
-  //     orderId: order_ref_id, // ✅ Dùng order_ref_id duy nhất
+  //     orderId: order_ref_id,
   //     requestId: request_id,
   //     amount: Number(refund_amount),
   //     transId: transaction_code,
@@ -226,7 +225,7 @@ export class MomoService extends AbstractPaymentService {
   //       throw new InternalServerErrorException(`Refund failed: ${res.data.message}`);
   //     }
 
-  //     // ✅ Cập nhật trạng thái + lưu lại signature chính xác nếu cần
+
   //     refund.refund_status = RefundStatus.SUCCESS;
   //     refund.signature = signature;
 

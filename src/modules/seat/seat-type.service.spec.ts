@@ -52,7 +52,7 @@ describe('SeatTypeService', () => {
       const dto = {
         seat_type_name: 'VIP',
         seat_type_price: 150000,
-        seat_type_description: 'Ghế VIP với không gian rộng rãi',
+        seat_type_description: 'VIP seats with spacious area',
         cinema_room_id: '2',
       };
       (mockRepo.create as jest.Mock).mockReturnValue(dto);
@@ -70,13 +70,13 @@ describe('SeatTypeService', () => {
         id: 2,
         seat_type_name: 'Normal',
         seat_type_price: 100000,
-        seat_type_description: 'Bình thường',
+        seat_type_description: 'Normal',
         cinema_room_id: '2',
       };
       const updateDto = {
         seat_type_name: 'VIP',
         seat_type_price: 200000,
-        seat_type_description: 'Ghế VIP',
+        seat_type_description: 'VIP seats',
       };
       service.getSeatTypeById = jest.fn().mockResolvedValue(old);
       (mockRepo.save as jest.Mock).mockResolvedValue({ ...old, ...updateDto });
