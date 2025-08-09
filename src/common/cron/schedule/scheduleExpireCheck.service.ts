@@ -17,7 +17,7 @@ export class ScheduleExpireCheckService {
     private readonly scheduleSeatRepository: Repository<ScheduleSeat>,
   ) {}
 
-  // Chạy 12h tối
+  
   @Cron('0 0 * * *', { name: 'expire-schedules' })
   async handleExpireSchedules() {
     this.logger.log('Starting schedule expiration check');
@@ -36,7 +36,7 @@ export class ScheduleExpireCheckService {
 
         for (const schedule of expiredSchedules) {
           schedule.is_deleted = true;
-          // Tìm các ghế chưa được đặt của schedule này
+          // find all seats associated with this schedule that are not yet used
           const availableSeats = await this.scheduleSeatRepository.find({
             where: {
               schedule: { id: schedule.id },
@@ -45,7 +45,7 @@ export class ScheduleExpireCheckService {
           });
 
           if (availableSeats.length > 0) {
-            // Gom lại các seat để xoá
+            // Mark these seats as deleted
             seatsToRemove.push(...availableSeats);
           }
         }

@@ -43,7 +43,7 @@ export class ActorService {
     };
   }
 
-  async getAllActors(filters: ActorPaginationDto) {
+  async getAllActors(filters: ActorPaginationDto): Promise<ReturnType<typeof buildPaginationResponse>> {
     const qb = this.actorRepository.createQueryBuilder('actor');
     applyCommonFilters(qb, filters, actorFieldMapping);
     const allowedSortFields = [
@@ -126,8 +126,7 @@ export class ActorService {
       );
     }
 
-    Object.assign(existingActor, updateActorDto);
-    await this.actorRepository.save(existingActor);
+    await this.actorRepository.update(id, updateActorDto);
     return { msg: 'Actor updated successfully' };
   }
 

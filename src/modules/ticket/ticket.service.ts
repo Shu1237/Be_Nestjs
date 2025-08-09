@@ -77,7 +77,7 @@ export class TicketService {
     };
   }
 
-  async getAllTicketsUser() {
+  async getAllTicketsUser() :Promise<ReturnType<typeof this.summaryTicket>[]> {
     const tickets = await this.ticketRepository.find({
       where: { is_used: false, status: true },
       relations: [
@@ -91,7 +91,7 @@ export class TicketService {
     });
     return tickets.map((ticket) => this.summaryTicket(ticket));
   }
-  async getAllTickets(fillters: TicketPaginationDto) {
+  async getAllTickets(fillters: TicketPaginationDto) : Promise<ReturnType<typeof buildPaginationResponse>> {
     const qb = this.ticketRepository
       .createQueryBuilder('ticket')
       .leftJoinAndSelect('ticket.schedule', 'schedule')
@@ -146,7 +146,7 @@ export class TicketService {
     });
   }
 
-  async getTicketById(id: string) {
+  async getTicketById(id: string) : Promise<ReturnType<typeof this.summaryTicket>> {
     const ticket = await this.ticketRepository.findOne({
       where: { id },
       relations: [
@@ -164,7 +164,7 @@ export class TicketService {
     return this.summaryTicket(ticket);
   }
 
-  async getTicketsByUserId(fillters: TicketPaginationDto & { userId: string }) {
+  async getTicketsByUserId(fillters: TicketPaginationDto & { userId: string }) : Promise<ReturnType<typeof buildPaginationResponse>> {
     const qb = this.ticketRepository
       .createQueryBuilder('ticket')
       .leftJoinAndSelect('ticket.schedule', 'schedule')
@@ -222,7 +222,7 @@ export class TicketService {
     });
   }
 
-  async markTicketsAsUsed(ticketIds: string[]) {
+  async markTicketsAsUsed(ticketIds: string[]) : Promise<void> {
     const tickets = await this.ticketRepository.find({
       where: { id: In(ticketIds), is_used: false },
     });

@@ -102,13 +102,13 @@ export class ZalopayService extends AbstractPaymentService {
       item: JSON.stringify([
         {
           itemid: `order_${app_id}`,
-          itemname: 'Thanh toan don hang',
+          itemname: 'Order payment for movie tickets',
           itemprice: Number(orderItem.total_prices),
           itemquantity: 1,
         },
       ]),
       embed_data: JSON.stringify(embed_data),
-      description: 'Thanh toan ve xem phim',
+      description: 'Order payment for movie tickets',
       bank_code: '',
     };
 

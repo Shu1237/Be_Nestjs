@@ -23,19 +23,21 @@ import { RolesGuard } from 'src/common/guards/roles.guard';
 @Controller('seat-types')
 export class SeatTypeController {
   constructor(private readonly seatTypeService: SeatTypeService) { }
-
+  
+  // GET - Get all seat types
   @Get()
   @ApiOperation({ summary: 'Get all seat types' })
   getAllSeatTypes() {
     return this.seatTypeService.getAllSeatTypes();
   }
-
+  // GET - Get seat type by ID
   @Get(':id')
   @ApiOperation({ summary: 'Get seat type by ID' })
   getSeatTypeById(@Param('id') id: string) {
     return this.seatTypeService.getSeatTypeById(id);
   }
 
+  // POST - Create new seat type
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Post()
@@ -44,7 +46,8 @@ export class SeatTypeController {
   createSeatType(@Body() createSeatTypeDto: CreateSeatTypeDto) {
     return this.seatTypeService.createSeatType(createSeatTypeDto);
   }
-
+  
+  // PUT - Update seat type by ID
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Put(':id')
@@ -56,6 +59,7 @@ export class SeatTypeController {
     return this.seatTypeService.updateSeatType(id, updateSeatTypeDto);
   }
 
+  // DELETE - Delete seat type by ID
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Delete(':id')

@@ -12,7 +12,7 @@ import {
 export class SeatSectionDto {
   @ApiProperty({
     example: 1,
-    description: 'ID của loại ghế (Normal, VIP, Deluxe, Couple)',
+    description: 'Seat type ID (Normal, VIP, Deluxe, Couple)',
   })
   @IsInt()
   seat_type_id: number;
@@ -30,7 +30,7 @@ export class SeatSectionDto {
 
   @ApiPropertyOptional({
     example: ['C1', 'C2', 'C3'],
-    description: 'Danh sách ID ghế cụ thể (ví dụ cho ghế lẻ như Couple)',
+    description: 'List of specific seat IDs (e.g., for individual seats like Couple)',
   })
   @IsOptional()
   @IsArray()

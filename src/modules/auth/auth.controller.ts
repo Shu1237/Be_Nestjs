@@ -46,29 +46,4 @@ export class AuthController {
   checkEmail(@Body() body: CheckEmail) {
     return this.authService.checkEmail(body);
   }
-  //   return this.authService.checkEmail(body.email);
-  // }
-
-  // @Post('verifyOtp')
-  // @ApiOperation({ summary: 'Verify OTP and get temp token' })
-  // @ApiBody({ type: VerifyOtpDto })
-  // verifyOtp(@Body() body: VerifyOtpDto) {
-  //   return this.authService.verifyOtp(body.otp, body.email);
-  // }
-
-  // @Post('changePassword')
-  // @ApiOperation({ summary: 'Change password using temp token (after OTP)' })
-  // @ApiBody({ type: ChangePasswordOtpDto })
-  // changePassword(@Body() body: ChangePasswordOtpDto) {
-  //   return this.authService.changePassword(body.newPassword, body.tmptoken);
-  // }
-
-  // @UseGuards(JwtAuthGuard)
-  // @Post('changePasswordWasLogin')
-  // @ApiBearerAuth()
-  // @ApiOperation({ summary: 'Change password when user is logged in' })
-  // @ApiBody({ type: ChangePasswordDto })
-  // changePasswordWasLogin(@Body() body: ChangePasswordDto, @Request() req) {
-  //   return this.authService.changePasswordWasLogin(body.newPassword, req.user);
-  // }
 }

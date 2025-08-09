@@ -14,7 +14,7 @@ export class RolesGuard implements CanActivate {
       return true;
     }
     const request = context.switchToHttp().getRequest();
-    const user = request.user as JWTUserType // luông có do jwtGuard đã bắt lõi authentication;
+    const user = request.user as JWTUserType 
     const hasRole= requiredRoles.includes(user.role_id);
     if( !hasRole ) {
       throw new ForbiddenException(`Access denied. Required roles: ${requiredRoles.map(role => this.getRoleName(role)).join(', ')}`);

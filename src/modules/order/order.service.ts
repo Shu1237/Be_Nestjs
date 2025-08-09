@@ -100,8 +100,8 @@ export class OrderService {
     private readonly jwtService: JwtService,
 
     @Inject('REDIS_CLIENT') private readonly redisClient: Redis,
-  ) {}
-  private async getUserById(userId: string) {
+  ) { }
+  private async getUserById(userId: string): Promise<User> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
       relations: ['role'],
@@ -112,7 +112,7 @@ export class OrderService {
     return user;
   }
 
-  private async getPromotionById(promotionId: number) {
+  private async getPromotionById(promotionId: number): Promise<Promotion> {
     const promotion = await this.promotionRepository.findOne({
       where: { id: promotionId, is_active: true },
       relations: ['promotionType'],
@@ -125,7 +125,7 @@ export class OrderService {
     return promotion;
   }
 
-  private async getScheduleById(scheduleId: number) {
+  private async getScheduleById(scheduleId: number): Promise<Schedule> {
     const schedule = await this.scheduleRepository.findOne({
       where: { id: scheduleId, is_deleted: false },
     });
@@ -137,7 +137,7 @@ export class OrderService {
     return schedule;
   }
 
-  private async getOrderById(orderId: number) {
+  private async getOrderById(orderId: number): Promise<Order> {
     const order = await this.orderRepository.findOne({
       where: { id: orderId },
       relations: ['transaction'],
@@ -148,7 +148,7 @@ export class OrderService {
     return order;
   }
 
-  private async getTransactionById(transactionId: number) {
+  private async getTransactionById(transactionId: number): Promise<Transaction> {
     const transaction = await this.transactionRepository.findOne({
       where: { id: transactionId },
       relations: ['order', 'paymentMethod'],
@@ -161,7 +161,7 @@ export class OrderService {
     return transaction;
   }
 
-  private async getTicketTypesByAudienceTypes(audienceTypes: string[]) {
+  private async getTicketTypesByAudienceTypes(audienceTypes: string[]): Promise<TicketType[]> {
     const ticketTypes = await this.ticketTypeRepository.find({
       where: { audience_type: In(audienceTypes) },
     });
@@ -175,9 +175,9 @@ export class OrderService {
     return ticketTypes;
   }
 
-  private async getOrderExtraByIds(productIds: number[]) {
+  private async getOrderExtraByIds(productIds: number[]): Promise<Product[]> {
     const products = await this.productRepository.find({
-      where: { id: In(productIds) , is_deleted: false },
+      where: { id: In(productIds), is_deleted: false },
     });
     if (!products || products.length === 0) {
       throw new NotFoundException(
@@ -185,22 +185,22 @@ export class OrderService {
       );
     }
 
-    // Lấy tất cả combos trong DB (không filter theo category vì data không consistent)
+    // get all combos 
     const allCombos = await this.comboRepository.find();
 
-    // Tạo map từ combo data
+    // Create a map from combo data
     const comboMap = new Map(
       allCombos.map((combo) => [combo.id, combo.discount]),
     );
 
-    // Enhance products với discount từ combo map
+    // Enhance products with discounts from combo map
     return products.map((product) => ({
       ...product,
       discount: comboMap.get(product.id) ?? undefined,
     }));
   }
 
-  private async getScheduleSeatsByIds(seatIds: string[], scheduleId: number) {
+  private async getScheduleSeatsByIds(seatIds: string[], scheduleId: number): Promise<ScheduleSeat[]> {
     const scheduleSeats = await this.scheduleSeatRepository.find({
       where: {
         seat: { id: In(seatIds) },
@@ -246,16 +246,16 @@ export class OrderService {
     userData: JWTUserType,
     orderBill: OrderBillType,
     clientIp: string,
-  ) {
+  ): Promise<{ payUrl: string }> {
     // check total
     if (Number(orderBill.total_prices) < 0) {
       throw new BadRequestException('Total price must be greater than 0.');
     }
     let user: User | null = null;
     let customer: User | null = null;
-    // nếu có customerid thì gọi
+    // check customer_id
     if (orderBill.customer_id) {
-      // Kiểm tra employee/admin không được đặt với customer_id là chính họ
+      // check customer_id !== user_id
       if (orderBill.customer_id === userData.account_id) {
         throw new ConflictException('Cannot use your own ID as customer ID.');
       }
@@ -282,9 +282,9 @@ export class OrderService {
       this.getScheduleById(orderBill.schedule_id),
     ]);
 
-    // check promtion time
+    // check promotion time
     if (promotion.id !== 1) {
-      // check trường hợp employee/admin đặt hàng nhưng lại dùng giảm giá mà không gán customer
+      // check role user , if user is employee or admin, must provide customer_id
       if (
         ((user.role.role_id as Role) === Role.EMPLOYEE ||
           (user.role.role_id as Role) === Role.ADMIN) &&
@@ -305,7 +305,7 @@ export class OrderService {
         throw new BadRequestException('Promotion is not valid at this time.');
       }
 
-      // check score với tk user (chỉ áp dụng cho USER role)
+      // check score user
       if (
         (user.role.role_id as Role) === Role.USER &&
         promotion.exchange > user.score
@@ -316,11 +316,7 @@ export class OrderService {
       }
 
       if (customer) {
-        // Không cho phép employee/admin đặt với customer_id là chính họ
-        if (customer.id === user.id) {
-          throw new ConflictException('Cannot use your own ID as customer ID.');
-        }
-        // Customer phải có role USER
+        // Customer must have USER role
         if ((customer.role.role_id as Role) !== Role.USER) {
           throw new ConflictException('Customer must have USER role.');
         }
@@ -361,7 +357,7 @@ export class OrderService {
       );
     }
 
-    // tinh toan tổng tiền
+    // calculate total price
     let totalSeats = 0;
     let totalProduct = 0;
     let totalPrice = 0;
@@ -369,7 +365,7 @@ export class OrderService {
     const promotionDiscount = parseFloat(promotion?.discount ?? '0');
     const isPercentage = promotion?.promotionType?.type === 'percentage';
 
-    // 1. Tính giá từng vé sau audience-discount
+    //  get ticket types by audience types
     const audienceTypes = orderBill.seats.map((seat) => seat.audience_type);
     const ticketForAudienceTypes =
       await this.getTicketTypesByAudienceTypes(audienceTypes);
@@ -403,7 +399,7 @@ export class OrderService {
 
     totalPrice = roundUpToNearest(totalBeforePromotion - promotionAmount, 1000);
 
-    // 5. So sánh với client gửi
+    // compare total price from client 
     const inputTotal = parseFloat(orderBill.total_prices);
     if (Math.abs(totalPrice - inputTotal) > 0.01) {
       throw new BadRequestException(
@@ -414,7 +410,7 @@ export class OrderService {
     const seatRatio = totalSeats / totalBeforePromotion;
     const seatDiscount = Math.round(promotionAmount * seatRatio);
     const productDiscount = promotionAmount - seatDiscount;
-    // Tạo transaction
+    // get payment method id from orderBill
     const paymentMethod = await this.paymentMethodRepository.findOne({
       where: { id: Number(orderBill.payment_method_id) },
     });
@@ -424,7 +420,7 @@ export class OrderService {
       );
     }
 
-    // get payment code
+    // call api from gateway 
     const paymentCode: { payUrl: string; orderId: string } =
       await this.getPaymentCode(orderBill, clientIp);
     if (!paymentCode || !paymentCode.payUrl || !paymentCode.orderId) {
@@ -432,7 +428,6 @@ export class OrderService {
     }
 
     // Create order
-
     const newOrder = await this.orderRepository.save({
       total_prices: orderBill.total_prices,
       original_tickets: totalSeats.toString(),
@@ -444,10 +439,10 @@ export class OrderService {
       promotion,
       customer_id: orderBill.customer_id ?? undefined,
     });
-
+    // Create transaction
     const transaction = await this.transactionRepository.save({
       transaction_code: paymentCode.orderId,
-      transaction_date: new Date(), // Save as UTC in database
+      transaction_date: new Date(),
       prices: orderBill.total_prices,
       status:
         Number(orderBill.payment_method_id as Method) === Method.CASH
@@ -475,8 +470,6 @@ export class OrderService {
       ticket: Ticket;
       schedule: Schedule;
     }[] = [];
-
-    // const discountPerSeat = seatDiscount / orderBill.seats.length;
 
     for (const seatData of orderBill.seats) {
       const seat = scheduleSeats.find((s) => s.seat.id === seatData.id);
@@ -608,7 +601,7 @@ export class OrderService {
       const addScore = orderScore - promotionExchange;
 
       if (customer) {
-        // Nếu có customer (employee/admin đặt cho customer)
+        // if customer is provided, add score to customer
         if ((customer.role.role_id as Role) !== Role.USER) {
           throw new ForbiddenException(
             'Invalid customer for point accumulation',
@@ -625,7 +618,7 @@ export class OrderService {
           created_at: new Date(),
         });
       } else if ((user.role.role_id as Role) === Role.USER) {
-        // Nếu không có customer và user là USER thì cộng điểm cho user
+        // If no customer is provided and user is USER, add score to user
         user.score += addScore;
         await this.userRepository.save(user);
 
@@ -686,7 +679,7 @@ export class OrderService {
 
       const prefix = `seat-hold-${scheduleId}-`;
       const redisUserId = key.slice(prefix.length);
-      // Bỏ qua nếu key này là của chính user đang đặt
+      // Skip if this key belongs to the user who is booking
       if (redisUserId === userId) continue;
 
       let parsed: HoldSeatType;
@@ -696,7 +689,7 @@ export class OrderService {
         continue;
       }
 
-      // Check trùng ghế
+      // Check seat overlap
       const isSeatHeld = requestSeatIds.some((seatId) =>
         parsed.seatIds.includes(seatId),
       );
@@ -705,7 +698,7 @@ export class OrderService {
       }
     }
 
-    // Xóa Redis key của người dùng hiện tại sau khi đặt đơn thành công
+    // Delete Redis key for the current user after successful booking
     await this.redisClient.del(redisKey);
     return true;
   }
@@ -736,7 +729,7 @@ export class OrderService {
     }
   }
 
-  async getAllOrders(filters: OrderPaginationDto) {
+  async getAllOrders(filters: OrderPaginationDto): Promise<ReturnType<typeof buildPaginationResponse>> {
     const qb = this.orderRepository
       .createQueryBuilder('order')
       .leftJoinAndSelect('order.user', 'user')
@@ -753,7 +746,6 @@ export class OrderService {
       .leftJoinAndSelect('schedule.cinemaRoom', 'cinemaRoom')
       .leftJoinAndSelect('order.orderExtras', 'orderExtra')
       .leftJoinAndSelect('orderExtra.product', 'product')
-      .where('order.id NOT IN (:...excludedIds)', { excludedIds: [173, 174] });
 
     //  Apply filters
     applyCommonFilters(qb, filters, orderFieldMapping);
@@ -851,7 +843,7 @@ export class OrderService {
     });
   }
 
-  async getOrderByIdEmployeeAndAdmin(orderId: number) {
+  async getOrderByIdEmployeeAndAdmin(orderId: number): Promise<ReturnType<typeof this.mapToBookingSummaryLite>> {
     const qb = this.orderRepository
       .createQueryBuilder('order')
       .leftJoinAndSelect('order.user', 'user')
@@ -879,7 +871,7 @@ export class OrderService {
     return this.mapToBookingSummaryLite(order);
   }
 
-  async getMyOrders(filters: OrderPaginationDto & { userId: string }) {
+  async getMyOrders(filters: OrderPaginationDto & { userId: string }): Promise<ReturnType<typeof buildPaginationResponse>> {
     const qb = this.orderRepository
       .createQueryBuilder('order')
       .leftJoinAndSelect('order.user', 'user')
@@ -1053,7 +1045,7 @@ export class OrderService {
     };
   }
 
-  async scanQrCode(qrCode: string) {
+  async scanQrCode(qrCode: string): Promise<ReturnType<typeof this.mapToBookingSummaryLite>> {
     const rawDecoded = this.jwtService.verify(qrCode, {
       secret: this.configService.get<string>('jwt.qrSecret'),
     });
@@ -1076,8 +1068,8 @@ export class OrderService {
     orderData: OrderBillType,
     userId: string,
     clientIp: string,
-  ) {
-    // 1. Kiểm tra user và order
+  ): Promise<{ payUrl: string }> {
+    // check orderId
     await this.getUserById(userId);
     const order = await this.orderRepository.findOne({
       where: { id: orderId },
@@ -1099,17 +1091,17 @@ export class OrderService {
       throw new NotFoundException(`Order with ID ${orderId} not found`);
     }
 
-    // 2. Kiểm tra quyền sở hữu đơn hàng
+    // 2. check user
     if (order.user.id !== userId) {
       throw new ForbiddenException('You can only process your own orders');
     }
 
-    // 3. Kiểm tra trạng thái đơn hàng
+    // 3. check order status
     if ((order.status as StatusOrder) !== StatusOrder.PENDING) {
       throw new BadRequestException('Only pending orders can be processed');
     }
 
-    // 4. Validation: Chỉ cho phép thay đổi payment_method_id, các thông tin khác phải giống với order hiện tại
+
     const currentScheduleId = order.orderDetails[0]?.schedule?.id;
     const currentPromotionId = order.promotion?.id || 1;
     const currentSeatIds = order.orderDetails
@@ -1117,28 +1109,28 @@ export class OrderService {
       .sort();
     const inputSeatIds = orderData.seats.map((s) => s.id).sort();
 
-    // Kiểm tra schedule
+    // 4. check schedule
     if (orderData.schedule_id !== currentScheduleId) {
       throw new BadRequestException(
         'Schedule cannot be changed when re-processing payment',
       );
     }
 
-    // Kiểm tra promotion
+    // 5. check promotion
     if (orderData.promotion_id !== currentPromotionId) {
       throw new BadRequestException(
         'Promotion cannot be changed when re-processing payment',
       );
     }
 
-    // Kiểm tra seats
+    // 6. check seats
     if (JSON.stringify(currentSeatIds) !== JSON.stringify(inputSeatIds)) {
       throw new BadRequestException(
         'Seats cannot be changed when re-processing payment',
       );
     }
 
-    // Kiểm tra products
+    // 7. check products
     const currentProducts = order.orderExtras || [];
     const inputProducts = orderData.products || [];
 
@@ -1163,14 +1155,14 @@ export class OrderService {
     }
     const price1 = parseFloat(order.total_prices).toFixed(2);
     const price2 = parseFloat(orderData.total_prices).toFixed(2);
-    // Kiểm tra total_prices
+    // check total_prices
     if (price1 !== price2) {
       throw new BadRequestException(
         'Total price cannot be changed when re-processing payment',
       );
     }
 
-    // 5. Kiểm tra payment method
+    // 5. check payment method
     const paymentMethod = await this.paymentMethodRepository.findOne({
       where: { id: Number(orderData.payment_method_id) },
     });
@@ -1181,19 +1173,19 @@ export class OrderService {
       );
     }
 
-    // 6. Tạo payment URL mới
+    // 6 . call payment gateway to get payment code
     const paymentCode = await this.getPaymentCode(orderData, clientIp);
     if (!paymentCode?.payUrl || !paymentCode?.orderId) {
       throw new BadRequestException('Failed to create payment URL');
     }
 
-    // 7. Cập nhật transaction (chỉ được thay đổi payment method, transaction_code và transaction_date)
+    // 7. update transaction code , date, payment method id
     order.transaction.transaction_code = paymentCode.orderId;
     order.transaction.transaction_date = new Date();
     order.transaction.paymentMethod = paymentMethod;
     await this.transactionRepository.save(order.transaction);
 
-    // 8. Cập nhật order_date
+    // 8. update order_date
     order.order_date = new Date();
     await this.orderRepository.save(order);
 
@@ -1206,7 +1198,7 @@ export class OrderService {
     updateData: OrderBillType,
     clientIp: string,
     user: JWTUserType,
-  ) {
+  ): Promise<{ payUrl: string }> {
     const existingOrder = await this.orderRepository.findOne({
       where: { id: orderId },
       relations: [
@@ -1234,12 +1226,12 @@ export class OrderService {
       throw new BadRequestException('Cannot change schedule of existing order');
     }
 
-    // Kiểm tra số lượng seats không thay đổi
+    // check seats
     if (updateData.seats.length !== existingOrder.orderDetails.length) {
       throw new BadRequestException('Cannot change number of seats');
     }
 
-    // --- Xử lý customer_id ---
+    // check if ischange customer_id
     let isChangeCustomerId = false;
     let newCustomer: User | null = null;
 
@@ -1269,13 +1261,11 @@ export class OrderService {
           throw new ForbiddenException('Customer must be a user');
         }
       } else {
-        // customer id k đổi
-
         newCustomer = await this.getUserById(existingOrder.customer_id);
       }
     }
 
-    // --- Xử lý sản phẩm ---
+    // check  products
     const products = updateData.products || [];
     let orderExtras: Product[] = [];
     if (products.length > 0) {
@@ -1289,7 +1279,7 @@ export class OrderService {
       ? await this.getPromotionById(updateData.promotion_id)
       : existingOrder.promotion;
 
-    // --- Kiểm tra điều kiện promotion ---
+    // check promotion
     if (isPromotionChanged && newPromotion?.id !== 1) {
       if (
         (user.role_id === Role.EMPLOYEE || user.role_id === Role.ADMIN) &&
@@ -1309,7 +1299,7 @@ export class OrderService {
           'You cannot set yourself as the customer for promotion',
         );
       }
-      // check trường hợp employee gán customer_id là role != user
+      // check if user is employee or admin and customer is not user
       if (
         (user.role_id === Role.EMPLOYEE || user.role_id === Role.ADMIN) &&
         updateData.customer_id &&
@@ -1317,7 +1307,7 @@ export class OrderService {
       ) {
         throw new ConflictException('Promotion can only be used for users');
       }
-
+      // check if promotion is valid time
       const now = new Date();
       if (
         !newPromotion?.start_time ||
@@ -1327,7 +1317,7 @@ export class OrderService {
       ) {
         throw new BadRequestException('Promotion is not valid at this time');
       }
-
+      // check if promotion exchange is greater than customer score
       if (
         user.role_id !== Role.USER &&
         newPromotion.exchange > (newCustomer?.score ?? 0)
@@ -1338,7 +1328,7 @@ export class OrderService {
       }
     }
 
-    // --- Tính toán lại giá gốc của vé (trước khi áp promotion) ---
+    // get all schedule seats for the given schedule_id
     const audienceTypes = updateData.seats.map((seat) => seat.audience_type);
     const ticketTypes = await this.getTicketTypesByAudienceTypes(audienceTypes);
     const scheduleSeats = await this.getScheduleSeatsByIds(
@@ -1349,7 +1339,7 @@ export class OrderService {
     let originalTicketTotal = 0;
     const seatPriceMap = new Map<string, number>();
 
-    // Tính lại giá gốc của từng vé dựa trên seat type và audience discount
+    // calculate original ticket prices
     for (const seatData of updateData.seats) {
       const scheduleSeat = scheduleSeats.find((s) => s.seat.id === seatData.id);
       const ticketType = ticketTypes.find(
@@ -1368,11 +1358,11 @@ export class OrderService {
       originalTicketTotal += finalPrice;
     }
 
-    // --- Tính toán giá gốc của sản phẩm ---
+    // calculate original product total
     const originalProductTotal = calculateProductTotal(orderExtras, updateData);
     const totalBeforeDiscount = originalTicketTotal + originalProductTotal;
 
-    // --- Tính promotion discount ---
+    // calculate promotion discount
     const isPercentage = newPromotion?.promotionType?.type === 'percentage';
     const discountValue = parseFloat(newPromotion?.discount ?? '0');
     const promotionAmount = isPercentage
@@ -1395,8 +1385,7 @@ export class OrderService {
     const ticketDiscountAmount = Math.round(promotionAmount * ticketRatio);
     const productDiscountAmount = promotionAmount - ticketDiscountAmount;
 
-    // --- Cập nhật giá vé với promotion ---
-    // Luôn cập nhật giá vé vì có thể seats hoặc promotion thay đổi
+    // update OrderDetails and Tickets
     const ticketsToSave: Ticket[] = [];
     for (const detail of existingOrder.orderDetails) {
       const seatId = detail.ticket.seat.id;
@@ -1408,7 +1397,7 @@ export class OrderService {
         1000,
       ).toString();
 
-      // Cập nhật ticket status nếu thanh toán bằng CASH
+      // update ticket status if cash
       if (Number(updateData.payment_method_id) === Method.CASH) {
         detail.ticket.status = true;
         detail.ticket.is_used = true;
@@ -1419,13 +1408,12 @@ export class OrderService {
       await this.ticketRepository.save(ticketsToSave);
     }
     await this.orderDetailRepository.save(existingOrder.orderDetails);
-    // --- Cập nhật OrderExtra ---
-    // Xóa tất cả OrderExtra cũ (nếu có)
+  // remove existing OrderExtras
     if (existingOrder.orderExtras && existingOrder.orderExtras.length > 0) {
       await this.orderExtraRepository.remove(existingOrder.orderExtras);
     }
 
-    // Tạo mới OrderExtra từ updateData.products
+    // create new OrderExtras from updateData.products
     if (orderExtras.length > 0) {
       const totalProductBeforePromo = orderExtras.reduce((sum, p) => {
         const qty = products.find((x) => x.product_id === p.id)?.quantity || 0;
@@ -1476,7 +1464,7 @@ export class OrderService {
       }
     }
 
-    // --- Cập nhật Order ---
+    // update Order 
     await this.orderRepository.update(existingOrder.id, {
       total_prices: totalAfterDiscount.toString(),
       original_tickets: originalTicketTotal.toString(),
@@ -1491,7 +1479,7 @@ export class OrderService {
         : existingOrder.customer_id,
     });
 
-    // --- Cập nhật transaction ---
+    // update transaction
     const paymentCode = await this.getPaymentCode(updateData, clientIp);
     if (!paymentCode?.payUrl || !paymentCode?.orderId) {
       throw new BadRequestException('Failed to create payment URL');
@@ -1512,7 +1500,7 @@ export class OrderService {
         : StatusOrder.PENDING;
     await this.transactionRepository.save(existingOrder.transaction);
 
-    // --- Đánh dấu ghế là đã BOOKED nếu thanh toán tiền mặt ---
+    // update seat status if cash
     if (Number(updateData.payment_method_id) === Method.CASH) {
       const seatIds = updateData.seats.map((seat) => seat.id);
       await this.changeStatusScheduleSeatToBooked(
@@ -1521,7 +1509,7 @@ export class OrderService {
       );
     }
 
-    // --- Cộng điểm nếu là thanh toán tiền mặt + có promotion ---
+    // add score for  customer if cash payment
     if (newCustomer && Number(updateData.payment_method_id) === Method.CASH) {
       const earnedScore =
         Math.floor(totalAfterDiscount / 1000) - (newPromotion?.exchange ?? 0);
@@ -1536,7 +1524,7 @@ export class OrderService {
       });
     }
 
-    // --- Phát socket nếu là tiền mặt ---
+    // emit socket event for booking seats
     if (Number(updateData.payment_method_id) === Method.CASH) {
       this.gateway.emitBookSeat({
         schedule_id: updateData.schedule_id,

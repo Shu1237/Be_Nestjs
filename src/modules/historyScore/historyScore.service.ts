@@ -16,7 +16,7 @@ export class HistoryScoreService {
     @InjectRepository(HistoryScore)
     private readonly historyScoreRepository: Repository<HistoryScore>,
   ) {}
-  async getAllHistoryScore(filters: HistoryScorePaginationDto) {
+  async getAllHistoryScore(filters: HistoryScorePaginationDto) :Promise<ReturnType<typeof buildPaginationResponse>> {
     const qb = this.historyScoreRepository
       .createQueryBuilder('history_score')
       .leftJoinAndSelect('history_score.user', 'user')
@@ -54,7 +54,7 @@ export class HistoryScoreService {
 
   async getHistoryScoreByUserId(
     filters: HistoryScorePaginationDto & { userId: string },
-  ) {
+  ): Promise<ReturnType<typeof buildPaginationResponse>> {
     const qb = this.historyScoreRepository
       .createQueryBuilder('history_score')
       .leftJoinAndSelect('history_score.user', 'user')
@@ -91,7 +91,7 @@ export class HistoryScoreService {
     });
   }
 
-  async getHistoryScoreById(id: number) {
+  async getHistoryScoreById(id: number): Promise<HistoryScore> {
     const historyScore = await this.historyScoreRepository.findOne({
       where: { id },
       relations: ['user', 'order', 'order.promotion'],

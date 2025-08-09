@@ -125,9 +125,9 @@ export type IMovie = {
   banner: string;
   version?: string;
   is_deleted: boolean;
-  actors: IActor[]; // Chỉ chứa id và name
-  gernes: IGerne[]; // Chỉ chứa id và genre_name
-  versions: IVersion[]; // Chỉ chứa id và name
+  actors: IActor[]; 
+  gernes: IGerne[]; 
+  versions: IVersion[]; 
 };
 
 export type ISchedule = {
@@ -137,18 +137,16 @@ export type ISchedule = {
   movie: IMovieBasic;
   cinemaRoom: {
     id: number;
-    name: string; // Chỉ chứa id và name
+    name: string; 
   };
   is_deleted: boolean;
-  version?: { id: number; name: string } | null; // Cho phép giá trị null
+  version?: { id: number; name: string } | null; 
 
-  // Chỉ chứa id và name
 };
 
 export type IMovieBasic = {
   id: number;
   name: string;
-  // versions: IVersion[]; // Danh sách các phiên bản của phim
 };
 
 export type TicketSummary = {

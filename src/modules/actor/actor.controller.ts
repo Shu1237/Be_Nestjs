@@ -31,15 +31,14 @@ import { Role } from 'src/common/enums/roles.enum';
 export class ActorController {
   constructor(private readonly actorService: ActorService) { }
 
-  // GET - Lấy danh sách actors cho user
+  // GET - get list of actors for user
   @Get('user')
   @ApiOperation({ summary: 'Get all actors for users' })
   async getAllActorsUser() {
     return await this.actorService.getAllActorsUser();
   }
 
-  // GET - Lấy danh sách actors cho admin (với phân trang và filter)
-  // @UseGuards(JwtAuthGuard)
+  // GET - get list of actors for admin (with pagination and filter)
   @Get('admin')
   @ApiOperation({ summary: 'Get all actors for admin' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
@@ -107,14 +106,14 @@ export class ActorController {
     });
   }
 
-  // GET - Lấy actor theo ID
+  // GET - get actor by ID
   @Get(':id')
   @ApiOperation({ summary: 'Get actor by ID' })
   async findActorById(@Param('id', ParseIntPipe) id: number) {
     return await this.actorService.findActorById(id);
   }
 
-  // POST - Tạo actor mới
+  // POST - Create new actor
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Post()
@@ -124,7 +123,7 @@ export class ActorController {
     return await this.actorService.createActor(createActorDto);
   }
 
-  // PUT - Cập nhật actor theo ID
+  // PUT - Update actor by ID
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Put(':id')
@@ -147,7 +146,7 @@ export class ActorController {
     return await this.actorService.softDeleteActor(id);
   }
 
-  // DELETE - Xóa actor vĩnh viễn
+  // DELETE - Restore soft-deleted actor
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Patch(':id/restore')
@@ -159,6 +158,7 @@ export class ActorController {
     return await this.actorService.restoreActor(id);
   }
 
+  // DELETE - Permanently delete actor
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Delete(':id')
@@ -168,22 +168,4 @@ export class ActorController {
     return await this.actorService.removeActor(+id);
   }
 
-  // @UseGuards(JwtAuthGuard)
-  // @Patch(':actorId/remove-movie/:movieId')
-  // @ApiOperation({ summary: 'Remove a movie from an actor' })
-  // async removeMovieFromActor(
-  //   @Param('actorId', ParseIntPipe) actorId: number,
-  //   @Param('movieId', ParseIntPipe) movieId: number,
-  //   @Req() req,
-  // ) {
-  //   const user = req.user as JWTUserType;
-  //   if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-  //     return {
-  //       statusCode: 403,
-  //       message:
-  //         'Unauthorized: Only admin or employee can remove a movie from an actor.',
-  //     };
-  //   }
-  //   return this.actorService.removeMovieFromActor(actorId, movieId);
-  // }
 }

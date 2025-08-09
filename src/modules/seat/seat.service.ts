@@ -57,7 +57,7 @@ export class SeatService {
     });
   }
 
-  async getAllSeats(fillters: SeatPaginationDto) {
+  async getAllSeats(fillters: SeatPaginationDto) :Promise<ReturnType<typeof buildPaginationResponse>> {
     const qb = this.seatRepository
       .createQueryBuilder('seat')
       .leftJoinAndSelect('seat.seatType', 'seatType')
@@ -105,7 +105,7 @@ export class SeatService {
     });
   }
 
-  async getSeatById(id: string) {
+  async getSeatById(id: string) : Promise<Seat> {
     const seat = await this.seatRepository.findOne({
       where: { id, is_deleted: false },
       relations: ['seatType', 'cinemaRoom'],
@@ -116,14 +116,14 @@ export class SeatService {
     return seat;
   }
 
-  async getSeatsByRoom(roomId: string) {
+  async getSeatsByRoom(roomId: string) : Promise<Seat[]> {
     return this.seatRepository.find({
       where: { cinemaRoom: { id: parseInt(roomId) } },
       relations: ['seatType'],
     });
   }
   
-  async toggleSeatStatus(id: string) {
+  async toggleSeatStatus(id: string) : Promise<{ success: boolean; message: string; seat?: any }> {
     const seat = await this.seatRepository.findOne({
       where: { id },
       relations: ['seatType', 'cinemaRoom'],
@@ -145,7 +145,7 @@ export class SeatService {
     };
   }
   
-  async restoreSeat(id: string) {
+  async restoreSeat(id: string) : Promise<{ msg: string }> {
     const seat = await this.seatRepository.findOne({
       where: { id, is_deleted: false },
       relations: ['seatType', 'cinemaRoom'],
@@ -260,7 +260,7 @@ export class SeatService {
   private async validateRelatedEntities(
     seatTypeIds: number[],
     roomIds: number[],
-  ) {
+  ) : Promise<{ seatTypeMap: Map<number, SeatType>; roomMap: Map<number, CinemaRoom> }> {
     const [seatTypes, rooms] = await Promise.all([
       seatTypeIds.length
         ? this.seatTypeRepository.find({ where: { id: In(seatTypeIds) } })
@@ -278,7 +278,7 @@ export class SeatService {
 
     return { seatTypeMap, roomMap };
   }
-  async createSeatsBulk(dto: BulkCreateSeatDto) {
+  async createSeatsBulk(dto: BulkCreateSeatDto) : Promise<{ success: boolean; created_count: number }> {
     const { sections, seat_column, cinema_room_id } = dto;
     const roomId = parseInt(cinema_room_id);
 
@@ -341,7 +341,7 @@ export class SeatService {
     await this.seatRepository.insert(seatsToCreate);
     return { success: true, created_count: seatsToCreate.length };
   }
-  async bulkUpdateSeats(dto: BulkSeatOperationDto) {
+  async bulkUpdateSeats(dto: BulkSeatOperationDto) : Promise<{ success: boolean; updated_count: number }> {
     const { seat_ids, updates } = dto;
     if (!seat_ids?.length)
       throw new BadRequestException('No seat IDs provided');
@@ -392,7 +392,7 @@ export class SeatService {
     );
     return { success: true, updated_count: result.affected || 0 };
   }
-  async bulkDeleteSeats(dto: BulkSeatIdsDto) {
+  async bulkDeleteSeats(dto: BulkSeatIdsDto) : Promise<{ success: boolean; deleted_count: number; deleted_seat_ids: string[], message: string }> {
     const { seat_ids, room_id } = dto;
     if (!seat_ids?.length)
       throw new BadRequestException('No seat IDs provided');
@@ -435,7 +435,7 @@ export class SeatService {
     };
   }
 
-  async bulkRestoreSeats(dto: BulkSeatIdsDto) {
+  async bulkRestoreSeats(dto: BulkSeatIdsDto) : Promise<{ success: boolean; restored_count: number; restored_seat_ids: string[], message: string }> {
     const { seat_ids, room_id } = dto;
     if (!seat_ids?.length)
       throw new BadRequestException('No seat IDs provided');

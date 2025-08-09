@@ -56,7 +56,7 @@ export class OverviewService {
       reportDate: data.reportDate,
     };
   }
-  async getDailyOrderReports(filters: DailyReportDto) {
+  async getDailyOrderReports(filters: DailyReportDto): Promise<ReturnType<typeof buildPaginationResponse>> {
     const qb = this.dailyTransactionSummaryRepository
       .createQueryBuilder('dailyReport')
       .leftJoinAndSelect('dailyReport.paymentMethod', 'paymentMethod');

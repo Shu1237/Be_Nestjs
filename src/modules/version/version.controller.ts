@@ -28,15 +28,14 @@ import { RolesGuard } from 'src/common/guards/roles.guard';
 export class VersionController {
   constructor(private readonly versionService: VersionService) { }
 
-  // GET - Lấy danh sách versions cho user
+  // GET - Get list of versions for user
   @Get('user')
   @ApiOperation({ summary: 'Get all versions for users' })
   async getAllVersionsUser() {
     return await this.versionService.getAllVersionsUser();
   }
 
-  // GET - Lấy danh sách versions cho admin (với phân trang)
-
+  // GET - Get list of versions for admin (with pagination)
   @UseGuards(JwtAuthGuard,RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Get('admin')
@@ -72,26 +71,23 @@ export class VersionController {
     });
   }
 
-  // GET - Lấy version theo ID
+  // GET - Get version by ID
   @Get(':id')
   @ApiOperation({ summary: 'Get version by ID' })
   async findOne(@Param('id') id: number) {
     return await this.versionService.findOne(id);
   }
 
-  // POST - Tạo version mới
-
+  // POST - Create new version
   @UseGuards(JwtAuthGuard,RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
-
   @Post()
   @ApiOperation({ summary: 'Create a new version (admin only)' })
   async create(@Body() createVersionDto: CreateVersionDto) {
     return await this.versionService.create(createVersionDto);
   }
 
-  // PUT - Cập nhật version theo ID
-
+  // PUT - Update version by ID
   @UseGuards(JwtAuthGuard,RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
 
@@ -104,7 +100,6 @@ export class VersionController {
   }
 
   // PATCH - Soft delete version
-
   @UseGuards(JwtAuthGuard,RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Patch(':id/soft-delete')
@@ -112,6 +107,7 @@ export class VersionController {
   async softDeleteVersion(@Param('id', ParseIntPipe) id: number) {
     return await this.versionService.softDeleteVersion(id);
   }
+
   // PATCH - Restore soft-deleted version
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
@@ -123,13 +119,9 @@ export class VersionController {
     return await this.versionService.restoreVersion(id);
   }
 
-  
-
-  // DELETE - Xóa version vĩnh viễn
-
+  // DELETE - Delete version permanently
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
-
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a version by ID (admin only)' })
   async remove(@Param('id') id: number) {

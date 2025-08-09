@@ -90,27 +90,5 @@ export class UserController {
     return await this.userService.toggleStatus(id);
   }
 
-  // @Patch(':id/restore')
-  // @ApiOperation({ summary: 'Restore soft-deleted user by ID (admin only)' })
-  // async restore(@Param('id') id: string, @Req() req) {
-  //   checkAdminEmployeeRole(req.user, 'Only admin can restore users');
-  //   return await this.userService.restore(id);
-  // }
-  // @Patch(':id/restore')
-  // @ApiOperation({ summary: 'Restore soft-deleted user by ID (admin only)' })
-  // async restore(@Param('id') id: string, @Req() req) {
-  //   checkAdminEmployeeRole(req.user, 'Only admin can restore users');
-  //   return await this.userService.restore(id);
-  // }
-
-  // @Put(':id/status')
-  // @ApiOperation({ summary: 'Toggle user status by ID (admin only)' })
-  // async changeStatus(@Param('id') id: string, @Req() req: Request) {
-  //   const user = req.user as JWTUserType;
-  //   if (user.role_id !== Role.ADMIN) {
-  //     throw new ForbiddenException('Only admin can change user status');
-  //   }
-  //   await this.userService.changeStatus(id);
-  //   return { msg: 'Change status successfully' };
-  // }
+  
 }

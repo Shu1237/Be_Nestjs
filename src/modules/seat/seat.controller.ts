@@ -33,14 +33,14 @@ import { RolesGuard } from 'src/common/guards/roles.guard';
 export class SeatController {
   constructor(private readonly seatService: SeatService) { }
 
-  // GET - Lấy danh sách seats cho user
+  // GET - Get list of seats for user
   @Get('user')
   @ApiOperation({ summary: 'Get all seats for users' })
   async getAllSeatsUser() {
     return await this.seatService.getAllSeatsUser();
   }
 
-  // GET - Lấy danh sách seats cho admin (với phân trang)
+  // GET - Get list of seats for admin (with pagination)
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Get('admin')
@@ -93,13 +93,13 @@ export class SeatController {
     });
   }
 
-  // GET - Lấy seats theo room ID
+  // GET - Get seats by room ID
   @Get('room/:roomId')
   @ApiOperation({ summary: 'Get seats by room ID' })
   getSeatsByRoom(@Param('roomId') roomId: string) {
     return this.seatService.getSeatsByRoom(roomId);
   }
-  // POST - Tạo seats theo bulk
+  // POST - Create seats in bulk
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Post('bulk')
@@ -118,6 +118,8 @@ export class SeatController {
     @Body() dto: BulkSeatOperationDto) {
     return this.seatService.bulkUpdateSeats(dto);
   }
+
+  // DELETE - Bulk soft delete multiple seats (admin only)
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Delete('bulk-delete')
@@ -128,6 +130,7 @@ export class SeatController {
     return this.seatService.bulkDeleteSeats(dto);
   }
 
+  // PATCH - Restore soft-deleted seats
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Patch('bulk-restore')
@@ -137,20 +140,8 @@ export class SeatController {
     @Body() dto: BulkSeatIdsDto) {
     return this.seatService.bulkRestoreSeats(dto);
   }
-  // Commented out endpoints
-  // @Patch('hold')
-  // @ApiOperation({ summary: 'Hold seats' })
-  // @ApiBody({ type: HoldSeatDto })
-  // holdSeat(@Body() data: HoldSeatDto, @Req() req) {
-  //   return this.seatService.holdSeat(data, req.user);
-  // }
 
-  // @Patch('cancel-hold')
-  // @ApiOperation({ summary: 'Cancel hold seats' })
-  // @ApiBody({ type: HoldSeatDto })
-  // cancelHoldSeat(@Body() data: HoldSeatDto, @Req() req) {
-  //   return this.seatService.cancelHoldSeat(data, req.user);
-  // }
+  //PATCH - Toggle seat status (delete/restore) by ID
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   @Patch(':id/toggle-status')

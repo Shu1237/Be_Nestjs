@@ -13,7 +13,7 @@ import { SeatSectionDto } from './SeatSectionDto';
 export class BulkCreateSeatDto {
   @ApiProperty({
     example: 6,
-    description: 'Số lượng cột ghế trong phòng (áp dụng khi dùng seat_rows)',
+    description: 'The number of rows in the seat section',
   })
   @IsInt()
   @Min(1)
@@ -23,7 +23,7 @@ export class BulkCreateSeatDto {
   @ApiProperty({
     type: [SeatSectionDto],
     description:
-      'Danh sách các section ghế để tạo theo loại (rows hoặc seat_ids)',
+      'List of seat sections to create by type (rows or seat_ids)',
   })
   @IsArray()
   @ValidateNested({ each: true })
@@ -32,7 +32,7 @@ export class BulkCreateSeatDto {
 
   @ApiProperty({
     example: '3',
-    description: 'ID của phòng chiếu',
+    description: 'ID of the cinema room',
   })
   @IsString()
   cinema_room_id: string;

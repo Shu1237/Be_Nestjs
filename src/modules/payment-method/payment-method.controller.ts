@@ -23,34 +23,38 @@ import { RolesGuard } from 'src/common/guards/roles.guard';
 @ApiBearerAuth()
 @Controller('payment-methods')
 export class PaymentMethodController {
-  constructor(private readonly paymentMethodService: PaymentMethodService) {}
+  constructor(private readonly paymentMethodService: PaymentMethodService) { }
 
+  // GET - Get all payment methods for users
   @Get()
-  @ApiOperation({ summary: 'Lấy tất cả phương thức thanh toán' })
+  @ApiOperation({ summary: 'Get all payment methods' })
   findAll() {
     return this.paymentMethodService.findAll();
   }
+  // GET - Get payment method by ID
   @Get(':id')
-  @ApiOperation({ summary: 'Lấy phương thức thanh toán theo ID' })
+  @ApiOperation({ summary: 'Get payment method by ID' })
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.paymentMethodService.findOne(id);
   }
 
+  // POST - Create a new payment method (admin, employee only)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Post()
   @ApiOperation({
-    summary: 'Tạo phương thức thanh toán mới (admin, employee only)',
+    summary: 'Create a new payment method (admin, employee only)',
   })
   create(@Body() createDto: CreatePaymentMethodDto) {
     return this.paymentMethodService.create(createDto);
   }
 
+  // PUT
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Put(':id')
   @ApiOperation({
-    summary: 'Cập nhật phương thức thanh toán (admin, employee only)',
+    summary: 'Update payment method (admin, employee only)',
   })
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -58,31 +62,34 @@ export class PaymentMethodController {
   ) {
     return this.paymentMethodService.update(id, updateDto);
   }
+  // PATCH - Soft delete payment method (admin, employee only)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Patch(':id')
   @ApiOperation({
-    summary: 'Xóa mềm phương thức thanh toán (admin, employee only)',
+    summary: 'Soft delete payment method (admin, employee only)',
   })
   async softDelete(@Param('id', ParseIntPipe) id: number) {
     return this.paymentMethodService.softDelete(id);
   }
+
+  // DELETE - Permanently delete payment method (admin, employee only)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Delete(':id')
   @ApiOperation({
-    summary: 'Xóa phương thức thanh toán (admin, employee only)',
+    summary: 'Delete payment method (admin, employee only)',
   })
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.paymentMethodService.remove(id);
   }
-
+  // PATCH - Restore soft-deleted payment method (admin, employee only)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Patch(':id/restore')
   @ApiOperation({
     summary:
-      'Khôi phục phương thức thanh toán đã xóa mềm (admin, employee only)',
+      'Restore soft-deleted payment method (admin, employee only)',
   })
   async restore(@Param('id', ParseIntPipe) id: number) {
     return this.paymentMethodService.restore(id);

@@ -26,6 +26,8 @@ import { RolesGuard } from 'src/common/guards/roles.guard';
 @Controller('history-score')
 export class HistoryScoreController {
   constructor(private readonly historyScoreService: HistoryScoreService) { }
+
+  // GET - Get all history scores for admin with pagination
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Get('admin')
@@ -66,6 +68,7 @@ export class HistoryScoreController {
     });
   }
 
+  // GET - Get history scores by user ID
   @Get('user')
   @ApiOperation({ summary: 'Get history scores for user' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
@@ -108,6 +111,7 @@ export class HistoryScoreController {
       userId: user.account_id,
     });
   }
+  // GET - Get history score by ID
   @Get(':id')
   @ApiOperation({ summary: 'Get history score by ID' })
   @ApiParam({ name: 'id', required: true, type: Number, example: 1 })

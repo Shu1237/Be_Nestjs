@@ -28,14 +28,14 @@ import { RolesGuard } from 'src/common/guards/roles.guard';
 export class GerneController {
   constructor(private readonly gerneService: GerneService) { }
 
-  // GET - Lấy danh sách genres cho user
+  // GET - get all genres for users
   @Get('user')
   @ApiOperation({ summary: 'Get all genres for users' })
   async getAllGernesUser(): Promise<Gerne[]> {
     return await this.gerneService.getAllGernesUser();
   }
 
-  // GET - Lấy danh sách genres cho admin (với phân trang)
+  // GET - Get list of genres for admin (with pagination)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Get('admin')
@@ -71,14 +71,14 @@ export class GerneController {
     });
   }
 
-  // GET - Lấy genre theo ID
+  // GET - Get genre by ID
   @Get(':id')
   @ApiOperation({ summary: 'Get genre by ID' })
   async findGerneById(@Param('id', ParseIntPipe) id: number): Promise<Gerne> {
     return await this.gerneService.findGerneById(id);
   }
 
-  // GET - Lấy movies của genre
+  // GET - Get all movies of a genre
   @Get(':gerneId/movies')
   @ApiOperation({ summary: 'Get all movies of a genre' })
   async getMoviesOfGerne(
@@ -87,7 +87,7 @@ export class GerneController {
     return await this.gerneService.getMoviesOfGerne(gerneId);
   }
 
-  // POST - Tạo genre mới
+  // POST - Create a new genre
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Post()
@@ -97,7 +97,7 @@ export class GerneController {
     return this.gerneService.createGerne(createGerneDto);
   }
 
-  // PUT - Cập nhật genre theo ID
+  // PUT - Update genre by ID
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Put(':id')
@@ -120,7 +120,7 @@ export class GerneController {
     return this.gerneService.softDeleteGerne(id);
   }
 
-  // DELETE - Xóa genre vĩnh viễn
+  // DELETE - Restore soft-deleted genre
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Patch(':id/restore')
@@ -131,6 +131,7 @@ export class GerneController {
     return await this.gerneService.restoreGerne(id);
   }
 
+  // DELETE - Delete genre by ID
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete genre by ID (admin only)' })

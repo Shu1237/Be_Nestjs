@@ -93,7 +93,7 @@ export class VnpayService extends AbstractPaymentService {
       vnp_Version: '2.1.0',
     };
 
-    // Sắp xếp thủ công theo thứ tự alphabet
+  
     const sortedParams: Record<string, string> = {};
     Object.keys(vnp_Params)
       .sort()
@@ -101,7 +101,7 @@ export class VnpayService extends AbstractPaymentService {
         sortedParams[key] = vnp_Params[key];
       });
 
-    // Tạo chữ ký
+
     const signData = qs.stringify(sortedParams);
     const hmac = crypto.createHmac('sha512', secretKey);
     const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
@@ -121,7 +121,7 @@ export class VnpayService extends AbstractPaymentService {
     delete receivedParams['vnp_SecureHash'];
     delete receivedParams['vnp_SecureHashType'];
 
-    // Sắp xếp thủ công A-Z
+
     const sortedParams: Record<string, string> = {};
     Object.keys(receivedParams)
       .sort()
@@ -145,10 +145,10 @@ export class VnpayService extends AbstractPaymentService {
         throw new NotFoundException('Transaction is not in pending state');
       }
       if (responseCode === '00') {
-        // Giao dịch thành công 
+        //  transaction success
         return this.handleReturnSuccess(transaction);
       } else {
-        // Giao dịch thất bại
+        //  transaction failed
         return this.handleReturnFailed(transaction);
       }
     } else {
@@ -183,7 +183,7 @@ export class VnpayService extends AbstractPaymentService {
       vnp_IpAddr: ipAddr,
     };
 
-    // 👉 Tạo chuỗi data đúng định dạng: nối các giá trị bằng "|"
+
     const rawData = [
       params.vnp_RequestId,
       params.vnp_Version,

@@ -60,7 +60,7 @@ export const changeVNtoUSDToCent = (total: string): number => {
   return Math.round(usdAmount * 100);
 };
 
-// Hàm áp dụng khuyến mãi (giảm giá)
+
 export const applyPromotion = (
   price: number,
   discount: number,
@@ -88,7 +88,7 @@ export const roundUpToNearest = (
 };
 
 export const calculateProductTotal = (
-  orderExtras: Product[], // chứa cả combo
+  orderExtras: Product[], 
   orderBill: OrderBillType,
 ) => {
   let totalProduct = 0;
@@ -107,7 +107,7 @@ export const calculateProductTotal = (
     const productPrice = parseFloat(product.price);
     let finalPrice = productPrice;
 
-    // 👉 Kiểm tra nếu là combo thì ép kiểu để lấy discount
+ 
     if (product.category === ProductTypeEnum.COMBO) {
       const comboProduct = product as Combo;
 
@@ -122,119 +122,7 @@ export const calculateProductTotal = (
   return totalProduct;
 };
 
-export const LineItemsVisa = (
-  orderBill: OrderBillType,
-  scheduleSeats: ScheduleSeat[],
-  ticketForAudienceTypes: TicketType[],
-  orderExtras: ProductType[],
-  promotionDiscount: number,
-  isPercentage: boolean,
-): Stripe.Checkout.SessionCreateParams.LineItem[] => {
-  const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
 
-  const seatPriceMap = new Map<string, number>(); // seatId -> price after audience discount
-  let totalSeatPricesAfterAudience = 0;
-
-  // === Tính giá từng vé sau audience discount ===
-  for (const seatData of orderBill.seats) {
-    const seat = scheduleSeats.find((s) => s.seat.id === seatData.id);
-    if (!seat) continue;
-
-    const ticketType = ticketForAudienceTypes.find(
-      (t) => t.audience_type === seatData.audience_type,
-    );
-    const discount = parseFloat(ticketType?.discount ?? '0');
-    const basePrice = Number(seat.seat.seatType.seat_type_price);
-    const priceAfterAudience = applyAudienceDiscount(basePrice, discount);
-
-    seatPriceMap.set(seatData.id, priceAfterAudience);
-    totalSeatPricesAfterAudience += priceAfterAudience;
-  }
-
-  // === Tính tổng sản phẩm ===
-  const productTotals = orderExtras.map((product) => {
-    const quantity =
-      orderBill.products?.find((p) => p.product_id === product.id)?.quantity ||
-      0;
-    return {
-      product,
-      quantity,
-      total: Number(product.price) * quantity,
-    };
-  });
-
-  const totalProductPrice = productTotals.reduce((sum, p) => sum + p.total, 0);
-  const totalBeforePromotion = totalSeatPricesAfterAudience + totalProductPrice;
-
-  // === Tính số tiền được giảm ===
-  const promotionAmount = isPercentage
-    ? Math.round(totalBeforePromotion * (promotionDiscount / 100))
-    : Math.round(promotionDiscount);
-
-  const seatRatio = totalSeatPricesAfterAudience / totalBeforePromotion;
-  const productRatio = totalProductPrice / totalBeforePromotion;
-
-  const seatDiscount = Math.round(promotionAmount * seatRatio);
-  const productDiscount = promotionAmount - seatDiscount;
-
-  // === Vé xem phim ===
-  for (const seatData of orderBill.seats) {
-    const seat = scheduleSeats.find((s) => s.seat.id === seatData.id);
-    if (!seat) continue;
-
-    const ticketType = ticketForAudienceTypes.find(
-      (t) => t.audience_type === seatData.audience_type,
-    );
-    const discountPercent = parseFloat(ticketType?.discount || '0');
-    const priceAfterAudience = seatPriceMap.get(seatData.id) || 0;
-
-    const seatShareRatio = priceAfterAudience / totalSeatPricesAfterAudience;
-    const seatDiscountShare = seatDiscount * seatShareRatio;
-    const finalPrice = Math.round(priceAfterAudience - seatDiscountShare);
-
-    lineItems.push({
-      quantity: 1,
-      price_data: {
-        currency: 'usd',
-        unit_amount: changeVNtoUSDToCent(finalPrice.toString()),
-        product_data: {
-          name: `Ghế ${seat.seat.id} - ${seatData.audience_type}`,
-          description: `Loại ghế: ${seat.seat.seatType.id}, audience: ${seatData.audience_type}, giảm ${discountPercent}%`,
-        },
-      },
-    });
-  }
-
-  // === Sản phẩm ===
-  const totalProductBeforePromo = Math.max(totalProductPrice, 1); // tránh chia 0
-
-  for (const item of productTotals) {
-    const { product, quantity, total } = item;
-    if (quantity === 0) continue;
-
-    const shareRatio = total / totalProductBeforePromo;
-    const productDiscountShare = productDiscount * shareRatio;
-    const unitDiscount = productDiscountShare / quantity;
-
-    const unit_price_after_discount = Math.round(
-      Number(product.price) - unitDiscount,
-    );
-
-    lineItems.push({
-      quantity,
-      price_data: {
-        currency: 'usd',
-        unit_amount: changeVNtoUSDToCent(unit_price_after_discount.toString()),
-        product_data: {
-          name: product.name,
-          description: product.category || '',
-        },
-      },
-    });
-  }
-
-  return lineItems;
-};
 
 export function formatDate(date: Date): string {
   const pad = (n: number) => n.toString().padStart(2, '0');

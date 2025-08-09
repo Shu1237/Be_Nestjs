@@ -28,14 +28,14 @@ import { RolesGuard } from 'src/common/guards/roles.guard';
 export class CinemaRoomController {
   constructor(private readonly cinemaRoomService: CinemaRoomService) { }
 
-  // GET - Lấy danh sách cinema rooms cho user
+  // GET - get list of cinema rooms for user
   @Get('user')
   @ApiOperation({ summary: 'Get all cinema rooms for users' })
   async getAllCinemaRoomsUser() {
     return await this.cinemaRoomService.getAllCinemaRoomsUser();
   }
 
-  // GET - Lấy danh sách cinema rooms cho admin (với phân trang)
+  // GET - get list of cinema rooms for admin (with pagination)
   @Get('admin')
   @ApiOperation({ summary: 'Get all cinema rooms for admin' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
@@ -64,14 +64,14 @@ export class CinemaRoomController {
     });
   }
 
-  // GET - Lấy cinema room theo ID
+  // GET - get cinema room by ID
   @Get(':id')
   @ApiOperation({ summary: 'Get cinema room by ID' })
   async findOne(@Param('id') id: number) {
     return await this.cinemaRoomService.findOne(id);
   }
 
-  // POST - Tạo cinema room mới
+  // POST - Create a new cinema room
   @Post()
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @UseGuards(RolesGuard)
@@ -80,7 +80,7 @@ export class CinemaRoomController {
     return await this.cinemaRoomService.create(createCinemaRoomDto);
   }
 
-  // PUT - Cập nhật cinema room theo ID
+  // PUT - Update cinema room by ID
   @Put(':id')
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @UseGuards(RolesGuard)
@@ -103,6 +103,7 @@ export class CinemaRoomController {
     return await this.cinemaRoomService.softDeleteCinemaRoom(id);
   }
 
+  // PATCH - Restore soft-deleted cinema room
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @UseGuards(RolesGuard)
   @Patch(':id/restore')
@@ -113,7 +114,7 @@ export class CinemaRoomController {
     return await this.cinemaRoomService.restoreCinemaRoom(id);
   }
 
-  // DELETE - Xóa cinema room theo ID
+  // DELETE - Delete cinema room by ID
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @UseGuards(RolesGuard)
   @Delete(':id')

@@ -14,7 +14,7 @@ export class TicketController {
   constructor(private readonly ticketService: TicketService) { }
 
 
-  // GET - Lấy danh sách tickets cho user
+  // GET - Get list of tickets for user
   @Get('user')
   @ApiOperation({ summary: 'Get all tickets for users' })
   @ApiBearerAuth()
@@ -22,7 +22,7 @@ export class TicketController {
     return await this.ticketService.getAllTicketsUser();
   }
 
-  // GET - Lấy danh sách tickets cho admin (với phân trang)
+  // GET - Get list of tickets for admin (with pagination)
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @Get('admin')
@@ -71,7 +71,7 @@ export class TicketController {
     });
   }
 
-  // GET - Lấy tickets theo user ID
+  // GET - Get tickets by user ID
   @Get('tickets-by-user-id')
   @ApiOperation({
     summary: 'Get tickets by user ID with filters, search, sort',
@@ -113,7 +113,6 @@ export class TicketController {
   @ApiBearerAuth()
   async getTicketsByUserId(@Req() req, @Query() query: TicketPaginationDto) {
     const user = req.user as JWTUserType;
-    // Trích xuất các giá trị từ query
     const { page = 1, take = 10, ...restFilters } = query;
 
     return this.ticketService.getTicketsByUserId({
@@ -124,26 +123,11 @@ export class TicketController {
     });
   }
 
-  // GET - Lấy ticket theo ID
+  // GET - Get ticket by ID
   @Get(':id')
   @ApiOperation({ summary: 'Get ticket by ID' })
   @ApiBearerAuth()
   getTicketById(@Param('id') id: string) {
     return this.ticketService.getTicketById(id);
   }
-
-  // ============ PATCH ENDPOINTS ============
-
-  // PATCH - Mark tickets as used (commented out)
-  // @Patch('tickets/mark-used')
-  // @ApiOperation({ summary: 'Mark tickets as used' })
-  // @ApiBearerAuth()
-  // @ApiBody({ type: TicketMarkUsedDto })
-  // markTicketsAsUsed(@Body() body: TicketMarkUsedDto, @Req() req) {
-  //   const user = req.user as JWTUserType;
-  //   if (user.role_id !== Role.ADMIN && user.role_id !== Role.EMPLOYEE) {
-  //     throw new ForbiddenException('Only admin or employee can mark tickets as used');
-  //   }
-  //   return this.ticketService.markTicketsAsUsed(body.ticketIds);
-  // }
 }

@@ -3,11 +3,11 @@ import { IsInt, IsString } from 'class-validator';
 
 export class CreateScheduleDto {
   @IsInt()
-  @ApiProperty({ description: 'ID phòng chiếu', example: 1 })
+  @ApiProperty({ description: 'Schedule room ID', example: 1 })
   cinema_room_id: number;
 
   @IsInt()
-  @ApiProperty({ description: 'ID phim', example: 1 })
+  @ApiProperty({ description: 'Movie ID', example: 1 })
   movie_id: number;
 
   @IsInt()
@@ -17,7 +17,7 @@ export class CreateScheduleDto {
   @IsString()
   @ApiProperty({
     description:
-      'Thời gian bắt đầu chiếu (giờ Việt Nam, định dạng YYYY-MM-DD HH:mm)',
+      'Start time of the movie (Vietnam time, format YYYY-MM-DD HH:mm)',
     example: '2025-06-10 14:00',
   })
   start_movie_time: string;
@@ -25,7 +25,7 @@ export class CreateScheduleDto {
   @IsString()
   @ApiProperty({
     description:
-      'Thời gian kết thúc chiếu (giờ Việt Nam, định dạng YYYY-MM-DD HH:mm)',
+      'End time of the movie (Vietnam time, format YYYY-MM-DD HH:mm)',
     example: '2025-06-10 16:00',
   })
   end_movie_time: string;

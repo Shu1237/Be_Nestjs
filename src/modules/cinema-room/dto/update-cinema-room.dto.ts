@@ -4,6 +4,6 @@ import { IsOptional, IsString } from 'class-validator';
 
 export class UpdateCinemaRoomDto extends PartialType(CreateCinemaRoomDto) {
   @IsString()
-  @ApiProperty({ description: 'Tên của phòng chiếu', example: 'Room A' })
+  @ApiProperty({ description: 'Name of the cinema room', example: 'Room A' })
   cinema_room_name: string;
 }

@@ -7,7 +7,7 @@ import { CinemaRoom } from 'src/database/entities/cinema/cinema-room';
 import { Repository, MoreThan, Between } from 'typeorm';
 import { Order } from 'src/database/entities/order/order';
 import { OrderDetail } from 'src/database/entities/order/order-detail';
-// Giả sử bạn có Order, OrderDetail entity
+
 
 @Injectable()
 export class MovieAutoScheduleService {
@@ -74,7 +74,7 @@ export class MovieAutoScheduleService {
     const slotDuration = 2 * 60 * 60 * 1000;
     const startHour = 8;
     const endHour = 22;
-    const peakHours = [18, 19, 20]; // khung giờ vàng
+    const peakHours = [18, 19, 20]; 
 
     for (const plan of movieSlotPlan) {
       let slotsToAssign = plan.slots;
@@ -87,16 +87,15 @@ export class MovieAutoScheduleService {
           const slotStart = new Date(currentTime);
           const slotEnd = new Date(currentTime.getTime() + slotDuration);
 
-          // Ưu tiên phim top vào giờ vàng
+
           if (
             plan.movieId === topMovieId &&
             !peakHours.includes(currentTime.getHours())
           ) {
             currentTime = new Date(currentTime.getTime() + slotDuration);
-            continue; // bỏ qua slot không phải giờ vàng
+            continue;
           }
 
-          // Transaction đảm bảo không trùng slot
           await this.scheduleRepository.manager.transaction(async (manager) => {
             const existing = await manager.findOne(Schedule, {
               where: {
@@ -126,6 +125,6 @@ export class MovieAutoScheduleService {
       }
     }
 
-    this.logger.log('🎬 Auto-schedule movies completed.');
+    this.logger.log(' Auto-schedule movies completed.');
   }
 }
