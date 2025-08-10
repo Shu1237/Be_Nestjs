@@ -27,7 +27,7 @@ export class VersionService {
   async create(
     createVersionDto: CreateVersionDto,
   ): Promise<{ message: string }> {
-    // Kiểm tra nếu `name` đã tồn tại
+
     const existingVersion = await this.versionRepository.findOne({
       where: { name: createVersionDto.name },
     });
@@ -41,7 +41,7 @@ export class VersionService {
     await this.versionRepository.save(version);
     return { message: 'Version created successfully' };
   }
-  async findAll(fillters: VersionPaginationDto) {
+  async findAll(fillters: VersionPaginationDto) : Promise<ReturnType <typeof buildPaginationResponse>> {
     const qb = this.versionRepository.createQueryBuilder('version');
 
     applyCommonFilters(qb, fillters, versionFieldMapping);
@@ -90,7 +90,7 @@ export class VersionService {
   ): Promise<{ message: string }> {
     const version = await this.findOne(id);
 
-    // Kiểm tra nếu `name` đã tồn tại (trừ chính bản ghi hiện tại)
+
     if (updateVersionDto.name) {
       const existingVersion = await this.versionRepository.findOne({
         where: { name: updateVersionDto.name },
@@ -114,7 +114,7 @@ export class VersionService {
       throw new NotFoundException(`Version with ID ${id} not found`);
     }
 
-    version.is_deleted = true; // Đánh dấu là đã xóa
+    version.is_deleted = true; 
     await this.versionRepository.save(version);
 
     return { msg: 'Version soft-deleted successfully', version };
